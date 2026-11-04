@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap');
+
+:root {
+  /* Colores */
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f7f7f7;
+  --color-text: #121212;
+  --color-text-muted: #717171;
+  --color-tab-inactive: #b8b8b8;
+  --color-border: #ececec;
+  --color-border-dark: #121212;
+  --color-badge-soldout: rgba(155, 155, 155, 0.88);
+  --color-badge-sale: #121212;
+  --color-overlay: rgba(0, 0, 0, 0.45);
+
+  /* Tipografías */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+
+  /* Redondeos (Redondismo Yoana Zafiro) */
+  --radius-card: 12px;
+  --radius-badge: 6px;
+  --radius-btn: 10px;
+  --radius-sheet: 20px;
+  --radius-full: 9999px;
+
+  /* Dimensiones y Layout */
+  --header-height: 62px;
+  --bottom-nav-height: 60px;
+  --page-max-width: 1240px;
+
+  /* Sombras y Transiciones */
+  --shadow-header: 0 2px 10px rgba(0, 0, 0, 0.04);
+  --shadow-floating-btn: 0 2px 8px rgba(0, 0, 0, 0.16);
+  --transition-fast: 0.2s ease;
+  --transition-smooth: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
