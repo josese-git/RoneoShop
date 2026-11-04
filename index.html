@@ -77,7 +77,12 @@
         placeholder="Buscar vestido, vaquero, abrigo, champú..." 
         autocomplete="off" 
       />
-      <button type="button" id="search-close-btn" class="search-bar-close" aria-label="Cerrar buscador">✕</button>
+      <button type="button" id="search-close-btn" class="search-bar-close" aria-label="Cerrar buscador">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
   </div>
 
@@ -110,7 +115,7 @@
       
       <div class="collections-carousel">
         <!-- Colección 1: OTOÑO INVIERNO -->
-        <a href="#catalogo" class="collection-card js-collection-filter" data-category="abrigos" aria-label="Colección Otoño Invierno">
+        <a href="collection.html?cat=otono-invierno" class="collection-card js-collection-filter" data-category="otono-invierno" aria-label="Colección Otoño Invierno">
           <div class="collection-card__media">
             <img src="https://yoanazafiro.com/cdn/shop/files/fotos_web_6fdf6e8e-5305-44db-9bb0-20a024538e26.jpg?v=1763408265&width=600" alt="Otoño Invierno" loading="lazy" />
           </div>
@@ -124,7 +129,7 @@
         </a>
 
         <!-- Colección 2: PRIMAVERA & VERANO -->
-        <a href="#catalogo" class="collection-card js-collection-filter" data-category="ropa" aria-label="Colección Primavera y Verano">
+        <a href="collection.html?cat=primavera-verano" class="collection-card js-collection-filter" data-category="primavera-verano" aria-label="Colección Primavera y Verano">
           <div class="collection-card__media">
             <img src="https://yoanazafiro.com/cdn/shop/files/IMG_5434.jpg?v=1747413284&width=600" alt="Primavera y Verano" loading="lazy" />
           </div>
@@ -138,7 +143,7 @@
         </a>
 
         <!-- Colección 3: CABELLO -->
-        <a href="#catalogo" class="collection-card js-collection-filter" data-category="cabello" aria-label="Colección Cabello">
+        <a href="collection.html?cat=cabello" class="collection-card js-collection-filter" data-category="cabello" aria-label="Colección Cabello">
           <div class="collection-card__media">
             <img src="https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=600" alt="Cuidado Capilar" loading="lazy" />
           </div>
@@ -152,7 +157,7 @@
         </a>
 
         <!-- Colección 4: COSMÉTICA -->
-        <a href="#catalogo" class="collection-card js-collection-filter" data-category="cosmetica" aria-label="Colección Cosmética Coreana">
+        <a href="collection.html?cat=cosmetica" class="collection-card js-collection-filter" data-category="cosmetica" aria-label="Colección Cosmética Coreana">
           <div class="collection-card__media">
             <img src="https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=600" alt="Cosmética Coreana" loading="lazy" />
           </div>
@@ -322,7 +327,13 @@
       <div class="testimonials-carousel">
         <!-- Testimonio 1 -->
         <article class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-stars" aria-label="5 de 5 estrellas">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
           <h3 class="testimonial-author">PACIENTE DE QUIMIOTERAPIA</h3>
           <p class="testimonial-text">
             "Tras pasar por una difícil operación que le causó una menopausia prematura, su pelo empezó a resecarse, probando infinidad de productos que no lograron resolver el problema. Finalmente encontró nuestros productos y pudo zanjar su problema."
@@ -331,7 +342,13 @@
 
         <!-- Testimonio 2 -->
         <article class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-stars" aria-label="5 de 5 estrellas">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
           <h3 class="testimonial-author">CLIENTA SATISFECHA</h3>
           <p class="testimonial-text">
             "Nos comunican su alegría con nuestros productos redactando el siguiente comentario: 'Me he lavado el pelo con tus productos y estoy maravillada con los resultados, desde el primer día que lo he usado el pelo me ha quedado brillante y sedoso. Me ha encantado la calidad y el precio.'"
@@ -340,7 +357,13 @@
 
         <!-- Testimonio 3 -->
         <article class="testimonial-card">
-          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-stars" aria-label="5 de 5 estrellas">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
           <h3 class="testimonial-author">ENVÍO RÁPIDO Y CALIDAD TOP</h3>
           <p class="testimonial-text">
             "Pedí el vaquero faja y un vestido un martes por la tarde y el jueves por la mañana ya lo tenía en casa. Sienta como un guante, tallaje perfecto y atención de diez."
@@ -356,7 +379,7 @@
   <footer class="site-footer">
     <!-- Selector de país / moneda -->
     <div class="footer-country-pill">
-      <span>🇪🇸</span>
+
       <span>España (EUR €) ▾</span>
     </div>
 
@@ -469,7 +492,12 @@
   <div id="quick-add-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-sheet-title">
     <div class="sheet-header">
       <span style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Añadir a la cesta</span>
-      <button type="button" id="sheet-close-btn" class="sheet-close-btn" aria-label="Cerrar modal">✕</button>
+      <button type="button" id="sheet-close-btn" class="sheet-close-btn" aria-label="Cerrar modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <div class="sheet-product-preview">
@@ -498,12 +526,24 @@
   <div id="info-modal" class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
     <div class="sheet-header">
       <span id="info-modal-title" style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Información de la tienda</span>
-      <button type="button" id="info-close-btn" class="sheet-close-btn" aria-label="Cerrar">✕</button>
+      <button type="button" id="info-close-btn" class="sheet-close-btn" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <div class="info-items">
       <div class="info-item">
-        <div class="info-item__icon">📦</div>
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="1"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+        </div>
         <div>
           <div class="info-item__title">Envíos 24/48 Horas</div>
           <div class="info-item__desc">Envíos exprés con seguimiento oficial Packlink PRO Plus. Gratis en pedidos superiores a €60,00.</div>
@@ -511,7 +551,13 @@
       </div>
 
       <div class="info-item">
-        <div class="info-item__icon">🔄</div>
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </div>
         <div>
           <div class="info-item__title">Cambios y Devoluciones</div>
           <div class="info-item__desc">Dispones de 14 días naturales para tramitar cambios de talla o devoluciones sin complicaciones.</div>
@@ -519,7 +565,12 @@
       </div>
 
       <div class="info-item">
-        <div class="info-item__icon">🔒</div>
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
         <div>
           <div class="info-item__title">Pago Seguro Redsys & Bizum</div>
           <div class="info-item__desc">Pasarela bancaria encriptada con firma SHA-256. Pagos instantáneos con Bizum y tarjeta.</div>
@@ -527,7 +578,11 @@
       </div>
 
       <div class="info-item">
-        <div class="info-item__icon">💬</div>
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
         <div>
           <div class="info-item__title">Atención Personalizada</div>
           <div class="info-item__desc">¿Dudas con el tallaje o tu pedido? Te asesoramos directamente por WhatsApp.</div>
@@ -538,18 +593,23 @@
 
   <!-- Menú Lateral Izquierdo (Hamburger Drawer) -->
   <aside id="hamburger-menu" class="hamburger-drawer" role="dialog" aria-modal="true" aria-labelledby="hamburger-title">
-    <button type="button" id="hamburger-close-btn" class="hamburger-drawer__close" aria-label="Cerrar menú">✕</button>
+    <button type="button" id="hamburger-close-btn" class="hamburger-drawer__close" aria-label="Cerrar menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
     
     <nav class="hamburger-drawer__nav" aria-label="Categorías del menú lateral">
       <span id="hamburger-title" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;">Categorías</span>
-      <a href="#" class="hamburger-drawer__link" data-category="ropa">ROPA</a>
-      <a href="#" class="hamburger-drawer__link" data-category="cabello">CABELLO</a>
-      <a href="#" class="hamburger-drawer__link" data-category="cosmetica">COSMÉTICA</a>
-      <a href="#" class="hamburger-drawer__link" data-category="novedades">NOVEDADES</a>
-      <a href="#" class="hamburger-drawer__link" data-category="vestidos">VESTIDOS</a>
-      <a href="#" class="hamburger-drawer__link" data-category="abrigos">ABRIGOS</a>
-      <a href="#" class="hamburger-drawer__link" data-category="vaqueros">VAQUEROS</a>
-      <a href="#" class="hamburger-drawer__link" data-category="rebajas" style="color: #b91c1c;">REBAJAS %</a>
+      <a href="collection.html?cat=ropa" class="hamburger-drawer__link" data-category="ropa">ROPA</a>
+      <a href="collection.html?cat=cabello" class="hamburger-drawer__link" data-category="cabello">CABELLO</a>
+      <a href="collection.html?cat=cosmetica" class="hamburger-drawer__link" data-category="cosmetica">COSMÉTICA</a>
+      <a href="collection.html?cat=novedades" class="hamburger-drawer__link" data-category="novedades">NOVEDADES</a>
+      <a href="collection.html?cat=vestidos" class="hamburger-drawer__link" data-category="vestidos">VESTIDOS</a>
+      <a href="collection.html?cat=abrigos" class="hamburger-drawer__link" data-category="abrigos">ABRIGOS</a>
+      <a href="collection.html?cat=vaqueros" class="hamburger-drawer__link" data-category="vaqueros">VAQUEROS</a>
+      <a href="collection.html?cat=rebajas" class="hamburger-drawer__link" data-category="rebajas" style="color: #b91c1c;">REBAJAS %</a>
     </nav>
 
     <a href="admin/index.html" class="hamburger-drawer__admin">
@@ -565,7 +625,12 @@
   <aside id="cart-drawer" class="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title">
     <div class="cart-drawer__header">
       <h3 id="cart-drawer-title" class="cart-drawer__title">Tu cesta (0)</h3>
-      <button type="button" id="cart-drawer-close" class="sheet-close-btn" aria-label="Cerrar cesta">✕</button>
+      <button type="button" id="cart-drawer-close" class="sheet-close-btn" aria-label="Cerrar cesta">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Barra de progreso hacia el envío gratis -->

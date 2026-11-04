@@ -1,0 +1,1268 @@
+/* ==========================================================================
+   ADMIN PANEL CSS - YOANA ZAFIRO (FASE 3.5)
+   Diseño Mobile-First estilo Instagram / Vinted & Shopify Admin
+   Zero Emojis · Iconos SVG Puros · Modales Fluidos · iOS Toggles
+   ========================================================================== */
+
+:root {
+  --admin-bg: #f5f5f7;
+  --admin-card-bg: #ffffff;
+  --admin-text: #121212;
+  --admin-text-muted: #666666;
+  --admin-border: #e2e2e8;
+  --admin-primary: #121212;
+  --admin-primary-hover: #2a2a2a;
+  
+  /* Semáforo de estados */
+  --badge-green-bg: #e3fcef;
+  --badge-green-text: #006644;
+  --badge-orange-bg: #fff4e5;
+  --badge-orange-text: #b76e00;
+  --badge-red-bg: #ffebe6;
+  --badge-red-text: #bf2600;
+  --badge-blue-bg: #deebff;
+  --badge-blue-text: #0747a6;
+  --badge-gray-bg: #f0f0f4;
+  --badge-gray-text: #505050;
+
+  --radius-card: 14px;
+  --radius-btn: 8px;
+  --header-height: 62px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 74px; /* Espacio para barra móvil */
+}
+
+@media (min-width: 990px) {
+  body {
+    padding-bottom: 0;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ==========================================================================
+   PANTALLA DE LOGIN
+   ========================================================================== */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, #ffffff 0%, #ebebef 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 34px 26px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--admin-border);
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-symbol {
+  font-size: 26px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.login-brand h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.login-brand p {
+  font-size: 12.5px;
+  color: var(--admin-text-muted);
+}
+
+.login-form .form-group {
+  margin-bottom: 14px;
+}
+
+.admin-error-box {
+  background-color: var(--badge-red-bg);
+  color: var(--badge-red-text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   CABECERA DEL PANEL
+   ========================================================================== */
+.admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-header__inner {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.admin-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-header__symbol {
+  font-size: 18px;
+}
+
+.admin-header__title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-header__tag {
+  background-color: #121212;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.admin-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-btn-outline:hover {
+  background-color: #f7f7f9;
+  border-color: #121212;
+}
+
+.admin-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #121212;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.admin-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.admin-btn-logout {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--admin-border);
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #555555;
+  transition: all 0.2s;
+}
+
+.admin-btn-logout:hover {
+  background-color: #ffebe6;
+  color: #bf2600;
+  border-color: #ffebe6;
+}
+
+/* Barra de pestañas en Desktop */
+.admin-nav-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px;
+  max-width: 1300px;
+  margin: 0 auto;
+  border-top: 1px solid #f2f2f4;
+}
+
+.admin-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-tab-btn:hover {
+  color: #121212;
+}
+
+.admin-tab-btn.is-active {
+  color: #121212;
+  border-bottom-color: #121212;
+}
+
+/* ==========================================================================
+   CONTENIDO PRINCIPAL
+   ========================================================================== */
+.admin-main {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+.admin-tab-view {
+  display: none;
+}
+
+.admin-tab-view.is-active {
+  display: block;
+}
+
+/* ==========================================================================
+   KPIs SUPERIORES
+   ========================================================================== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.kpi-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.kpi-val {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.text-green { color: #00875a; }
+.text-orange { color: #d97706; }
+.text-red { color: #dc2626; }
+
+/* ==========================================================================
+   BARRA DE BÚSQUEDA Y FILTROS
+   ========================================================================== */
+.admin-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 600px) {
+  .admin-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.admin-search-wrap {
+  flex: 1;
+}
+
+.admin-search-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  outline: none;
+  font-size: 13.5px;
+}
+
+.admin-search-input:focus {
+  border-color: #121212;
+}
+
+.admin-select {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   LISTADO DE PRENDAS (TARJETAS MOBILE-FIRST)
+   ========================================================================== */
+.admin-products-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 800px) {
+  .admin-products-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .admin-products-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.admin-prod-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 14px;
+  align-items: start;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-prod-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+.admin-prod-card__media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #f0f0f2;
+}
+
+.admin-prod-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-prod-card__badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background-color: rgba(18, 18, 18, 0.85);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.admin-prod-card__info {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.admin-prod-card__title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.admin-prod-card__category {
+  font-size: 11.5px;
+  color: var(--admin-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.admin-prod-card__prices {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.admin-prod-card__price {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-prod-card__compare {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+  text-decoration: line-through;
+}
+
+.admin-size-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.admin-size-pill-tag {
+  background-color: #f2f2f4;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-size-pill-tag.is-empty {
+  background-color: var(--badge-red-bg);
+  color: var(--badge-red-text);
+}
+
+.admin-prod-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #444444;
+  transition: all 0.2s;
+}
+
+.admin-btn-icon:hover {
+  background-color: #f2f2f4;
+  color: #121212;
+}
+
+.admin-btn-icon.is-danger:hover {
+  background-color: var(--badge-red-bg);
+  color: var(--badge-red-text);
+  border-color: var(--badge-red-bg);
+}
+
+/* ==========================================================================
+   PESTAÑA 2: LISTADO Y TARJETAS DE PEDIDOS
+   ========================================================================== */
+.admin-pills-row {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  scrollbar-width: none;
+}
+.admin-pills-row::-webkit-scrollbar { display: none; }
+
+.admin-pill-btn {
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  border: 1px solid var(--admin-border);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-pill-btn.is-active {
+  background-color: #121212;
+  color: #ffffff;
+  border-color: #121212;
+}
+
+.admin-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-order-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+}
+
+.admin-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 12px;
+}
+
+.admin-order-number {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.admin-order-date {
+  font-size: 11.5px;
+  color: var(--admin-text-muted);
+}
+
+.admin-order-total {
+  font-size: 17px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.packing-list-box {
+  background-color: #fbfbfd;
+  border: 1px dashed #d5d5dd;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.packing-list-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.packing-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.packing-item-row:last-child { border-bottom: none; }
+
+.packing-size-badge {
+  background-color: #121212;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+
+.order-packlink-bar {
+  background-color: #f7f9fa;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (min-width: 600px) {
+  .order-packlink-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.btn-whatsapp {
+  background-color: #25d366;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   PESTAÑA 3: AJUSTES TIENDA & FIREBASE CLOUD CONNECTOR
+   ========================================================================== */
+.settings-form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-card {
+  background-color: var(--admin-card-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 20px;
+}
+
+.admin-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-card__hint {
+  font-size: 12.5px;
+  color: var(--admin-text-muted);
+  margin-bottom: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #121212;
+}
+
+/* Tarjeta Firebase Cloud Connector */
+.cloud-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.cloud-status-badge.is-cloud {
+  background-color: var(--badge-green-bg);
+  color: var(--badge-green-text);
+}
+
+.cloud-status-badge.is-local {
+  background-color: var(--badge-gray-bg);
+  color: var(--badge-gray-text);
+}
+
+.cloud-config-textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  padding: 10px;
+  background-color: #fafafc;
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ==========================================================================
+   MODAL ESTILO INSTAGRAM / VINTED (CREAR / EDITAR PRENDA)
+   ========================================================================== */
+.admin-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.admin-modal.is-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-modal__overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.admin-modal__container {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  max-height: 92vh;
+  background-color: #ffffff;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  margin: 14px;
+}
+
+.admin-modal__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--admin-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-modal__title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.admin-modal__close {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666666;
+  border-radius: 50%;
+}
+
+.admin-modal__close:hover {
+  background-color: #f0f0f2;
+}
+
+.admin-modal__body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Galería Horizontal Estilo Instagram / Vinted */
+.admin-insta-gallery {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+
+.admin-insta-card {
+  position: relative;
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #f0f0f2;
+  border: 1px solid #d8d8de;
+  flex-shrink: 0;
+}
+
+.admin-insta-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-insta-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.admin-insta-savings {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  background: rgba(0, 102, 68, 0.9);
+  color: #ffffff;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.admin-insta-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.9);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Tarjeta Dashed para Añadir Fotos */
+.admin-insta-upload-card {
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  border: 2px dashed #b8b8c2;
+  background-color: #fafafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: #555555;
+  transition: all 0.2s ease;
+}
+
+.admin-insta-upload-card:hover {
+  background-color: #f0f0f4;
+  border-color: #121212;
+  color: #121212;
+}
+
+.admin-insta-upload-card span {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Pastillas de Categorías Rápidas */
+.admin-cat-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.admin-cat-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-cat-pill.is-active {
+  background-color: #121212;
+  color: #ffffff;
+  border-color: #121212;
+}
+
+/* Paleta Visual de Colores */
+.admin-color-palette {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.admin-color-swatch-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+.admin-color-swatch-btn.is-active {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3.5px #121212;
+}
+
+.admin-color-custom-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-color-picker-input {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+/* iOS Toggle Switch */
+.ios-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background-color: #f7f7f9;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+  margin: 6px 0;
+}
+
+.ios-toggle-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.ios-switch-wrap {
+  position: relative;
+  width: 46px;
+  height: 26px;
+}
+
+.ios-switch-wrap input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ios-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #d1d1d6;
+  transition: 0.25s;
+  border-radius: 26px;
+}
+
+.ios-slider::before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.25s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.ios-switch-wrap input:checked + .ios-slider {
+  background-color: #108043;
+}
+
+.ios-switch-wrap input:checked + .ios-slider::before {
+  transform: translateX(20px);
+}
+
+/* Contador de Stock Simple cuando hasSizes === false */
+.admin-single-stock-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 8px;
+}
+
+.admin-stock-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.admin-stock-stepper button {
+  width: 36px;
+  height: 36px;
+  background-color: #f7f7f9;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-stock-stepper span {
+  width: 44px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Matriz de Tallas en Modal */
+.variants-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.variant-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px;
+  gap: 8px;
+  align-items: center;
+}
+
+.modal-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border);
+}
+
+.btn-admin-subtle {
+  background-color: #f0f0f4;
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #333333;
+}
+
+.btn-admin-danger {
+  background-color: #ffebe6;
+  color: #bf2600;
+  border: 1px solid #ffbdad;
+  border-radius: var(--radius-btn);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Visor JSON Packlink */
+.json-pre-viewer {
+  background-color: #1a1a1a;
+  color: #38bdf8;
+  padding: 14px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ==========================================================================
+   BARRA MÓVIL FIJA INFERIOR (3 BOTONES)
+   ========================================================================== */
+.admin-mobile-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--admin-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 50;
+}
+
+.admin-mobile-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  gap: 4px;
+  cursor: pointer;
+  width: 33%;
+  height: 100%;
+}
+
+.admin-mobile-tab.is-active {
+  color: #121212;
+  font-weight: 700;
+}
+
+/* Clases de Utilidad */
+.hide-desktop {
+  display: flex;
+}
+
+@media (min-width: 990px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+@media (max-width: 989px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Toast Notificaciones */
+.admin-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: #121212;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

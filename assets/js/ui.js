@@ -1,7 +1,7 @@
 /**
- * UI CONTROLLER - ANATOMÍA COMPLETA DE 13 SECCIONES (FASE 2)
- * Controla la interactividad de las 13 secciones, filtros multirrubro (Ropa, Cabello, Cosmética),
- * carrusel de colecciones, modales Bottom-Sheet y barra de 5 botones.
+ * UI CONTROLLER - ANATOMÍA COMPLETA Y NAVEGACIÓN GLOBAL (FASE 2)
+ * Controla la interactividad de las 13 secciones, filtros multirrubro,
+ * carrusel de colecciones, modales Bottom-Sheet, Cart Drawer y barra de 5 botones.
  */
 
 import { getStoreSettings, getProducts } from './store-service.js';
@@ -34,7 +34,93 @@ let modalProduct = null;
 let modalSelectedSize = null;
 
 /**
- * Inicialización al cargar el DOM
+ * Genera el markup HTML estandarizado para una tarjeta de producto (Mobile-First)
+ * Cumple fielmente con DESIGN_SYSTEM.md:
+ * - Foto o título llevan a product.html?id=...
+ * - Botón flotante circular blanco con bolsa de compra abre el Bottom-Sheet
+ */
+export function renderProductCardMarkup(product) {
+  const totalStock = product.variants ? product.variants.reduce((sum, v) => sum + v.stock, 0) : 0;
+  const isSoldOut = totalStock <= 0;
+  const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
+  const discountPercent = hasDiscount
+    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+    : 0;
+
+  const mainImage = product.images?.[0] || '';
+  const productUrl = `product.html?id=${encodeURIComponent(product.id)}`;
+
+  return `
+    <article class="product-card js-product-card" data-id="${product.id}">
+      <div class="product-card__media">
+        <a href="${productUrl}" class="product-card__media-link" aria-label="Ver detalles de ${product.title}">
+          <img 
+            class="product-card__img" 
+            src="${mainImage}" 
+            alt="${product.title}" 
+            loading="lazy" 
+          />
+        </a>
+        
+        ${isSoldOut ? `<span class="product-card__badge badge--soldout">Agotado</span>` : ''}
+        ${(!isSoldOut && hasDiscount) ? `<span class="product-card__badge badge--sale">-${discountPercent}%</span>` : ''}
+
+        <button 
+          type="button" 
+          class="product-card__bag-btn js-open-quick-add" 
+          data-id="${product.id}" 
+          aria-label="Añadir ${product.title} a la cesta">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="product-card__info">
+        <h3 class="product-card__title">
+          <a href="${productUrl}" class="product-card__title-link">${product.title}</a>
+        </h3>
+        <div class="product-card__price-row">
+          ${hasDiscount ? `<span class="price--compare">${formatPrice(product.compareAtPrice)}</span>` : ''}
+          <span>${formatPrice(product.price)}</span>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+/**
+ * Asocia listeners para la tarjeta de producto:
+ * - Clic en botón bolsa: abre Bottom-Sheet Quick Add
+ * - Clic en foto o título: navega a product.html?id=...
+ */
+export function bindProductCardEvents(parentElement, productsList = allProducts) {
+  if (!parentElement) return;
+
+  parentElement.querySelectorAll('.js-open-quick-add').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const p = productsList.find(item => item.id === btn.dataset.id);
+      if (p) openQuickAddSheet(p);
+    });
+  });
+
+  parentElement.querySelectorAll('.js-product-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.js-open-quick-add')) return;
+      const targetLink = e.target.closest('a');
+      if (!targetLink) {
+        window.location.href = `product.html?id=${encodeURIComponent(card.dataset.id)}`;
+      }
+    });
+  });
+}
+
+/**
+ * Inicialización de UI para index.html (solo si existen los elementos clave de la home)
  */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -50,9 +136,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCategoryTabs(settings.categories);
     renderProducts();
     renderDuoProducts();
-    setupEventListeners();
+    setupCommonUI();
     renderCartDrawer();
     updateCartBadges();
+
+    // Sincronización en vivo con /admin y otras pestañas
+    const syncChannel = new BroadcastChannel('yoana_store_sync');
+    const refreshStorefront = async () => {
+      try {
+        const [refreshedSettings, refreshedProducts] = await Promise.all([
+          getStoreSettings(),
+          getProducts()
+        ]);
+        currentSettings = refreshedSettings;
+        allProducts = refreshedProducts;
+        setupAnnouncement(refreshedSettings.announcementText);
+        renderProducts();
+        renderDuoProducts();
+        renderCartDrawer();
+        updateCartBadges();
+      } catch (e) {
+        console.warn("[UI] Error actualizando escaparate en vivo:", e);
+      }
+    };
+    syncChannel.onmessage = refreshStorefront;
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'store_db_products_v2' || e.key === 'store_db_settings_v2') {
+        refreshStorefront();
+      }
+    });
   } catch (err) {
     console.error("[UI] Error durante la inicialización:", err);
   }
@@ -61,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Configura el texto de la Announcement Bar
  */
-function setupAnnouncement(text) {
+export function setupAnnouncement(text) {
   const el = document.getElementById('announcement-text');
   if (el && text) {
     el.textContent = text;
@@ -69,9 +181,9 @@ function setupAnnouncement(text) {
 }
 
 /**
- * Renderiza las pestañas Serif superiores
+ * Renderiza las pestañas Serif superiores en index.html
  */
-function renderCategoryTabs(categories) {
+export function renderCategoryTabs(categories) {
   const container = document.getElementById('category-tabs');
   if (!container) return;
 
@@ -133,7 +245,7 @@ export function setCategory(categoryName, shouldScroll = false) {
 /**
  * Renderiza los productos en el carrusel o cuadrícula según la categoría activa
  */
-function renderProducts() {
+export function renderProducts() {
   const track = document.getElementById('products-track');
   const viewAllBtn = document.getElementById('view-all-btn');
   if (!track) return;
@@ -166,10 +278,8 @@ function renderProducts() {
   // Alternancia de clases
   if (isGridMode) {
     track.className = 'products-track--grid';
-    if (viewAllBtn) viewAllBtn.textContent = 'VER MODO CARRUSEL';
   } else {
     track.className = 'products-track--carousel';
-    if (viewAllBtn) viewAllBtn.textContent = 'VER TODO';
   }
 
   if (filtered.length === 0) {
@@ -186,60 +296,14 @@ function renderProducts() {
     return;
   }
 
-  track.innerHTML = filtered.map(product => {
-    const totalStock = product.variants ? product.variants.reduce((sum, v) => sum + v.stock, 0) : 0;
-    const isSoldOut = totalStock <= 0;
-    const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
-    const discountPercent = hasDiscount
-      ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
-      : 0;
-
-    const mainImage = product.images?.[0] || '';
-
-    return `
-      <article class="product-card js-product-card" data-id="${product.id}">
-        <div class="product-card__media">
-          <img 
-            class="product-card__img" 
-            src="${mainImage}" 
-            alt="${product.title}" 
-            loading="lazy" 
-          />
-          
-          ${isSoldOut ? `<span class="product-card__badge badge--soldout">Agotado</span>` : ''}
-          ${(!isSoldOut && hasDiscount) ? `<span class="product-card__badge badge--sale">-${discountPercent}%</span>` : ''}
-
-          <button 
-            type="button" 
-            class="product-card__bag-btn js-open-quick-add" 
-            data-id="${product.id}" 
-            aria-label="Añadir ${product.title} a la cesta">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-          </button>
-        </div>
-
-        <div class="product-card__info">
-          <h3 class="product-card__title">${product.title}</h3>
-          <div class="product-card__price-row">
-            ${hasDiscount ? `<span class="price--compare">${formatPrice(product.compareAtPrice)}</span>` : ''}
-            <span>${formatPrice(product.price)}</span>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  bindProductCardEvents(track);
+  track.innerHTML = filtered.map(product => renderProductCardMarkup(product)).join('');
+  bindProductCardEvents(track, allProducts);
 }
 
 /**
  * Renderiza el Grid de 2 productos destacados en la Sección 9 (Cabello)
  */
-function renderDuoProducts() {
+export function renderDuoProducts() {
   const container = document.getElementById('duo-products-container');
   if (!container) return;
 
@@ -247,66 +311,12 @@ function renderDuoProducts() {
   const p2 = allProducts.find(p => p.id === 'secador-profesional-ionic');
 
   const duoList = [p1, p2].filter(Boolean);
-
-  container.innerHTML = duoList.map(product => {
-    const totalStock = product.variants ? product.variants.reduce((sum, v) => sum + v.stock, 0) : 0;
-    const isSoldOut = totalStock <= 0;
-    const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
-    const discountPercent = hasDiscount
-      ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
-      : 0;
-
-    return `
-      <article class="product-card js-product-card" data-id="${product.id}">
-        <div class="product-card__media">
-          <img class="product-card__img" src="${product.images[0]}" alt="${product.title}" loading="lazy" />
-          ${isSoldOut ? `<span class="product-card__badge badge--soldout">Agotado</span>` : ''}
-          ${(!isSoldOut && hasDiscount) ? `<span class="product-card__badge badge--sale">-${discountPercent}%</span>` : ''}
-          <button type="button" class="product-card__bag-btn js-open-quick-add" data-id="${product.id}" aria-label="Añadir a la cesta">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-          </button>
-        </div>
-        <div class="product-card__info">
-          <h3 class="product-card__title">${product.title}</h3>
-          <div class="product-card__price-row">
-            ${hasDiscount ? `<span class="price--compare">${formatPrice(product.compareAtPrice)}</span>` : ''}
-            <span>${formatPrice(product.price)}</span>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  bindProductCardEvents(container);
+  container.innerHTML = duoList.map(product => renderProductCardMarkup(product)).join('');
+  bindProductCardEvents(container, allProducts);
 }
 
 /**
- * Asocia listeners para abrir el Bottom Sheet modal
- */
-function bindProductCardEvents(parentElement) {
-  parentElement.querySelectorAll('.js-open-quick-add').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const p = allProducts.find(item => item.id === btn.dataset.id);
-      if (p) openQuickAddSheet(p);
-    });
-  });
-
-  parentElement.querySelectorAll('.js-product-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.js-open-quick-add')) return;
-      const p = allProducts.find(item => item.id === card.dataset.id);
-      if (p) openQuickAddSheet(p);
-    });
-  });
-}
-
-/**
- * Abre el Bottom-Sheet modal para elegir talla
+ * Abre el Bottom-Sheet modal para elegir talla (Quick Add)
  */
 export function openQuickAddSheet(product) {
   modalProduct = product;
@@ -355,8 +365,12 @@ export function closeQuickAddSheet() {
   
   const cartDrawer = document.getElementById('cart-drawer');
   const infoModal = document.getElementById('info-modal');
+  const sizeModal = document.getElementById('size-guide-modal');
+  const filterSheet = document.getElementById('filter-sheet');
   if ((!cartDrawer || !cartDrawer.classList.contains('is-open')) &&
-      (!infoModal || !infoModal.classList.contains('is-open'))) {
+      (!infoModal || !infoModal.classList.contains('is-open')) &&
+      (!sizeModal || !sizeModal.classList.contains('is-open')) &&
+      (!filterSheet || !filterSheet.classList.contains('is-open'))) {
     document.body.classList.remove('overflow-hidden');
   }
   modalProduct = null;
@@ -395,7 +409,7 @@ function renderModalSizePills() {
 }
 
 /**
- * Actualiza la advertencia de stock bajo y el estado del botón añadir
+ * Actualiza la advertencia de stock bajo y el botón añadir en el modal
  */
 function updateModalWarningAndButton() {
   const warningEl = document.getElementById('modal-stock-warning');
@@ -427,7 +441,7 @@ function updateModalWarningAndButton() {
 /**
  * Renderiza el Cart Drawer con barra de progreso de envío gratis
  */
-function renderCartDrawer() {
+export function renderCartDrawer() {
   const drawer = document.getElementById('cart-drawer');
   if (!drawer) return;
 
@@ -449,7 +463,7 @@ function renderCartDrawer() {
       shippingTextEl.textContent = `ENVÍO GRATIS EN PEDIDOS SUPERIORES A ${formatPrice(threshold)}`;
       progressFillEl.style.width = '0%';
     } else if (totals.hasFreeShipping) {
-      shippingTextEl.textContent = '¡Enhorabuena! Tienes ENVÍO GRATIS ✨';
+      shippingTextEl.textContent = '¡Enhorabuena! Tienes ENVÍO GRATIS';
       progressFillEl.style.width = '100%';
     } else {
       shippingTextEl.textContent = `Te faltan ${formatPrice(totals.remainingForFreeShipping)} para tener ENVÍO GRATIS`;
@@ -557,7 +571,7 @@ export function closeCartDrawer() {
 /**
  * Actualiza los badges de carrito en Header y barra inferior
  */
-function updateCartBadges() {
+export function updateCartBadges() {
   const totals = getCartTotals();
   
   const headerBadge = document.getElementById('header-cart-badge');
@@ -584,7 +598,7 @@ function updateCartBadges() {
 /**
  * Despliega o repliega el buscador superior
  */
-function toggleSearchBar(forceOpen = null) {
+export function toggleSearchBar(forceOpen = null) {
   const drawer = document.getElementById('search-bar-drawer');
   const input = document.getElementById('search-input');
   if (!drawer) return;
@@ -600,9 +614,9 @@ function toggleSearchBar(forceOpen = null) {
 }
 
 /**
- * Abre el Modal de Información
+ * Modales de Información y Menú
  */
-function openInfoModal() {
+export function openInfoModal() {
   const modal = document.getElementById('info-modal');
   const overlay = document.getElementById('sheet-overlay');
   if (modal && overlay) {
@@ -612,10 +626,7 @@ function openInfoModal() {
   }
 }
 
-/**
- * Cierra el Modal de Información
- */
-function closeInfoModal() {
+export function closeInfoModal() {
   const modal = document.getElementById('info-modal');
   const overlay = document.getElementById('sheet-overlay');
   if (modal) modal.classList.remove('is-open');
@@ -623,10 +634,7 @@ function closeInfoModal() {
   document.body.classList.remove('overflow-hidden');
 }
 
-/**
- * Abre el Menú Lateral Izquierdo
- */
-function openHamburgerMenu() {
+export function openHamburgerMenu() {
   const menu = document.getElementById('hamburger-menu');
   const overlay = document.getElementById('sheet-overlay');
   if (menu && overlay) {
@@ -636,10 +644,7 @@ function openHamburgerMenu() {
   }
 }
 
-/**
- * Cierra el Menú Lateral Izquierdo
- */
-function closeHamburgerMenu() {
+export function closeHamburgerMenu() {
   const menu = document.getElementById('hamburger-menu');
   const overlay = document.getElementById('sheet-overlay');
   if (menu) menu.classList.remove('is-open');
@@ -648,9 +653,9 @@ function closeHamburgerMenu() {
 }
 
 /**
- * Configuración de listeners globales
+ * Configuración de listeners comunes para Header, Cart Drawer, Search, Bottom Tab Bar y Modales
  */
-function setupEventListeners() {
+export function setupCommonUI() {
   // Sincronización reactiva del carrito
   window.addEventListener('cart:updated', (e) => {
     renderCartDrawer();
@@ -660,22 +665,34 @@ function setupEventListeners() {
     }
   });
 
-  // Botón "VER TODO" / "VER MODO CARRUSEL"
+  // Botón "VER TODO" en la home: lleva a collection.html?cat=todos
   const viewAllBtn = document.getElementById('view-all-btn');
   if (viewAllBtn) {
     viewAllBtn.addEventListener('click', () => {
-      isGridMode = !isGridMode;
-      renderProducts();
+      window.location.href = 'collection.html?cat=todos';
     });
   }
 
   // Buscador en vivo
   const searchInput = document.getElementById('search-input');
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value;
-      renderProducts();
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const q = searchInput.value.trim();
+        if (q) {
+          window.location.href = `collection.html?q=${encodeURIComponent(q)}`;
+        }
+      }
     });
+
+    // Si estamos en la home, filtra en vivo el catálogo de la home
+    const isHome = !!document.getElementById('products-track');
+    if (isHome) {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderProducts();
+      });
+    }
   }
 
   const searchCloseBtn = document.getElementById('search-close-btn');
@@ -684,7 +701,7 @@ function setupEventListeners() {
       if (searchInput) searchInput.value = '';
       searchQuery = '';
       toggleSearchBar(false);
-      renderProducts();
+      if (document.getElementById('products-track')) renderProducts();
     });
   }
 
@@ -712,56 +729,67 @@ function setupEventListeners() {
   // Links del Menú Lateral
   document.querySelectorAll('.hamburger-drawer__link').forEach(link => {
     link.addEventListener('click', (e) => {
-      e.preventDefault();
       const cat = link.dataset.category;
-      if (cat) setCategory(cat, true);
-      closeHamburgerMenu();
+      if (cat) {
+        window.location.href = `collection.html?cat=${encodeURIComponent(cat)}`;
+      }
     });
   });
 
   // SECCIÓN 4: Tarjetas del Carrusel de Colecciones
   document.querySelectorAll('.js-collection-filter').forEach(card => {
     card.addEventListener('click', (e) => {
-      e.preventDefault();
       const cat = card.dataset.category;
-      if (cat) setCategory(cat, true);
+      if (cat) {
+        window.location.href = `collection.html?cat=${encodeURIComponent(cat)}`;
+      }
     });
   });
 
   // SECCIONES 6, 7, 8, 9, 10, 11: Botones de los bloques editoriales
   const btnExploreAutumn = document.getElementById('btn-explore-autumn');
   if (btnExploreAutumn) {
-    btnExploreAutumn.addEventListener('click', () => setCategory('abrigos', true));
+    btnExploreAutumn.addEventListener('click', () => {
+      window.location.href = 'collection.html?cat=otono-invierno';
+    });
   }
 
   const btnExploreSpring = document.getElementById('btn-explore-spring');
   if (btnExploreSpring) {
-    btnExploreSpring.addEventListener('click', () => setCategory('vestidos', true));
+    btnExploreSpring.addEventListener('click', () => {
+      window.location.href = 'collection.html?cat=primavera-verano';
+    });
   }
 
   const btnBuyKorean = document.getElementById('btn-buy-korean');
   if (btnBuyKorean) {
-    btnBuyKorean.addEventListener('click', () => setCategory('cosmetica', true));
+    btnBuyKorean.addEventListener('click', () => {
+      window.location.href = 'collection.html?cat=cosmetica';
+    });
   }
 
   const btnSeeHairProducts = document.getElementById('btn-see-hair-products');
   if (btnSeeHairProducts) {
-    btnSeeHairProducts.addEventListener('click', () => setCategory('cabello', true));
+    btnSeeHairProducts.addEventListener('click', () => {
+      window.location.href = 'collection.html?cat=cabello';
+    });
   }
 
   const btnBuyHairTreatment = document.getElementById('btn-buy-hair-treatment');
   if (btnBuyHairTreatment) {
-    btnBuyHairTreatment.addEventListener('click', () => setCategory('cabello', true));
+    btnBuyHairTreatment.addEventListener('click', () => {
+      window.location.href = 'collection.html?cat=cabello';
+    });
   }
 
   const btnPeikas = document.getElementById('btn-peikas');
   if (btnPeikas) {
     btnPeikas.addEventListener('click', () => {
-      window.open('https://peikas.com/', '_blank');
+      window.location.href = 'collection.html?cat=peikas';
     });
   }
 
-  // SECCIÓN 9: Reproductor de vídeo interactivo
+  // Reproductor de vídeo en home
   const videoPlayOverlay = document.getElementById('video-play-overlay');
   const showcaseVideo = document.getElementById('showcase-video');
   if (videoPlayOverlay && showcaseVideo) {
@@ -779,9 +807,11 @@ function setupEventListeners() {
   const tabHome = document.getElementById('bottom-tab-home');
   if (tabHome) {
     tabHome.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      isGridMode = false;
-      setCategory('ropa');
+      if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.location.href = 'index.html';
+      }
     });
   }
 
@@ -801,10 +831,7 @@ function setupEventListeners() {
   const tabProductos = document.getElementById('bottom-tab-productos');
   if (tabProductos) {
     tabProductos.addEventListener('click', () => {
-      isGridMode = true;
-      renderProducts();
-      const section = document.getElementById('products-section');
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
+      window.location.href = 'collection.html?cat=todos';
     });
   }
 
@@ -821,6 +848,10 @@ function setupEventListeners() {
       closeCartDrawer();
       closeInfoModal();
       closeHamburgerMenu();
+      const sizeModal = document.getElementById('size-guide-modal');
+      if (sizeModal) sizeModal.classList.remove('is-open');
+      const filterSheet = document.getElementById('filter-sheet');
+      if (filterSheet) filterSheet.classList.remove('is-open');
     });
   }
 
@@ -834,9 +865,16 @@ function setupEventListeners() {
   if (cartDrawerClose) cartDrawerClose.addEventListener('click', closeCartDrawer);
 
   const cartContinueBtn = document.getElementById('cart-empty-continue');
-  if (cartContinueBtn) cartContinueBtn.addEventListener('click', closeCartDrawer);
+  if (cartContinueBtn) {
+    cartContinueBtn.addEventListener('click', () => {
+      closeCartDrawer();
+      if (!window.location.pathname.includes('collection.html')) {
+        window.location.href = 'collection.html?cat=todos';
+      }
+    });
+  }
 
-  // Botón "Añadir a la cesta" en el Modal
+  // Botón "Añadir a la cesta" en el Modal Quick Add
   const modalAddBtn = document.getElementById('modal-btn-add');
   if (modalAddBtn) {
     modalAddBtn.addEventListener('click', () => {
@@ -849,7 +887,7 @@ function setupEventListeners() {
     });
   }
 
-  // Botón Checkout
+  // Botón Checkout en Cart Drawer
   const checkoutBtn = document.getElementById('cart-checkout-btn');
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', () => {
@@ -857,7 +895,7 @@ function setupEventListeners() {
     });
   }
 
-  // Tecla Escape
+  // Tecla Escape para cerrar todos los modales
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeQuickAddSheet();
@@ -865,6 +903,10 @@ function setupEventListeners() {
       closeInfoModal();
       closeHamburgerMenu();
       toggleSearchBar(false);
+      const sizeModal = document.getElementById('size-guide-modal');
+      if (sizeModal) sizeModal.classList.remove('is-open');
+      const filterSheet = document.getElementById('filter-sheet');
+      if (filterSheet) filterSheet.classList.remove('is-open');
     }
   });
 }

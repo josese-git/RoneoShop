@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="Colecciones y Catálogo Oficial Yoana Zafiro. Moda femenina, vestidos, vaqueros, cosmética coreana y cuidado capilar.">
+  <title id="collection-page-title">Catálogo Completo | Yoana Zafiro</title>
+
+  <!-- Google Fonts: Cormorant Garamond y DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+  <!-- Estilos del Sistema de Diseño 100% Mobile-First -->
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body>
+
+  <!-- ======================================================================
+       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR
+       ====================================================================== -->
+  <aside class="announcement-bar" role="region" aria-label="Aviso promocional">
+    <span id="announcement-text">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍOS GRATIS A PARTIR DE 50€</span>
+  </aside>
+
+  <!-- ======================================================================
+       SECCIÓN 2: HEADER STICKY
+       ====================================================================== -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <!-- Izquierda: Menú Hamburguesa -->
+      <div class="header-left">
+        <button type="button" id="header-menu-btn" class="header-menu-btn" aria-label="Abrir menú de navegación">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Centro: Logotipo tipográfico Yoana Zafiro -->
+      <a href="index.html" class="header-logo" aria-label="Portada de Yoana Zafiro">
+        <span class="header-logo__symbol">✧</span> Yoana Zafiro
+      </a>
+
+      <!-- Derecha: Lupa y Cesta de compra -->
+      <div class="header-right">
+        <button type="button" id="header-search-btn" class="header-icon-btn" aria-label="Buscar en la tienda">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+
+        <button type="button" id="header-cart-btn" class="header-icon-btn" aria-label="Abrir cesta">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span id="header-cart-badge" class="cart-badge is-empty">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Buscador Desplegable bajo el Header -->
+  <div id="search-bar-drawer" class="search-bar-drawer" role="search" aria-label="Búsqueda rápida">
+    <div class="search-bar-drawer__inner">
+      <input 
+        type="search" 
+        id="search-input" 
+        class="search-bar-input" 
+        placeholder="Buscar vestido, vaquero, abrigo, champú..." 
+        autocomplete="off" 
+      />
+      <button type="button" id="search-close-btn" class="search-bar-close" aria-label="Cerrar buscador">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <!-- Cabecera Editorial de la Colección -->
+    <section class="collection-hero" aria-label="Encabezado de colección">
+      <h1 class="collection-hero__title" id="collection-title">Toda la Colección</h1>
+      <p class="collection-hero__desc" id="collection-desc">
+        Explora prendas seleccionadas, fórmulas capilares profesionales y cosmética coreana con envíos rápidos 24/48h.
+      </p>
+
+      <!-- Píldoras de cambio rápido de colección -->
+      <div class="collection-quick-pills" id="collection-quick-pills">
+        <button type="button" class="quick-pill" data-category="todos">Todo</button>
+        <button type="button" class="quick-pill" data-category="ropa">Ropa</button>
+        <button type="button" class="quick-pill" data-category="otono-invierno">Otoño/Invierno</button>
+        <button type="button" class="quick-pill" data-category="primavera-verano">Primavera/Verano</button>
+        <button type="button" class="quick-pill" data-category="cabello">Cabello</button>
+        <button type="button" class="quick-pill" data-category="cosmetica">Cosmética</button>
+        <button type="button" class="quick-pill" data-category="peikas">Peikas</button>
+        <button type="button" class="quick-pill is-sale" data-category="rebajas">Rebajas %</button>
+      </div>
+    </section>
+
+    <!-- Barra de Herramientas: Filtros y Ordenación -->
+    <div class="collection-toolbar">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" id="open-filter-btn" class="collection-toolbar__filter-btn" aria-label="Abrir filtros">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+          <span>Filtrar</span>
+        </button>
+        <span class="collection-toolbar__count" id="collection-count">0 artículos</span>
+      </div>
+
+      <div>
+        <select id="collection-sort-select" class="collection-toolbar__sort-select" aria-label="Ordenar productos">
+          <option value="featured">Destacados</option>
+          <option value="price-asc">Precio: menor a mayor</option>
+          <option value="price-desc">Precio: mayor a menor</option>
+          <option value="newest">Novedades</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Cuadrícula de Productos (2 columnas móvil / 4 desktop) -->
+    <section class="collection-grid" id="collection-grid" aria-label="Listado de artículos">
+      <!-- Tarjetas inyectadas dinámicamente con renderProductCardMarkup -->
+    </section>
+  </main>
+
+  <!-- ======================================================================
+       SECCIÓN 13: FOOTER COMPLETO ESTILO SHOPIFY DAWN
+       ====================================================================== -->
+  <footer class="site-footer">
+    <div class="footer-country-pill">
+
+      <span>España (EUR €) ▾</span>
+    </div>
+
+    <div class="footer-social-row">
+      <a href="https://instagram.com" target="_blank" rel="noopener" class="footer-social-link" aria-label="Instagram">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+        </svg>
+      </a>
+      <a href="https://facebook.com" target="_blank" rel="noopener" class="footer-social-link" aria-label="Facebook">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+        </svg>
+      </a>
+      <a href="https://tiktok.com" target="_blank" rel="noopener" class="footer-social-link" aria-label="TikTok">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+        </svg>
+      </a>
+    </div>
+
+    <div class="footer-links-row">
+      <a href="#">Contacto información</a>
+      <span>·</span>
+      <a href="#">Políticas de privacidad</a>
+      <span>·</span>
+      <a href="#">Devolución y reembolso</a>
+      <span>·</span>
+      <a href="#">Legal</a>
+      <span>·</span>
+      <a href="#">Envío</a>
+    </div>
+
+    <div class="footer-payment-icons">
+      <span class="payment-tag">Visa</span>
+      <span class="payment-tag">Mastercard</span>
+      <span class="payment-tag">Maestro</span>
+      <span class="payment-tag">Bizum</span>
+      <span class="payment-tag">Apple Pay</span>
+      <span class="payment-tag">Google Pay</span>
+    </div>
+
+    <p class="footer-copyright">
+      &copy; 2026 YOANA ZAFIRO &middot; Pagos seguros con Tarjeta y Bizum
+    </p>
+  </footer>
+
+  <!-- ======================================================================
+       BARRA DE NAVEGACIÓN FIJA INFERIOR (5 BOTONES)
+       ====================================================================== -->
+  <nav class="bottom-tab-bar" aria-label="Navegación rápida inferior">
+    <button type="button" id="bottom-tab-home" class="bottom-tab-item" aria-label="Inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span>Home</span>
+    </button>
+
+    <button type="button" id="bottom-tab-buscar" class="bottom-tab-item" aria-label="Buscar productos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <span>Buscar</span>
+    </button>
+
+    <button type="button" id="bottom-tab-carro" class="bottom-tab-item" aria-label="Ver carrito">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <path d="M16 10a4 4 0 0 1-8 0"></path>
+      </svg>
+      <span id="bottom-tab-badge" class="bottom-tab-badge is-empty">0</span>
+      <span>Carro</span>
+    </button>
+
+    <button type="button" id="bottom-tab-productos" class="bottom-tab-item is-active" aria-label="Ver catálogo completo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+      <span>Productos</span>
+    </button>
+
+    <button type="button" id="bottom-tab-info" class="bottom-tab-item" aria-label="Información y envíos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <span>Info</span>
+    </button>
+  </nav>
+
+  <!-- ======================================================================
+       OVERLAYS Y MODALES BOTTOM-SHEET / DRAWERS
+       ====================================================================== -->
+  <div id="sheet-overlay" class="sheet-overlay" aria-hidden="true"></div>
+
+  <!-- Modal Bottom-Sheet: Selección de Talla (Quick Add) -->
+  <div id="quick-add-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-sheet-title">
+    <div class="sheet-header">
+      <span style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Añadir a la cesta</span>
+      <button type="button" id="sheet-close-btn" class="sheet-close-btn" aria-label="Cerrar modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sheet-product-preview">
+      <div class="sheet-product-media">
+        <img id="modal-sheet-img" src="" alt="" />
+      </div>
+      <div>
+        <h4 id="modal-sheet-title" class="sheet-product-title"></h4>
+        <div id="modal-sheet-price" class="sheet-product-price"></div>
+      </div>
+    </div>
+
+    <div class="sheet-section-title">
+      <span>Elige tu talla</span>
+      <span id="modal-stock-warning" class="stock-warning-text">¡Solo quedan X unidades!</span>
+    </div>
+
+    <div id="modal-size-pills" class="size-pills"></div>
+
+    <button type="button" id="modal-btn-add" class="btn-primary">
+      Añadir a la cesta
+    </button>
+  </div>
+
+  <!-- Modal Bottom-Sheet: Filtros de Catálogo -->
+  <div id="filter-sheet" class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="filter-sheet-title">
+    <div class="sheet-header">
+      <span id="filter-sheet-title" style="font-size: 14px; font-weight: 700; text-transform: uppercase;">Filtrar Catálogo</span>
+      <button type="button" id="filter-close-btn" class="sheet-close-btn" aria-label="Cerrar filtros">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div style="padding: 14px 0;">
+      <!-- Disponibilidad -->
+      <div class="filter-group">
+        <div class="filter-group__title">Disponibilidad</div>
+        <label class="filter-checkbox-label">
+          <input type="checkbox" id="filter-only-stock" class="filter-checkbox">
+          <span>Solo artículos en stock</span>
+        </label>
+      </div>
+
+      <!-- Tallas -->
+      <div class="filter-group">
+        <div class="filter-group__title">Filtrar por Talla</div>
+        <div class="size-pills-grid" id="filter-size-pills">
+          <button type="button" class="size-pill" data-size="XS">XS</button>
+          <button type="button" class="size-pill" data-size="S">S</button>
+          <button type="button" class="size-pill" data-size="M">M</button>
+          <button type="button" class="size-pill" data-size="L">L</button>
+          <button type="button" class="size-pill" data-size="XL">XL</button>
+        </div>
+      </div>
+
+      <!-- Rango de Precio -->
+      <div class="filter-group">
+        <div class="filter-group__title">Rango de Precio (€)</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <input type="number" id="filter-min-price" placeholder="Mínimo €" class="form-input" style="height: 42px;">
+          <input type="number" id="filter-max-price" placeholder="Máximo €" class="form-input" style="height: 42px;">
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button type="button" id="filter-reset-btn" class="btn-primary" style="background-color: #f0f0f0; color: #121212;">
+          Limpiar
+        </button>
+        <button type="button" id="filter-apply-btn" class="btn-primary">
+          Aplicar filtros
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Bottom-Sheet: Información de la tienda (Botón Info) -->
+  <div id="info-modal" class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+    <div class="sheet-header">
+      <span id="info-modal-title" style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Información de la tienda</span>
+      <button type="button" id="info-close-btn" class="sheet-close-btn" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="info-items">
+      <div class="info-item">
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="1"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+        </div>
+        <div>
+          <div class="info-item__title">Envíos 24/48 Horas</div>
+          <div class="info-item__desc">Envíos exprés con seguimiento oficial Packlink PRO Plus. Gratis en pedidos superiores a €60,00.</div>
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="info-item__title">Cambios y Devoluciones</div>
+          <div class="info-item__desc">Dispones de 14 días naturales para tramitar cambios de talla o devoluciones sin complicaciones.</div>
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="info-item__title">Pago Seguro Redsys & Bizum</div>
+          <div class="info-item__desc">Pasarela bancaria encriptada con firma SHA-256. Pagos instantáneos con Bizum y tarjeta.</div>
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-item__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="info-item__title">Atención Personalizada</div>
+          <div class="info-item__desc">¿Dudas con el tallaje o tu pedido? Te asesoramos directamente por WhatsApp.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú Lateral Izquierdo (Hamburger Drawer) -->
+  <aside id="hamburger-menu" class="hamburger-drawer" role="dialog" aria-modal="true" aria-labelledby="hamburger-title">
+    <button type="button" id="hamburger-close-btn" class="hamburger-drawer__close" aria-label="Cerrar menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    
+    <nav class="hamburger-drawer__nav" aria-label="Categorías del menú lateral">
+      <span id="hamburger-title" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;">Categorías</span>
+      <a href="collection.html?cat=ropa" class="hamburger-drawer__link" data-category="ropa">ROPA</a>
+      <a href="collection.html?cat=cabello" class="hamburger-drawer__link" data-category="cabello">CABELLO</a>
+      <a href="collection.html?cat=cosmetica" class="hamburger-drawer__link" data-category="cosmetica">COSMÉTICA</a>
+      <a href="collection.html?cat=novedades" class="hamburger-drawer__link" data-category="novedades">NOVEDADES</a>
+      <a href="collection.html?cat=vestidos" class="hamburger-drawer__link" data-category="vestidos">VESTIDOS</a>
+      <a href="collection.html?cat=abrigos" class="hamburger-drawer__link" data-category="abrigos">ABRIGOS</a>
+      <a href="collection.html?cat=vaqueros" class="hamburger-drawer__link" data-category="vaqueros">VAQUEROS</a>
+      <a href="collection.html?cat=rebajas" class="hamburger-drawer__link" data-category="rebajas" style="color: #b91c1c;">REBAJAS %</a>
+    </nav>
+
+    <a href="admin/index.html" class="hamburger-drawer__admin">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      Panel de Administración
+    </a>
+  </aside>
+
+  <!-- Menú Lateral Derecho (Cart Drawer) -->
+  <aside id="cart-drawer" class="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title">
+    <div class="cart-drawer__header">
+      <h3 id="cart-drawer-title" class="cart-drawer__title">Tu cesta (0)</h3>
+      <button type="button" id="cart-drawer-close" class="sheet-close-btn" aria-label="Cerrar cesta">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="cart-free-shipping-bar">
+      <div id="cart-free-shipping-text" class="cart-free-shipping-text">
+        ENVÍO GRATIS EN PEDIDOS SUPERIORES A €60,00
+      </div>
+      <div class="cart-progress-track">
+        <div id="cart-progress-fill" class="cart-progress-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <div id="cart-drawer-items" class="cart-drawer__items"></div>
+
+    <div id="cart-drawer-empty" style="display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 2rem; text-align: center; gap: 12px;">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--color-text-muted);">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <path d="M16 10a4 4 0 0 1-8 0"></path>
+      </svg>
+      <h4 style="font-size: 14px; font-weight: 700; text-transform: uppercase;">Tu cesta está vacía</h4>
+      <p style="font-size: 12.5px; color: var(--color-text-muted); max-width: 220px;">Descubre nuestras colecciones y añade tus prendas favoritas.</p>
+      <button type="button" id="cart-empty-continue" class="btn-primary" style="max-width: 180px; padding: 10px 16px;">Ver Catálogo</button>
+    </div>
+
+    <div id="cart-drawer-footer" class="cart-drawer__footer" style="display: none;">
+      <div class="cart-drawer__subtotal-row">
+        <span>Subtotal</span>
+        <span id="cart-drawer-subtotal">€0,00</span>
+      </div>
+      <p style="font-size: 11px; color: var(--color-text-muted); text-align: center; margin-bottom: 12px;">
+        Impuestos incluidos. Envío calculado en el checkout.
+      </p>
+      <button type="button" id="cart-checkout-btn" class="btn-primary">
+        Finalizar compra
+      </button>
+    </div>
+  </aside>
+
+  <!-- Script del Catálogo de Colección -->
+  <script type="module" src="assets/js/collection.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="Finalizar Compra Segura - Yoana Zafiro. Pasarela Bancaria Oficial Redsys & Bizum con Envíos Exprés Packlink PRO.">
+  <title>Finalizar Compra Segura | Yoana Zafiro</title>
+
+  <!-- Google Fonts: Cormorant Garamond y DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+  <!-- Estilos del Sistema de Diseño 100% Mobile-First -->
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body style="padding-bottom: 0;">
+
+  <!-- Cabecera Minimalista de Checkout -->
+  <header class="checkout-header">
+    <a href="index.html" class="header-logo" aria-label="Volver a la tienda">
+      <span class="header-logo__symbol">✧</span> Yoana Zafiro
+    </a>
+    <a href="index.html" class="checkout-header__back" aria-label="Seguir comprando">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <path d="M16 10a4 4 0 0 1-8 0"></path>
+      </svg>
+      <span>Volver a la tienda</span>
+    </a>
+  </header>
+
+  <!-- Resumen del Pedido Desplegable en Móvil -->
+  <div class="order-summary-toggle" id="summary-toggle" role="button" aria-expanded="false" aria-controls="summary-panel">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <path d="M16 10a4 4 0 0 1-8 0"></path>
+      </svg>
+      <span id="summary-toggle-text">Mostrar resumen del pedido ▾</span>
+    </div>
+    <span id="summary-toggle-total" style="font-weight: 700; font-size: 15px;">€0,00</span>
+  </div>
+
+  <main>
+    <div class="checkout-layout">
+      <!-- Columna Derecha en Desktop / Desplegable en Móvil: Resumen del Pedido -->
+      <aside class="order-summary-panel" id="summary-panel">
+        <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.04em;">
+          Resumen de tu pedido
+        </h2>
+
+        <!-- Lista de prendas del carrito -->
+        <div class="checkout-items-list" id="checkout-items-list">
+          <!-- Inyectado dinámicamente -->
+        </div>
+
+        <!-- Totales -->
+        <div class="checkout-totals-box">
+          <div class="checkout-total-line">
+            <span>Subtotal</span>
+            <span id="checkout-subtotal">€0,00</span>
+          </div>
+          <div class="checkout-total-line">
+            <span>Envío Estándar (Packlink PRO)</span>
+            <span id="checkout-shipping">€4,90</span>
+          </div>
+          <div class="checkout-total-line is-grand-total">
+            <span>Total a pagar</span>
+            <span id="checkout-total">€0,00</span>
+          </div>
+          <p style="font-size: 11px; color: var(--color-text-muted); margin-top: 4px;">
+            Impuestos incluidos (IVA 21%). Sin recargos ocultos.
+          </p>
+        </div>
+      </aside>
+
+      <!-- Columna Izquierda: Formulario de Checkout / Pantalla de Confirmación -->
+      <section class="checkout-form-container" id="checkout-main-content">
+        <form id="checkout-form" novalidate>
+          <!-- BLOQUE 1: Contacto -->
+          <fieldset class="form-section">
+            <legend class="form-section__title">1. Datos de Contacto</legend>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="checkout-email" class="form-label">Correo electrónico *</label>
+                <input 
+                  type="email" 
+                  id="checkout-email" 
+                  name="email" 
+                  required 
+                  placeholder="ejemplo@correo.es" 
+                  class="form-input" 
+                  autocomplete="email" 
+                />
+                <span class="form-hint">Enviaremos la confirmación del pedido y el enlace de seguimiento a este email.</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="checkout-phone" class="form-label">Teléfono móvil (España) *</label>
+                <input 
+                  type="tel" 
+                  id="checkout-phone" 
+                  name="phone" 
+                  required 
+                  pattern="^[6789]\d{8}$" 
+                  placeholder="600112233" 
+                  class="form-input" 
+                  autocomplete="tel" 
+                  maxlength="9" 
+                />
+                <span class="form-hint">Necesario para Bizum y avisos SMS del repartidor de Packlink PRO.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- BLOQUE 2: Dirección de entrega (Formato exacto API Packlink PRO) -->
+          <fieldset class="form-section">
+            <legend class="form-section__title">2. Dirección de Entrega</legend>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="checkout-country" class="form-label">País / Región</label>
+                <select id="checkout-country" name="country" class="form-select" disabled>
+                  <option value="ES" selected>España (Península e Islas Baleares)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label for="checkout-firstname" class="form-label">Nombre *</label>
+                <input 
+                  type="text" 
+                  id="checkout-firstname" 
+                  name="firstName" 
+                  required 
+                  placeholder="Tu nombre" 
+                  class="form-input" 
+                  autocomplete="given-name" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="checkout-lastname" class="form-label">Apellidos *</label>
+                <input 
+                  type="text" 
+                  id="checkout-lastname" 
+                  name="lastName" 
+                  required 
+                  placeholder="Tus apellidos" 
+                  class="form-input" 
+                  autocomplete="family-name" 
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="checkout-street" class="form-label">Dirección (Calle, número, piso, puerta) *</label>
+                <input 
+                  type="text" 
+                  id="checkout-street" 
+                  name="street" 
+                  required 
+                  placeholder="Calle Gran Vía 12, 3ºB" 
+                  class="form-input" 
+                  autocomplete="street-address" 
+                />
+              </div>
+            </div>
+
+            <div class="form-row form-row--3">
+              <div class="form-group">
+                <label for="checkout-zip" class="form-label">Código Postal *</label>
+                <input 
+                  type="text" 
+                  id="checkout-zip" 
+                  name="zipCode" 
+                  required 
+                  pattern="^\d{5}$" 
+                  placeholder="28013" 
+                  class="form-input" 
+                  autocomplete="postal-code" 
+                  maxlength="5" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="checkout-city" class="form-label">Ciudad *</label>
+                <input 
+                  type="text" 
+                  id="checkout-city" 
+                  name="city" 
+                  required 
+                  placeholder="Madrid" 
+                  class="form-input" 
+                  autocomplete="address-level2" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="checkout-province" class="form-label">Provincia *</label>
+                <select id="checkout-province" name="province" class="form-select" required autocomplete="address-level1">
+                  <option value="">Selecciona provincia...</option>
+                  <option value="A Coruña">A Coruña</option>
+                  <option value="Álava">Álava</option>
+                  <option value="Albacete">Albacete</option>
+                  <option value="Alicante">Alicante</option>
+                  <option value="Almería">Almería</option>
+                  <option value="Asturias">Asturias</option>
+                  <option value="Ávila">Ávila</option>
+                  <option value="Badajoz">Badajoz</option>
+                  <option value="Barcelona">Barcelona</option>
+                  <option value="Burgos">Burgos</option>
+                  <option value="Cáceres">Cáceres</option>
+                  <option value="Cádiz">Cádiz</option>
+                  <option value="Cantabria">Cantabria</option>
+                  <option value="Castellón">Castellón</option>
+                  <option value="Ciudad Real">Ciudad Real</option>
+                  <option value="Córdoba">Córdoba</option>
+                  <option value="Cuenca">Cuenca</option>
+                  <option value="Girona">Girona</option>
+                  <option value="Granada">Granada</option>
+                  <option value="Guadalajara">Guadalajara</option>
+                  <option value="Guipúzcoa">Guipúzcoa</option>
+                  <option value="Huelva">Huelva</option>
+                  <option value="Huesca">Huesca</option>
+                  <option value="Illes Balears">Illes Balears</option>
+                  <option value="Jaén">Jaén</option>
+                  <option value="La Rioja">La Rioja</option>
+                  <option value="Las Palmas">Las Palmas</option>
+                  <option value="León">León</option>
+                  <option value="Lleida">Lleida</option>
+                  <option value="Lugo">Lugo</option>
+                  <option value="Madrid">Madrid</option>
+                  <option value="Málaga">Málaga</option>
+                  <option value="Murcia">Murcia</option>
+                  <option value="Navarra">Navarra</option>
+                  <option value="Ourense">Ourense</option>
+                  <option value="Palencia">Palencia</option>
+                  <option value="Pontevedra">Pontevedra</option>
+                  <option value="Salamanca">Salamanca</option>
+                  <option value="Santa Cruz de Tenerife">Santa Cruz de Tenerife</option>
+                  <option value="Segovia">Segovia</option>
+                  <option value="Sevilla">Sevilla</option>
+                  <option value="Soria">Soria</option>
+                  <option value="Tarragona">Tarragona</option>
+                  <option value="Teruel">Teruel</option>
+                  <option value="Toledo">Toledo</option>
+                  <option value="Valencia">Valencia</option>
+                  <option value="Valladolid">Valladolid</option>
+                  <option value="Vizcaya">Vizcaya</option>
+                  <option value="Zamora">Zamora</option>
+                  <option value="Zaragoza">Zaragoza</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- BLOQUE 3: Método de envío (Lógica Packlink PRO Plus) -->
+          <fieldset class="form-section">
+            <legend class="form-section__title">3. Método de Envío</legend>
+            <div class="shipping-option-card">
+              <div class="shipping-option-left">
+                <input type="radio" id="ship-standard" name="shipping" checked style="accent-color: #121212; width: 18px; height: 18px;">
+                <div>
+                  <div class="shipping-option-title">Envío Estándar Domicilio 24/48h (Packlink PRO)</div>
+                  <div class="shipping-option-subtitle">Entrega asegurada en mano con número de seguimiento SMS y email</div>
+                </div>
+              </div>
+              <div class="shipping-option-price" id="shipping-display-price">€4,90</div>
+            </div>
+          </fieldset>
+
+          <!-- BLOQUE 4: Método de Pago (Redsys vs Bizum) -->
+          <fieldset class="form-section">
+            <legend class="form-section__title">4. Método de Pago</legend>
+            <p style="font-size: 12.5px; color: var(--color-text-muted); margin-bottom: 12px;">
+              Todas las transacciones son seguras y están encriptadas mediante la pasarela bancaria oficial Redsys.
+            </p>
+
+            <div class="payment-methods-box">
+              <!-- Opción 1: TARJETA -->
+              <div class="payment-method-item is-selected" id="payment-card-opt">
+                <div class="payment-method-header" role="button" tabindex="0">
+                  <div class="payment-method-label">
+                    <input type="radio" name="paymentMethod" value="CARD" checked style="accent-color: #121212;">
+                    <span>Tarjeta de crédito o débito</span>
+                  </div>
+                  <div class="payment-method-badges">
+                    <span class="payment-badge">Visa</span>
+                    <span class="payment-badge">Mastercard</span>
+                    <span class="payment-badge">Maestro</span>
+                  </div>
+                </div>
+                <div class="payment-method-body">
+                  Al pulsar "Pagar ahora" serás redirigido de forma segura al TPV Virtual Redsys de tu entidad bancaria con autenticación 3D-Secure para autorizar el pago.
+                </div>
+              </div>
+
+              <!-- Opción 2: BIZUM -->
+              <div class="payment-method-item" id="payment-bizum-opt">
+                <div class="payment-method-header" role="button" tabindex="0">
+                  <div class="payment-method-label">
+                    <input type="radio" name="paymentMethod" value="BIZUM" style="accent-color: #121212;">
+                    <span>Bizum (Pago rápido)</span>
+                  </div>
+                  <div class="payment-method-badges">
+                    <span class="payment-badge is-bizum">BIZUM</span>
+                  </div>
+                </div>
+                <div class="payment-method-body">
+                  Paga en 5 segundos usando solo tu número de teléfono móvil. Recibirás una notificación instantánea de tu app bancaria para autorizar la compra.
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Mensaje de Error en Formulario -->
+          <div id="checkout-error-msg" style="display: none; background-color: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
+
+          <!-- Botón de Pago Principal -->
+          <button type="submit" id="btn-submit-order" class="btn-submit-order">
+            PAGAR AHORA · €0,00
+          </button>
+
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--color-text-muted);">
+            <span style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Conexión cifrada SSL 256-bit
+            </span>
+            <span>·</span>
+            <span>Banco Redsys Oficial</span>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- Script del Proceso de Checkout -->
+  <script type="module" src="assets/js/checkout.js"></script>
+</body>
+</html>
+
