@@ -970,6 +970,19 @@ button, input, select, textarea {
   overflow-x: auto;
   padding-bottom: 6px;
   scrollbar-width: thin;
+  transition: all 0.2s ease;
+}
+
+.admin-insta-gallery.is-dragging-over {
+  outline: 2px dashed #121212;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.admin-photo-strip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .admin-insta-upload-card {
@@ -987,6 +1000,7 @@ button, input, select, textarea {
   flex-shrink: 0;
   color: #555555;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .admin-insta-upload-card:hover {
@@ -995,11 +1009,44 @@ button, input, select, textarea {
   color: #121212;
 }
 
+.admin-insta-upload-card.is-dragging-over {
+  border-color: #121212;
+  background-color: #e8e8ed;
+  transform: scale(1.02);
+}
+
 .admin-insta-upload-card span {
   font-size: 11px;
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
+}
+
+.admin-insta-loading {
+  width: 104px;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  background: #f0f0f2;
+  border: 1px dashed #b8b8c2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  animation: adminInstaPulse 1.2s infinite ease-in-out;
+}
+
+.admin-insta-loading span {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666666;
+  text-align: center;
+}
+
+@keyframes adminInstaPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 .admin-insta-card {

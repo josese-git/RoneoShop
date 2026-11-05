@@ -5,7 +5,7 @@
  */
 
 import { getCart, getCartTotals, clearCart } from './cart.js';
-import { getProducts, getStoreSettings, updateProductStockAfterOrder, createOrder } from './store-service.js';
+import { getProducts, getStoreSettings, updateProductStockAfterOrder, createOrder, generateNextOrderNumber } from './store-service.js';
 import { formatPrice } from './ui.js';
 
 // Clave de pedidos locales para el panel de administración
@@ -281,12 +281,13 @@ function setupFormSubmission() {
     }
     totalWeightKg = Math.round(totalWeightKg * 100) / 100;
 
-    // 3. Generación del número de pedido Redsys (12 dígitos numéricos)
-    const orderNumber = generateRedsysOrderNumber();
+    // 3. Generación del número de pedido oficial español diario (DD-MM-YYYY-NNN)
+    const orderNumber = await generateNextOrderNumber();
 
     // 4. Construcción del objeto de pedido según ARCHITECTURE.md Sección 2.B
     const newOrder = {
       orderNumber,
+      redsysOrderId: orderNumber.replace(/-/g, ''),
       status: "PAID",
       paymentMethod, // 'CARD' o 'BIZUM'
       subtotal: currentTotals.subtotal,

@@ -22,7 +22,9 @@ import {
   updateOrderStatus,
   resetDatabaseToFactory,
   syncAllToFirestore,
-  migrateAllImagesToFirebaseStorage
+  migrateAllImagesToFirebaseStorage,
+  uploadProductImage,
+  imageSourceToWebpBlob
 } from '../assets/js/store-service.js';
 
 import { formatPrice } from '../assets/js/ui.js';
@@ -42,10 +44,17 @@ let currentModalImages = []; // Array de strings URL o DataURL
 let currentModalVariants = []; // Array de { size: string, stock: number, sku?: string }
 let currentSelectedColors = []; // Array de { name: string, hex: string, inStock: boolean }
 
+let isProductModalConfigured = false;
+let isOrdersConfigured = false;
+let isSettingsConfigured = false;
+
 document.addEventListener('DOMContentLoaded', async () => {
   setupAuth();
   setupTabNavigation();
   setupSyncButton();
+  setupProductModalEvents();
+  setupOrdersEvents();
+  setupSettingsEvents();
 });
 
 /* ==========================================================================
@@ -352,9 +361,6 @@ async function loadAdminData() {
     renderProductsList();
     renderOrdersList();
     populateSettingsForm();
-    setupProductModalEvents();
-    setupOrdersEvents();
-    setupSettingsEvents();
   } catch (err) {
     console.error("[Admin] Error cargando datos iniciales:", err);
   }
@@ -545,6 +551,9 @@ if (catFilter) {
    4. MODAL: CREADOR / EDITOR DE PRENDA ESTILO INSTAGRAM / VINTED
    ========================================================================== */
 function setupProductModalEvents() {
+  if (isProductModalConfigured) return;
+  isProductModalConfigured = true;
+
   const newBtnHeader = document.getElementById('btn-header-new-product');
   const closeBtn = document.getElementById('product-modal-close');
   const modal = document.getElementById('product-modal');
@@ -562,11 +571,66 @@ function setupProductModalEvents() {
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
 
-  // Subida de fotos: input file
-  const fileInput = document.getElementById('prod-file-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', handleImageUpload);
+  // Subida de fotos: click en tarjeta, input file y Drag & Drop
+  const triggerUploadBtn = document.getElementById('btn-trigger-upload');
+  const galleryContainer = document.getElementById('admin-insta-gallery');
+  const fileInput = document.getElementById('admin-photo-file-input') || document.getElementById('prod-file-input');
+
+  if (triggerUploadBtn && fileInput) {
+    triggerUploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+    triggerUploadBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
   }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        await handleFilesSelected(files);
+      }
+      fileInput.value = '';
+    });
+  }
+
+  // Soporte Drag & Drop sobre la tarjeta de subida y sobre la galería
+  const dropTargets = [triggerUploadBtn, galleryContainer].filter(Boolean);
+  dropTargets.forEach(target => {
+    ['dragenter', 'dragover'].forEach(evtName => {
+      target.addEventListener(evtName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerUploadBtn?.classList.add('is-dragging-over');
+        galleryContainer?.classList.add('is-dragging-over');
+      });
+    });
+
+    ['dragleave'].forEach(evtName => {
+      target.addEventListener(evtName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerUploadBtn?.classList.remove('is-dragging-over');
+        galleryContainer?.classList.remove('is-dragging-over');
+      });
+    });
+
+    target.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      triggerUploadBtn?.classList.remove('is-dragging-over');
+      galleryContainer?.classList.remove('is-dragging-over');
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        await handleFilesSelected(files);
+      }
+    });
+  });
 
   // Toggle de URL externa
   const toggleUrlBtn = document.getElementById('btn-toggle-url-input');
@@ -578,17 +642,50 @@ function setupProductModalEvents() {
     toggleUrlBtn.addEventListener('click', () => {
       const isHidden = urlRow.style.display === 'none';
       urlRow.style.display = isHidden ? 'flex' : 'none';
+      if (!isHidden && urlInput) urlInput.focus();
     });
   }
 
   if (addUrlBtn && urlInput) {
-    addUrlBtn.addEventListener('click', () => {
+    addUrlBtn.addEventListener('click', async () => {
       const url = urlInput.value.trim();
-      if (url) {
-        currentModalImages.push(url);
-        urlInput.value = '';
-        renderModalImages();
+      if (!url) return;
+
+      const strip = document.getElementById('admin-photo-strip') || document.getElementById('modal-images-gallery');
+      let tempLoader = null;
+      if (strip) {
+        tempLoader = document.createElement('div');
+        tempLoader.className = 'admin-insta-loading';
+        tempLoader.id = 'temp-photo-loading';
+        tempLoader.innerHTML = `
+          <svg class="admin-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10"></path>
+          </svg>
+          <span>Descargando...</span>
+        `;
+        strip.appendChild(tempLoader);
       }
+
+      try {
+        const webpBlob = await imageSourceToWebpBlob(url, 1100, 0.84);
+        const dataUrl = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.onerror = rej;
+          reader.readAsDataURL(webpBlob);
+        });
+        currentModalImages.push(dataUrl);
+      } catch (err) {
+        console.warn("[Admin] Fallback agregando URL directa:", err);
+        currentModalImages.push(url);
+      } finally {
+        if (tempLoader) tempLoader.remove();
+      }
+
+      urlInput.value = '';
+      if (urlRow) urlRow.style.display = 'none';
+      renderModalImages();
     });
   }
 
@@ -706,6 +803,50 @@ function setupProductModalEvents() {
 }
 
 /**
+ * Procesa una lista de archivos seleccionados o soltados:
+ * Comprime a WebP (<1100px, 0.84) en cliente y genera DataURL para vista previa inmediata
+ */
+async function handleFilesSelected(files) {
+  const fileArray = Array.from(files || []).filter(f => f.type && f.type.startsWith('image/'));
+  if (fileArray.length === 0) return;
+
+  const strip = document.getElementById('admin-photo-strip') || document.getElementById('modal-images-gallery');
+  let tempLoader = null;
+  if (strip) {
+    tempLoader = document.createElement('div');
+    tempLoader.className = 'admin-insta-loading';
+    tempLoader.id = 'temp-photo-loading';
+    tempLoader.innerHTML = `
+      <svg class="admin-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+        <path d="M12 2a10 10 0 0 1 10 10"></path>
+      </svg>
+      <span>Procesando...</span>
+    `;
+    strip.appendChild(tempLoader);
+  }
+
+  for (const file of fileArray) {
+    try {
+      const webpBlob = await imageSourceToWebpBlob(file, 1100, 0.84);
+      const dataUrl = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(webpBlob);
+      });
+      currentModalImages.push(dataUrl);
+    } catch (err) {
+      console.error("[Admin] Error procesando imagen a WebP:", err);
+      showToast('Error al comprimir una de las fotos.');
+    }
+  }
+
+  if (tempLoader) tempLoader.remove();
+  renderModalImages();
+}
+
+/**
  * Abre el modal para crear o editar una prenda
  */
 function openProductModal(productId = null) {
@@ -816,66 +957,10 @@ function openProductModal(productId = null) {
 }
 
 /**
- * Manejo de subida y compresión instantánea a WebP con Canvas (<1100px, 0.82)
- */
-async function handleImageUpload(e) {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
-
-  for (const file of files) {
-    try {
-      const webpDataUrl = await compressImageToWebP(file, 1100, 0.82);
-      currentModalImages.push(webpDataUrl);
-    } catch (err) {
-      console.error("[Compresor WebP] Error procesando imagen:", err);
-      showToast('Error al comprimir imagen.');
-    }
-  }
-
-  renderModalImages();
-  e.target.value = '';
-}
-
-/**
- * Función canvas para compresión WebP en cliente
- */
-function compressImageToWebP(file, maxHeight = 1100, quality = 0.82) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (readerEvent) => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (height > maxHeight) {
-          width = Math.round(width * (maxHeight / height));
-          height = maxHeight;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const webpDataUrl = canvas.toDataURL('image/webp', quality);
-        resolve(webpDataUrl);
-      };
-      img.onerror = reject;
-      img.src = readerEvent.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
  * Renderiza la tira horizontal de fotos con flechas < > y botón borrar ×
  */
 function renderModalImages() {
-  const gallery = document.getElementById('modal-images-gallery');
+  const gallery = document.getElementById('admin-photo-strip') || document.getElementById('modal-images-gallery');
   if (!gallery) return;
 
   gallery.innerHTML = currentModalImages.map((imgUrl, idx) => `
@@ -1028,6 +1113,16 @@ async function handleSaveProductSubmit(e) {
   const hasSizesToggle = document.getElementById('prod-has-sizes-toggle');
   const hasSizes = hasSizesToggle ? hasSizesToggle.checked : true;
 
+  if (!title) {
+    showToast('Indica un título para la prenda.');
+    return;
+  }
+
+  if (price <= 0) {
+    showToast('Indica un precio válido para la prenda.');
+    return;
+  }
+
   if (currentModalImages.length === 0) {
     showToast('Añade al menos una foto para la prenda.');
     return;
@@ -1046,16 +1141,18 @@ async function handleSaveProductSubmit(e) {
     }));
   } else {
     const singleStock = parseInt(document.getElementById('admin-stock-val')?.value, 10) || 10;
-    variantsToSave = [{ size: 'ÚNICA', stock: singleStock, sku: '' }];
+    variantsToSave = [{ size: 'ÚNICA', stock: Math.max(0, singleStock), sku: '' }];
   }
 
   const submitBtn = document.getElementById('btn-save-product-submit');
   const btnText = document.getElementById('btn-save-text');
   const btnSpinner = document.getElementById('btn-save-spinner');
+  const btnSpinnerText = btnSpinner ? btnSpinner.querySelector('span') : null;
 
   if (submitBtn) submitBtn.disabled = true;
   if (btnText) btnText.style.display = 'none';
   if (btnSpinner) btnSpinner.style.display = 'flex';
+  if (btnSpinnerText) btnSpinnerText.textContent = 'Subiendo fotos a Storage...';
 
   const productData = {
     id: editingProductId || undefined,
@@ -1075,12 +1172,37 @@ async function handleSaveProductSubmit(e) {
   };
 
   try {
-    await saveProduct(productData);
+    await saveProduct(productData, (cur, tot, phase) => {
+      if (btnSpinnerText) {
+        if (phase === 'upload') {
+          btnSpinnerText.textContent = `Subiendo foto ${cur}/${tot} a Storage...`;
+        } else if (phase === 'saving') {
+          btnSpinnerText.textContent = 'Guardando en Firestore...';
+        }
+      }
+    });
 
     currentProducts = await getProducts({ forceRefresh: true });
     renderKPIs();
     renderProductsList();
     await checkFirestoreStatus();
+
+    const modal = document.getElementById('product-modal');
+    if (modal) modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+
+    showToast(editingProductId ? 'Prenda actualizada con éxito' : 'Nueva prenda guardada y publicada en Firebase');
+  } catch (err) {
+    console.error("[Admin] Error guardando producto:", err);
+    showToast(`Error al guardar en Firebase: ${err?.message || 'Error en Firestore'}`);
+    await checkFirestoreStatus();
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (btnText) btnText.style.display = 'inline';
+    if (btnSpinner) btnSpinner.style.display = 'none';
+    if (btnSpinnerText) btnSpinnerText.textContent = 'Guardando en la nube...';
+  }
+}
 
     const modal = document.getElementById('product-modal');
     if (modal) modal.classList.remove('is-open');
@@ -1126,6 +1248,9 @@ async function handleDeleteProduct(productId) {
    5. PESTAÑA 2: GESTIÓN DE PEDIDOS Y PACKLINK PRO PLUS
    ========================================================================== */
 function setupOrdersEvents() {
+  if (isOrdersConfigured) return;
+  isOrdersConfigured = true;
+
   const pills = document.querySelectorAll('.admin-pill-btn');
   pills.forEach(pill => {
     pill.addEventListener('click', () => {
@@ -1393,6 +1518,9 @@ function populateSettingsForm() {
 }
 
 function setupSettingsEvents() {
+  if (isSettingsConfigured) return;
+  isSettingsConfigured = true;
+
   const form = document.getElementById('admin-settings-form');
   const resetBtn = document.getElementById('btn-reset-factory');
 

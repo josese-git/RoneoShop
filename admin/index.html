@@ -473,19 +473,21 @@ service cloud.firestore {
             <span style="font-size: 11px; color: var(--admin-text-muted);">Compresión automática .WebP</span>
           </label>
 
+          <!-- Input File Oculto (FUERA de la tira dinámica para que NUNCA se destruya) -->
+          <input type="file" id="admin-photo-file-input" accept="image/*" multiple hidden />
+
           <div class="admin-insta-gallery" id="admin-insta-gallery">
-            <!-- Botón interactivo de subida (primer hueco) -->
-            <label for="prod-file-input" class="admin-insta-upload-card" id="btn-trigger-upload">
+            <!-- Botón interactivo de subida / Drop Target (primer hueco fijo) -->
+            <div class="admin-insta-upload-card" id="btn-trigger-upload" role="button" tabindex="0" title="Haz clic o arrastra fotos aquí">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <circle cx="12" cy="13" r="4"></circle>
               </svg>
               <span>Subir<br>foto</span>
-            </label>
-            <input type="file" id="prod-file-input" accept="image/*" multiple style="display: none;" />
+            </div>
 
             <!-- Miniaturas inyectadas dinámicamente con flechas y borrado -->
-            <div id="modal-images-gallery" style="display: flex; gap: 10px;"></div>
+            <div id="admin-photo-strip" class="admin-photo-strip" style="display: flex; gap: 10px;"></div>
           </div>
 
           <!-- Enlace desplegable para URL externa -->

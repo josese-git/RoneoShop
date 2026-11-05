@@ -1,13 +1,14 @@
 /**
- * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP (FASE 3.5 DEFINITIVA)
+ * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP (FASE 3.8 DEFINITIVA)
  * Motor central de datos conectado a Firebase Firestore + Firebase Storage
- * con subida por lotes atómica (writeBatch), auto-seed verificado, compresión .webp
- * y sincronización instantánea multi-pestaña mediante BroadcastChannel('roneoshop_live_sync').
+ * con URLs y nombres limpios (products/{id}/1.webp, 2.webp...), borrado de archivos obsoletos,
+ * código de pedido español diario DD-MM-YYYY-NNN y sincronización multi-pestaña.
  */
 
 import {
   db,
   storage,
+  firebaseConfig,
   collection,
   doc,
   getDocs,
@@ -19,21 +20,35 @@ import {
   uploadBytes,
   uploadString,
   getDownloadURL,
+  deleteObject,
+  listAll,
   sanitizeForFirestore
 } from './firebase-config.js';
 
-// Claves de almacenamiento local y caché
-const CACHE_KEY = 'store_products_cache_v6';
+// Claves actualizadas de almacenamiento local y caché (V3 / V7)
+const CACHE_KEY = 'store_products_cache_v7';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos para proteger la cuota gratuita de Firebase Spark
-const FIRESTORE_VERIFIED_KEY = 'firestore_verified_v1';
-const DB_PRODUCTS_KEY = 'store_db_products_v2';
-const DB_SETTINGS_KEY = 'store_db_settings_v2';
-const ORDERS_STORAGE_KEY = 'store_orders_v1';
+const FIRESTORE_VERIFIED_KEY = 'firestore_verified_v2';
+const DB_PRODUCTS_KEY = 'store_db_products_v3';
+const DB_SETTINGS_KEY = 'store_db_settings_v3';
+const ORDERS_STORAGE_KEY = 'store_orders_v2';
 
 // Canal de difusión en tiempo real entre pestañas
 const syncChannel = (typeof BroadcastChannel !== 'undefined') 
   ? new BroadcastChannel('roneoshop_live_sync') 
   : null;
+
+/**
+ * Generador de URL limpia y determinista de Firebase Storage
+ * @param {string} filePath Ruta relativa en el bucket (ej. "products/abrigo-pandora/1.webp")
+ * @param {string} version Opcional para forzar invalidación de caché en navegador
+ */
+export function buildCleanStorageUrl(filePath, version = '') {
+  const bucket = firebaseConfig.storageBucket || "roneoshop-es.firebasestorage.app";
+  const encodedPath = encodeURIComponent(filePath);
+  const vParam = version ? `&v=${version}` : '';
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media${vParam}`;
+}
 
 /**
  * Invalida la caché de sesión, actualiza almacenamiento local y notifica a todas las pestañas
@@ -59,8 +74,6 @@ export function invalidateCacheAndNotify(type = 'data_updated') {
 
 /**
  * Suscribe una función callback para reaccionar en vivo a cambios guardados en el admin
- * @param {Function} callback
- * @returns {Function} Función para cancelar la suscripción
  */
 export function onStoreDataChanged(callback) {
   if (typeof window === 'undefined') return () => {};
@@ -85,7 +98,7 @@ export function onStoreDataChanged(callback) {
 }
 
 /**
- * Configuración global por defecto de la tienda
+ * Configuración global de la tienda
  */
 export const MOCK_SETTINGS = {
   storeName: "Yoana Zafiro",
@@ -111,11 +124,67 @@ export const MOCK_SETTINGS = {
 };
 
 /**
- * Catálogo maestro inicial con datos exactos del catálogo y PDF de Yoana Zafiro
- * Esquema limpio: sin composition, con colors, hasSizes y description
+ * Fuentes maestras originales para descarga y subida inicial a Storage mediante wsrv.nl
+ */
+export const MOCK_ORIGINAL_SOURCES = {
+  "abrigo-pandora": [
+    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-26at11.52.51.jpg?v=1793029856",
+    "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=900&q=80"
+  ],
+  "vaquero-faja-levis": [
+    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717",
+    "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80"
+  ],
+  "pantalon-hermes": [
+    "https://images.unsplash.com/photo-1551803091-e20673f15770?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1509551388413-e18d0ac5d495?auto=format&fit=crop&w=900&q=80"
+  ],
+  "vaquero-mitos": [
+    "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80"
+  ],
+  "camiseta-basica-blanca": [
+    "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80"
+  ],
+  "conjunto-punto-milan": [
+    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711",
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+  ],
+  "vestido-boho-chic": [
+    "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+  ],
+  "bomber-espiga-paris": [
+    "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80"
+  ],
+  "champu-nutritivo-1000ml": [
+    "https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=800",
+    "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=900&q=80"
+  ],
+  "secador-profesional-ionic": [
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80"
+  ],
+  "pack-cosmetica-coreana-glow": [
+    "https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=800",
+    "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=80"
+  ],
+  "conjunto-volantes-nina-peikas": [
+    "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=900&q=80"
+  ]
+};
+
+/**
+ * Catálogo maestro con URLs oficiales y limpias de Firebase Storage (products/{id}/1.webp, 2.webp...)
  */
 export const MOCK_PRODUCTS = [
-  // 1. ABRIGO PANDORA (Clon exacto PDF oficial - Agotado)
+  // 1. ABRIGO PANDORA
   {
     id: "abrigo-pandora",
     slug: "abrigo-pandora",
@@ -133,9 +202,9 @@ export const MOCK_PRODUCTS = [
       { name: "Gris", hex: "#808080", inStock: false }
     ],
     images: [
-      "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-26at11.52.51.jpg?v=1793029856",
-      "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/abrigo-pandora/1.webp"),
+      buildCleanStorageUrl("products/abrigo-pandora/2.webp"),
+      buildCleanStorageUrl("products/abrigo-pandora/3.webp")
     ],
     variants: [
       { size: "S", stock: 0, sku: "AB-PAN-S" },
@@ -165,9 +234,9 @@ export const MOCK_PRODUCTS = [
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/vaquero-faja-levis/1.webp"),
+      buildCleanStorageUrl("products/vaquero-faja-levis/2.webp"),
+      buildCleanStorageUrl("products/vaquero-faja-levis/3.webp")
     ],
     variants: [
       { size: "XS", stock: 2, sku: "VF-LEV-XS" },
@@ -199,8 +268,8 @@ export const MOCK_PRODUCTS = [
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1551803091-e20673f15770?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1509551388413-e18d0ac5d495?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/pantalon-hermes/1.webp"),
+      buildCleanStorageUrl("products/pantalon-hermes/2.webp")
     ],
     variants: [
       { size: "S", stock: 3, sku: "PA-HER-S" },
@@ -229,8 +298,8 @@ export const MOCK_PRODUCTS = [
       { name: "Azul Denim", hex: "#3b5998", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/vaquero-mitos/1.webp"),
+      buildCleanStorageUrl("products/vaquero-mitos/2.webp")
     ],
     variants: [
       { size: "S", stock: 2, sku: "VA-MIT-S" },
@@ -261,8 +330,8 @@ export const MOCK_PRODUCTS = [
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/camiseta-basica-blanca/1.webp"),
+      buildCleanStorageUrl("products/camiseta-basica-blanca/2.webp")
     ],
     variants: [
       { size: "S", stock: 6, sku: "CA-BAS-S" },
@@ -292,9 +361,9 @@ export const MOCK_PRODUCTS = [
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711",
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/conjunto-punto-milan/1.webp"),
+      buildCleanStorageUrl("products/conjunto-punto-milan/2.webp"),
+      buildCleanStorageUrl("products/conjunto-punto-milan/3.webp")
     ],
     variants: [
       { size: "S", stock: 3, sku: "CO-MIL-S" },
@@ -323,8 +392,8 @@ export const MOCK_PRODUCTS = [
       { name: "Marrón Teja", hex: "#8b4513", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/vestido-boho-chic/1.webp"),
+      buildCleanStorageUrl("products/vestido-boho-chic/2.webp")
     ],
     variants: [
       { size: "S", stock: 2, sku: "VE-BOH-S" },
@@ -354,8 +423,8 @@ export const MOCK_PRODUCTS = [
       { name: "Blanco", hex: "#ffffff", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/bomber-espiga-paris/1.webp"),
+      buildCleanStorageUrl("products/bomber-espiga-paris/2.webp")
     ],
     variants: [
       { size: "S", stock: 1, sku: "BO-ESP-S" },
@@ -366,7 +435,7 @@ export const MOCK_PRODUCTS = [
     createdAt: 1730715700000
   },
 
-  // 9. CHAMPÚ NUTRITIVO 1000ML (Agotado - Talla Única)
+  // 9. CHAMPÚ NUTRITIVO 1000ML (Talla Única)
   {
     id: "champu-nutritivo-1000ml",
     slug: "champu-nutritivo-1000ml",
@@ -381,8 +450,8 @@ export const MOCK_PRODUCTS = [
     hasSizes: false,
     colors: [],
     images: [
-      "https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=800",
-      "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/champu-nutritivo-1000ml/1.webp"),
+      buildCleanStorageUrl("products/champu-nutritivo-1000ml/2.webp")
     ],
     variants: [
       { size: "ÚNICA", stock: 0, sku: "CH-NUT-1L" }
@@ -409,8 +478,8 @@ export const MOCK_PRODUCTS = [
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/secador-profesional-ionic/1.webp"),
+      buildCleanStorageUrl("products/secador-profesional-ionic/2.webp")
     ],
     variants: [
       { size: "ÚNICA", stock: 5, sku: "SEC-PRO-ION" }
@@ -435,8 +504,8 @@ export const MOCK_PRODUCTS = [
     hasSizes: false,
     colors: [],
     images: [
-      "https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=800",
-      "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/pack-cosmetica-coreana-glow/1.webp"),
+      buildCleanStorageUrl("products/pack-cosmetica-coreana-glow/2.webp")
     ],
     variants: [
       { size: "ÚNICA", stock: 3, sku: "PACK-K-SOME" }
@@ -463,8 +532,8 @@ export const MOCK_PRODUCTS = [
       { name: "Rosa", hex: "#f4c2c2", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=900&q=80"
+      buildCleanStorageUrl("products/conjunto-volantes-nina-peikas/1.webp"),
+      buildCleanStorageUrl("products/conjunto-volantes-nina-peikas/2.webp")
     ],
     variants: [
       { size: "3M", stock: 3, sku: "PEI-VOL-3M" },
@@ -477,10 +546,10 @@ export const MOCK_PRODUCTS = [
   }
 ];
 
-// Pedidos de muestra iniciales
+// Pedidos de prueba iniciales con el nuevo formato oficial DD-MM-YYYY-NNN
 export const INITIAL_SAMPLE_ORDERS = [
   {
-    orderNumber: "YZ-8041",
+    orderNumber: "05-11-2026-001",
     createdAt: Date.now() - 3600 * 1000 * 2,
     customer: {
       firstName: "María",
@@ -500,7 +569,7 @@ export const INITIAL_SAMPLE_ORDERS = [
         size: "M",
         price: 24.95,
         quantity: 1,
-        image: "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717"
+        image: buildCleanStorageUrl("products/vaquero-faja-levis/1.webp")
       }
     ],
     subtotal: 24.95,
@@ -515,7 +584,7 @@ export const INITIAL_SAMPLE_ORDERS = [
     totalWeightKg: 0.50
   },
   {
-    orderNumber: "YZ-8040",
+    orderNumber: "05-11-2026-002",
     createdAt: Date.now() - 3600 * 1000 * 24,
     customer: {
       firstName: "Carmen",
@@ -535,7 +604,7 @@ export const INITIAL_SAMPLE_ORDERS = [
         size: "S",
         price: 32.95,
         quantity: 1,
-        image: "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711"
+        image: buildCleanStorageUrl("products/conjunto-punto-milan/1.webp")
       },
       {
         productId: "camiseta-basica-blanca",
@@ -543,7 +612,7 @@ export const INITIAL_SAMPLE_ORDERS = [
         size: "M",
         price: 14.25,
         quantity: 2,
-        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80"
+        image: buildCleanStorageUrl("products/camiseta-basica-blanca/1.webp")
       }
     ],
     subtotal: 61.45,
@@ -559,6 +628,21 @@ export const INITIAL_SAMPLE_ORDERS = [
     totalWeightKg: 0.96
   }
 ];
+
+/**
+ * Purga de almacenamiento antiguo en localStorage y sessionStorage
+ */
+function purgeLegacyCaches() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      ['store_db_products_v1', 'store_db_products_v2', 'store_db_settings_v1', 'store_db_settings_v2', 'store_orders_v1'].forEach(k => localStorage.removeItem(k));
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      ['store_products_cache_v4', 'store_products_cache_v5', 'store_products_cache_v6', 'firestore_verified_v1'].forEach(k => sessionStorage.removeItem(k));
+    }
+  } catch (e) {}
+}
+purgeLegacyCaches();
 
 /**
  * Inicializa la base de datos local con datos semilla si no existen
@@ -582,129 +666,107 @@ function initLocalDatabase() {
 initLocalDatabase();
 
 /**
- * Convierte cualquier origen de imagen (dataUrl o URL externa) en un Blob WebP comprimido
- * Si la URL externa tiene bloqueo CORS, reintenta automáticamente a través de un proxy CORS (wsrv.nl)
- * @param {string} src
- * @param {number} maxHeight
- * @param {number} quality
- * @returns {Promise<Blob>}
+ * Convierte de forma infalible cualquier origen de imagen (File, Blob, DataURL o URL externa)
+ * a un Blob con formato WebP nativo
  */
-export async function imageSourceToWebpBlob(src, maxHeight = 1100, quality = 0.82) {
-  if (!src) throw new Error("Origen de imagen vacío");
+export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 0.84) {
+  if (!source) throw new Error("Origen de imagen vacío");
 
   if (typeof document === 'undefined' || typeof window === 'undefined') {
     return new Blob([], { type: 'image/webp' });
   }
 
-  const loadImage = (imgUrl) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`Error cargando imagen desde ${imgUrl}`));
-      img.src = imgUrl;
+  let objectUrl = null;
+
+  try {
+    const imgElement = new Image();
+    imgElement.crossOrigin = "anonymous";
+
+    if (source instanceof File || source instanceof Blob) {
+      objectUrl = URL.createObjectURL(source);
+      await new Promise((res, rej) => {
+        imgElement.onload = res;
+        imgElement.onerror = rej;
+        imgElement.src = objectUrl;
+      });
+    } else if (typeof source === 'string' && source.startsWith('data:image')) {
+      await new Promise((res, rej) => {
+        imgElement.onload = res;
+        imgElement.onerror = rej;
+        imgElement.src = source;
+      });
+    } else if (typeof source === 'string' && source.startsWith('http')) {
+      // Para URLs externas (cdn.shopify.com, unsplash, etc.) pasamos siempre por proxy CORS wsrv.nl
+      const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(source)}&h=${maxHeight}&output=webp&q=${Math.round(quality * 100)}`;
+      const response = await fetch(proxyUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error(`Proxy fetch falló con status ${response.status}`);
+      const webpBlob = await response.blob();
+      return webpBlob;
+    } else {
+      throw new Error("Formato de imagen no soportado");
+    }
+
+    // Redimensionado proporcional en canvas para File / Blob / DataURL
+    let width = imgElement.naturalWidth || imgElement.width || 800;
+    let height = imgElement.naturalHeight || imgElement.height || 1000;
+
+    if (height > maxHeight) {
+      width = Math.round((width * maxHeight) / height);
+      height = maxHeight;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgElement, 0, 0, width, height);
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Error toBlob"))), 'image/webp', quality);
     });
-  };
 
-  let loadedImg = null;
-  let objectUrlToRevoke = null;
-
-  if (src.startsWith('data:')) {
-    loadedImg = await loadImage(src);
-  } else {
-    // Si es una URL externa, intentar fetch directo para obtener Blob
-    try {
-      const response = await fetch(src, { mode: 'cors' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const rawBlob = await response.blob();
-      objectUrlToRevoke = URL.createObjectURL(rawBlob);
-      loadedImg = await loadImage(objectUrlToRevoke);
-    } catch (corsErr) {
-      console.warn(`[ImageConvert] Fetch directo falló para ${src}, intentando proxy CORS...`);
-      const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(src)}&output=webp&q=82`;
-      try {
-        const response = await fetch(proxyUrl, { mode: 'cors' });
-        if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
-        const rawBlob = await response.blob();
-        objectUrlToRevoke = URL.createObjectURL(rawBlob);
-        loadedImg = await loadImage(objectUrlToRevoke);
-      } catch (proxyErr) {
-        console.warn(`[ImageConvert] Fetch proxy falló, cargando Image con proxy:`, proxyErr);
-        loadedImg = await loadImage(proxyUrl);
-      }
+    return blob;
+  } finally {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
     }
   }
-
-  // Redimensionar en canvas manteniendo proporción hasta maxHeight
-  const canvas = document.createElement('canvas');
-  let width = loadedImg.naturalWidth || loadedImg.width || 800;
-  let height = loadedImg.naturalHeight || loadedImg.height || 1000;
-
-  if (height > maxHeight) {
-    width = Math.round((width * maxHeight) / height);
-    height = maxHeight;
-  }
-
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(loadedImg, 0, 0, width, height);
-
-  if (objectUrlToRevoke) {
-    URL.revokeObjectURL(objectUrlToRevoke);
-  }
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-      } else {
-        reject(new Error("Error al convertir canvas a Blob WebP"));
-      }
-    }, 'image/webp', quality);
-  });
 }
 
 /**
- * Sube una imagen (Base64 o URL externa) a Firebase Storage en formato WebP real
- * Retorna la URL pública oficial de firebasestorage.googleapis.com
- * @param {string} imageSource
- * @param {string} productId
- * @param {number} index
- * @returns {Promise<string>}
+ * Sube una imagen a Firebase Storage con nombre limpio determinista (1.webp, 2.webp...)
+ * y devuelve la URL limpia sin tokens innecesarios
  */
-export async function uploadProductImage(imageSource, productId, index = 0) {
-  if (!imageSource) return "";
+export async function uploadProductImage(imageSource, productId, index = 0, forceReupload = false) {
+  const cleanFileName = `${index + 1}.webp`;
+  const filePath = `products/${productId}/${cleanFileName}`;
 
-  // Si ya es una URL oficial de Firebase Storage, devolverla directamente
-  if (typeof imageSource === 'string' && imageSource.startsWith("https://firebasestorage.googleapis.com/")) {
+  // Si ya es una URL limpia de nuestro Firebase Storage y no forzamos resubida, conservarla
+  if (
+    !forceReupload &&
+    typeof imageSource === 'string' &&
+    imageSource.includes('firebasestorage.googleapis.com') &&
+    !imageSource.includes('foto_') &&
+    !imageSource.includes('img_')
+  ) {
     return imageSource;
   }
 
-  try {
-    const webpBlob = await imageSourceToWebpBlob(imageSource);
-    const filePath = `products/${productId}/foto_${index + 1}_${Date.now()}.webp`;
-    const storageRef = ref(storage, filePath);
+  const webpBlob = await imageSourceToWebpBlob(imageSource);
+  const storageRef = ref(storage, filePath);
+  
+  await uploadBytes(storageRef, webpBlob, {
+    contentType: 'image/webp',
+    cacheControl: 'public,max-age=31536000'
+  });
 
-    await uploadBytes(storageRef, webpBlob, {
-      contentType: 'image/webp',
-      cacheControl: 'public,max-age=31536000'
-    });
-
-    const downloadUrl = await getDownloadURL(storageRef);
-    return downloadUrl;
-  } catch (err) {
-    console.error("[FIREBASE STORAGE ERROR]:", err);
-    throw err;
-  }
+  return buildCleanStorageUrl(filePath, Date.now().toString().slice(-4));
 }
 
 /**
- * Migra todas las imágenes del catálogo que tengan URLs externas a Firebase Storage (.webp real)
- * y actualiza los documentos en Cloud Firestore
- * @param {Function} onProgressCallback ({ productTitle, current, total })
- * @returns {Promise<{ ok: boolean, migratedCount: number, totalImages: number, error?: string }>}
+ * Migra todas las imágenes externas y nombres antiguos a Firebase Storage con nombres 1.webp, 2.webp...
+ * y elimina los archivos viejos foto_ del bucket
  */
 export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
   try {
@@ -716,53 +778,77 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
       const p = { id: docSnap.id, ...docSnap.data() };
       allProducts.push(p);
       const images = p.images || [];
-      const nonStorageCount = images.filter(img => typeof img === 'string' && !img.startsWith('https://firebasestorage.googleapis.com/')).length;
-      totalImagesToMigrate += nonStorageCount;
+      const dirtyCount = images.filter(img => 
+        typeof img !== 'string' ||
+        !img.includes('firebasestorage.googleapis.com') ||
+        img.includes('foto_') ||
+        img.includes('img_') ||
+        img.includes('cdn.shopify.com') ||
+        img.includes('unsplash.com')
+      ).length;
+      totalImagesToMigrate += dirtyCount;
     });
 
-    if (totalImagesToMigrate === 0) {
-      console.info("[Migrate] Todas las imágenes ya están alojadas en Firebase Storage.");
-      return { ok: true, migratedCount: 0, totalImages: 0 };
-    }
-
-    console.info(`[Migrate] Iniciando migración de ${totalImagesToMigrate} imágenes a Firebase Storage...`);
+    console.info(`[Migrate] Detectadas ${totalImagesToMigrate} fotos a normalizar en Storage...`);
     let currentProcessed = 0;
 
     for (const product of allProducts) {
-      const images = product.images || [];
-      const updatedImages = [];
+      // 1. Limpiar archivos antiguos foto_ o img_ dentro de la carpeta de la prenda
+      try {
+        const folderRef = ref(storage, `products/${product.id}`);
+        const listResult = await listAll(folderRef);
+        for (const itemRef of listResult.items) {
+          if (itemRef.name.startsWith('foto_') || itemRef.name.startsWith('img_')) {
+            await deleteObject(itemRef).catch(() => {});
+          }
+        }
+      } catch (listErr) {}
+
+      // 2. Determinar fuentes de imágenes (preferir originales si la actual falló en migraciones previas)
+      const currentImgs = product.images || [];
+      const originalSources = MOCK_ORIGINAL_SOURCES[product.id] || currentImgs;
+      const count = Math.max(currentImgs.length, originalSources.length);
+      const newCleanUrls = [];
       let productModified = false;
 
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i];
-        if (typeof img === 'string' && img.startsWith('https://firebasestorage.googleapis.com/')) {
-          updatedImages.push(img);
-        } else {
-          currentProcessed++;
-          if (typeof onProgressCallback === 'function') {
-            onProgressCallback({
-              productTitle: product.title,
-              current: currentProcessed,
-              total: totalImagesToMigrate
-            });
-          }
+      for (let i = 0; i < count; i++) {
+        const sourceUrl = originalSources[i] || currentImgs[i];
+        if (!sourceUrl) continue;
 
-          try {
-            const firebaseUrl = await uploadProductImage(img, product.id, i);
-            updatedImages.push(firebaseUrl);
-            productModified = true;
-          } catch (uploadErr) {
-            console.error(`[Migrate] Falló subida de imagen ${i} de "${product.title}":`, uploadErr);
-            updatedImages.push(img); // Conservar original en caso de fallo aislado
-          }
+        // Si ya es limpia y definitiva
+        if (
+          typeof sourceUrl === 'string' &&
+          sourceUrl.includes('firebasestorage.googleapis.com') &&
+          !sourceUrl.includes('foto_') &&
+          !sourceUrl.includes('img_')
+        ) {
+          newCleanUrls.push(sourceUrl);
+          continue;
+        }
+
+        currentProcessed++;
+        if (typeof onProgressCallback === 'function') {
+          onProgressCallback({
+            productTitle: product.title,
+            current: currentProcessed,
+            total: Math.max(totalImagesToMigrate, currentProcessed)
+          });
+        }
+
+        try {
+          const cleanUploadedUrl = await uploadProductImage(sourceUrl, product.id, i, true);
+          newCleanUrls.push(cleanUploadedUrl);
+          productModified = true;
+        } catch (uploadErr) {
+          console.error(`[Migrate] Error subiendo imagen ${i} de "${product.title}":`, uploadErr);
+          newCleanUrls.push(buildCleanStorageUrl(`products/${product.id}/${i + 1}.webp`));
         }
       }
 
-      if (productModified) {
-        product.images = updatedImages;
+      if (productModified || newCleanUrls.length > 0) {
+        product.images = newCleanUrls;
         product.updatedAt = Date.now();
         await setDoc(doc(db, "products", product.id), sanitizeForFirestore(product), { merge: true });
-        console.info(`[Migrate] Producto "${product.title}" actualizado en Firestore con fotos de Firebase Storage.`);
       }
     }
 
@@ -783,18 +869,66 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
 }
 
 /**
+ * Limpia pedidos antiguos que no sigan el formato DD-MM-YYYY-NNN
+ */
+export async function cleanLegacyOrdersInFirestore() {
+  try {
+    const snap = await getDocs(collection(db, "orders"));
+    const orderFormatRegex = /^\d{2}-\d{2}-\d{4}-\d{3}$/;
+
+    for (const docSnap of snap.docs) {
+      if (!orderFormatRegex.test(docSnap.id)) {
+        console.info(`[CleanOrders] Eliminando pedido con formato antiguo: ${docSnap.id}`);
+        await deleteDoc(doc(db, "orders", docSnap.id)).catch(() => {});
+      }
+    }
+
+    // Si la colección quedó vacía, sembrar los 2 pedidos iniciales
+    const checkSnap = await getDocs(collection(db, "orders"));
+    if (checkSnap.empty) {
+      for (const ord of INITIAL_SAMPLE_ORDERS) {
+        await setDoc(doc(db, "orders", ord.orderNumber), sanitizeForFirestore(ord));
+      }
+    }
+  } catch (e) {
+    console.warn("[CleanOrders] Error limpiando pedidos antiguos:", e);
+  }
+}
+
+/**
+ * Genera el siguiente número de pedido oficial diario con formato DD-MM-YYYY-NNN (ej. 05-11-2026-001)
+ */
+export async function generateNextOrderNumber(dateObj = new Date()) {
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const yyyy = dateObj.getFullYear();
+  const datePrefix = `${dd}-${mm}-${yyyy}-`;
+
+  const existingOrders = await getOrders({ forceRefresh: true });
+  let maxSeq = 0;
+
+  existingOrders.forEach(o => {
+    if (o.orderNumber && String(o.orderNumber).startsWith(datePrefix)) {
+      const parts = String(o.orderNumber).split('-');
+      const seq = parseInt(parts[3], 10);
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  });
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `${datePrefix}${nextSeq}`;
+}
+
+/**
  * Sincroniza atómicamente todos los productos, ajustes y pedidos en Firebase Firestore mediante writeBatch
- * @param {Object} options { forceOverwrite = false }
- * @returns {Promise<{ ok: boolean, count?: number, errorCode?: string, errorMessage?: string }>}
  */
 export async function syncAllToFirestore({ forceOverwrite = false } = {}) {
   try {
     const snap = await getDocs(collection(db, "products"));
 
     if (snap.empty || forceOverwrite) {
-      console.info("[StoreService] Subiendo catálogo completo a Firestore mediante writeBatch...");
+      console.info("[StoreService] Sincronizando catálogo con writeBatch...");
       
-      // 1. Obtener datos locales o iniciales
       let products = MOCK_PRODUCTS;
       try {
         if (typeof localStorage !== 'undefined') {
@@ -819,35 +953,30 @@ export async function syncAllToFirestore({ forceOverwrite = false } = {}) {
         }
       } catch (e) {}
 
-      // 2. Crear lote de escritura atómico
       const batch = writeBatch(db);
 
-      // Añadir productos
       for (const p of products) {
         const cleanP = sanitizeForFirestore(p);
         batch.set(doc(db, "products", String(cleanP.id)), cleanP);
       }
 
-      // Añadir ajustes de tienda
       batch.set(doc(db, "settings", "store_config"), sanitizeForFirestore(settings));
 
-      // Añadir pedidos
       for (const order of orders) {
         const cleanOrder = sanitizeForFirestore(order);
         batch.set(doc(db, "orders", String(cleanOrder.orderNumber)), cleanOrder);
       }
 
-      // 3. Ejecutar lote de forma atómica en el servidor Firestore
       await batch.commit();
 
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
       }
-
-      console.info("[StoreService] ¡writeBatch completado con éxito en Firestore!");
     }
 
-    // 4. Verificar conteo real en el servidor Firestore
+    // Limpiar pedidos legacy
+    await cleanLegacyOrdersInFirestore();
+
     const verifySnap = await getDocs(collection(db, "products"));
     const count = verifySnap.size;
 
@@ -869,14 +998,11 @@ export async function syncAllToFirestore({ forceOverwrite = false } = {}) {
 
 /**
  * Obtiene todos los productos del catálogo con auto-seed verificado en Firestore y caché
- * @param {Object} options { forceRefresh = false }
- * @returns {Promise<Array>}
  */
 export async function getProducts({ forceRefresh = false } = {}) {
   const isVerifiedInSession = (typeof sessionStorage !== 'undefined') 
     && sessionStorage.getItem(FIRESTORE_VERIFIED_KEY) === 'true';
 
-  // 1. Si no forzamos refresco y ya está verificado en Firestore en esta sesión, consultar caché de sesión
   if (!forceRefresh && isVerifiedInSession) {
     try {
       if (typeof sessionStorage !== 'undefined') {
@@ -891,12 +1017,10 @@ export async function getProducts({ forceRefresh = false } = {}) {
     } catch (e) {}
   }
 
-  // 2. Consultar Firebase Firestore directamente
   try {
     const productsColl = collection(db, "products");
     const snapshot = await getDocs(productsColl);
 
-    // Caso A: Hay documentos en Firestore
     if (!snapshot.empty) {
       const cloudProducts = [];
       snapshot.forEach(docSnap => {
@@ -912,8 +1036,6 @@ export async function getProducts({ forceRefresh = false } = {}) {
       return cloudProducts;
     }
 
-    // Caso B: Colección vacía en Firestore -> Auto-seed forzado con writeBatch
-    console.info("[StoreService] Colección vacía en Firestore. Ejecutando syncAllToFirestore...");
     const syncRes = await syncAllToFirestore({ forceOverwrite: true });
     if (syncRes.ok) {
       saveProductsToLocalAndCache(MOCK_PRODUCTS);
@@ -924,7 +1046,6 @@ export async function getProducts({ forceRefresh = false } = {}) {
     console.warn("[StoreService] Error accediendo a Firestore, usando fallback local:", err?.message || err);
   }
 
-  // Fallback transparente a localStorage para que la web nunca se quede en blanco
   try {
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(DB_PRODUCTS_KEY);
@@ -978,7 +1099,6 @@ export async function getProductsByFilter({
 } = {}) {
   let products = await getProducts();
 
-  // 1. Categoría
   if (category && category !== 'todos') {
     const catLow = category.toLowerCase().trim();
     products = products.filter(p => {
@@ -989,7 +1109,6 @@ export async function getProductsByFilter({
     });
   }
 
-  // 2. Búsqueda por texto
   if (search && search.trim() !== '') {
     const q = search.toLowerCase().trim();
     products = products.filter(p => {
@@ -999,7 +1118,6 @@ export async function getProductsByFilter({
     });
   }
 
-  // 3. Solo en stock
   if (onlyInStock) {
     products = products.filter(p => {
       const stock = p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
@@ -1007,14 +1125,12 @@ export async function getProductsByFilter({
     });
   }
 
-  // 4. Filtrar por talla
   if (size) {
     products = products.filter(p => {
       return p.variants && p.variants.some(v => v.size.toUpperCase() === size.toUpperCase() && v.stock > 0);
     });
   }
 
-  // 5. Rango de precio
   if (minPrice !== null) {
     products = products.filter(p => p.price >= minPrice);
   }
@@ -1022,7 +1138,6 @@ export async function getProductsByFilter({
     products = products.filter(p => p.price <= maxPrice);
   }
 
-  // 6. Ordenación
   const sorted = [...products];
   switch (sortBy) {
     case 'price-asc':
@@ -1044,7 +1159,7 @@ export async function getProductsByFilter({
 }
 
 /**
- * Productos relacionados (excluyendo el actual)
+ * Productos relacionados
  */
 export async function getRelatedProducts(productId, limit = 4) {
   const all = await getProducts();
@@ -1061,19 +1176,17 @@ export async function getRelatedProducts(productId, limit = 4) {
 /**
  * Guarda o actualiza una prenda en Firestore y Storage, sincronizando con local
  */
-export async function saveProduct(productData) {
+export async function saveProduct(productData, onProgressCallback = null) {
   if (!productData || !productData.title) {
     throw new Error("El título de la prenda es obligatorio.");
   }
 
-  // Normalización estricta de precios
   const price = parseFloat(String(productData.price || '0').replace(',', '.')) || 0;
   const compareAtPrice = productData.compareAtPrice 
     ? (parseFloat(String(productData.compareAtPrice).replace(',', '.')) || null)
     : null;
   const weightKg = parseFloat(String(productData.weightKg || '0.35').replace(',', '.')) || 0.35;
 
-  // Generar ID/slug limpio si no existe
   let id = productData.id;
   if (!id) {
     const slugBase = productData.title
@@ -1085,12 +1198,19 @@ export async function saveProduct(productData) {
     id = `${slugBase}-${Date.now().toString().slice(-4)}`;
   }
 
-  // Subir imágenes base64 a Firebase Storage
+  // Subir imágenes con nombres limpios (1.webp, 2.webp...)
   const finalImages = [];
   const rawImages = productData.images || [];
   for (let i = 0; i < rawImages.length; i++) {
-    const imgUrl = await uploadProductImage(rawImages[i], id, i);
-    finalImages.push(imgUrl);
+    if (typeof onProgressCallback === 'function') {
+      onProgressCallback(i + 1, rawImages.length, 'upload');
+    }
+    const cleanUrl = await uploadProductImage(rawImages[i], id, i);
+    finalImages.push(cleanUrl);
+  }
+
+  if (typeof onProgressCallback === 'function') {
+    onProgressCallback(rawImages.length, rawImages.length, 'saving');
   }
 
   const cleanProduct = sanitizeForFirestore({
@@ -1100,7 +1220,7 @@ export async function saveProduct(productData) {
     price,
     compareAtPrice,
     weightKg,
-    images: finalImages.length > 0 ? finalImages : ['assets/img/placeholder.webp'],
+    images: finalImages.length > 0 ? finalImages : [buildCleanStorageUrl(`products/${id}/1.webp`)],
     hasSizes: productData.hasSizes !== false,
     colors: Array.isArray(productData.colors) ? productData.colors : [],
     variants: Array.isArray(productData.variants) ? productData.variants : [{ size: 'ÚNICA', stock: 10 }],
@@ -1110,10 +1230,8 @@ export async function saveProduct(productData) {
     updatedAt: Date.now()
   });
 
-  // 1. Guardar en Firestore directamente (lanza error si falla para diagnóstico)
   await setDoc(doc(db, "products", cleanProduct.id), cleanProduct);
 
-  // 2. Guardar en localStorage
   try {
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(DB_PRODUCTS_KEY);
@@ -1128,21 +1246,26 @@ export async function saveProduct(productData) {
     }
   } catch (e) {}
 
-  // 3. Notificar a todas las pestañas abiertas
   invalidateCacheAndNotify('products_updated');
   return cleanProduct;
 }
 
 /**
- * Elimina una prenda de Firestore y del almacenamiento local
+ * Elimina una prenda de Firestore y sus fotos de Storage
  */
 export async function deleteProduct(productId) {
   if (!productId) return false;
 
-  // Eliminar en Firestore
   await deleteDoc(doc(db, "products", productId));
 
-  // Eliminar en localStorage
+  try {
+    const folderRef = ref(storage, `products/${productId}`);
+    const listResult = await listAll(folderRef);
+    for (const item of listResult.items) {
+      await deleteObject(item).catch(() => {});
+    }
+  } catch (e) {}
+
   try {
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(DB_PRODUCTS_KEY);
@@ -1174,7 +1297,6 @@ export async function updateProductStockAfterOrder(orderItems) {
     if (variant) {
       variant.stock = Math.max(0, (variant.stock || 0) - (item.quantity || 1));
       
-      // Actualizar en Firestore
       try {
         await setDoc(doc(db, "products", prod.id), sanitizeForFirestore(prod), { merge: true });
       } catch (e) {
@@ -1231,7 +1353,7 @@ export async function saveStoreSettings(settings) {
 /**
  * Obtiene el listado de pedidos
  */
-export async function getOrders() {
+export async function getOrders({ forceRefresh = false } = {}) {
   try {
     const snap = await getDocs(collection(db, "orders"));
     if (!snap.empty) {
@@ -1255,10 +1377,19 @@ export async function getOrders() {
 }
 
 /**
- * Registra un nuevo pedido completado
+ * Registra un nuevo pedido completado con código DD-MM-YYYY-NNN
  */
 export async function createOrder(orderData) {
-  const cleanOrder = sanitizeForFirestore(orderData);
+  let orderNumber = orderData.orderNumber;
+  if (!orderNumber || !/^\d{2}-\d{2}-\d{4}-\d{3}$/.test(orderNumber)) {
+    orderNumber = await generateNextOrderNumber();
+  }
+
+  const cleanOrder = sanitizeForFirestore({
+    ...orderData,
+    orderNumber,
+    redsysOrderId: orderNumber.replace(/-/g, '')
+  });
 
   try {
     if (typeof localStorage !== 'undefined') {
@@ -1305,6 +1436,7 @@ export async function updateOrderStatus(orderNumber, updates) {
  * Restaura la base de datos a los valores de fábrica
  */
 export async function resetDatabaseToFactory() {
+  purgeLegacyCaches();
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
@@ -1317,8 +1449,8 @@ export async function resetDatabaseToFactory() {
     }
   } catch (e) {}
 
-  // Sincronizar atómicamente con Firestore
   await syncAllToFirestore({ forceOverwrite: true });
+  await migrateAllImagesToFirebaseStorage();
 
   invalidateCacheAndNotify('factory_reset');
   return true;

@@ -24,6 +24,7 @@ import {
   uploadBytes,
   uploadString, 
   getDownloadURL,
+  deleteObject,
   listAll
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
@@ -78,5 +79,6 @@ export {
   uploadBytes,
   uploadString,
   getDownloadURL,
+  deleteObject,
   listAll
 };
