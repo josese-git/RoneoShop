@@ -201,6 +201,22 @@ service cloud.firestore {
       </div>
     </div>
 
+    <!-- Barra de Progreso de Migración a Firebase Storage -->
+    <div id="storage-migration-progress" class="admin-progress-banner" style="display: none;">
+      <div class="progress-banner-inner">
+        <div class="progress-banner-text">
+          <svg class="admin-spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+          </svg>
+          <span id="storage-progress-label">Subiendo imágenes a Firebase Storage (0 / 0)...</span>
+        </div>
+        <div class="progress-banner-track">
+          <div id="storage-progress-fill" class="progress-banner-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
     <main class="admin-main">
       <!-- ==================================================================
            PESTAÑA 1: PRENDAS Y STOCK

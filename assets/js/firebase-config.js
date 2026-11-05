@@ -21,8 +21,10 @@ import {
 import { 
   getStorage, 
   ref, 
+  uploadBytes,
   uploadString, 
-  getDownloadURL 
+  getDownloadURL,
+  listAll
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 export const USE_FIREBASE = true;
@@ -73,6 +75,8 @@ export {
   query,
   orderBy,
   ref,
+  uploadBytes,
   uploadString,
-  getDownloadURL
+  getDownloadURL,
+  listAll
 };

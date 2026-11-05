@@ -1512,3 +1512,50 @@ button, input, select, textarea {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* Barra de progreso de migración a Firebase Storage */
+.admin-progress-banner {
+  background-color: #0f172a;
+  color: #f8fafc;
+  padding: 12px 20px;
+  border-bottom: 1px solid #1e293b;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  animation: fadeIn 0.3s ease;
+}
+
+.progress-banner-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.progress-banner-text .admin-spinner-svg {
+  animation: adminSpin 0.8s linear infinite;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.progress-banner-track {
+  width: 100%;
+  height: 6px;
+  background-color: #334155;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-banner-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}

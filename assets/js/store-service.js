@@ -16,6 +16,7 @@ import {
   deleteDoc,
   writeBatch,
   ref,
+  uploadBytes,
   uploadString,
   getDownloadURL,
   sanitizeForFirestore
@@ -581,28 +582,203 @@ function initLocalDatabase() {
 initLocalDatabase();
 
 /**
- * Sube una imagen base64 a Firebase Storage en formato WebP
- * Si Storage falla por reglas o red, devuelve el dataUrl original comprimido
- * @param {string} dataUrl
+ * Convierte cualquier origen de imagen (dataUrl o URL externa) en un Blob WebP comprimido
+ * Si la URL externa tiene bloqueo CORS, reintenta automáticamente a través de un proxy CORS (wsrv.nl)
+ * @param {string} src
+ * @param {number} maxHeight
+ * @param {number} quality
+ * @returns {Promise<Blob>}
+ */
+export async function imageSourceToWebpBlob(src, maxHeight = 1100, quality = 0.82) {
+  if (!src) throw new Error("Origen de imagen vacío");
+
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return new Blob([], { type: 'image/webp' });
+  }
+
+  const loadImage = (imgUrl) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Error cargando imagen desde ${imgUrl}`));
+      img.src = imgUrl;
+    });
+  };
+
+  let loadedImg = null;
+  let objectUrlToRevoke = null;
+
+  if (src.startsWith('data:')) {
+    loadedImg = await loadImage(src);
+  } else {
+    // Si es una URL externa, intentar fetch directo para obtener Blob
+    try {
+      const response = await fetch(src, { mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const rawBlob = await response.blob();
+      objectUrlToRevoke = URL.createObjectURL(rawBlob);
+      loadedImg = await loadImage(objectUrlToRevoke);
+    } catch (corsErr) {
+      console.warn(`[ImageConvert] Fetch directo falló para ${src}, intentando proxy CORS...`);
+      const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(src)}&output=webp&q=82`;
+      try {
+        const response = await fetch(proxyUrl, { mode: 'cors' });
+        if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+        const rawBlob = await response.blob();
+        objectUrlToRevoke = URL.createObjectURL(rawBlob);
+        loadedImg = await loadImage(objectUrlToRevoke);
+      } catch (proxyErr) {
+        console.warn(`[ImageConvert] Fetch proxy falló, cargando Image con proxy:`, proxyErr);
+        loadedImg = await loadImage(proxyUrl);
+      }
+    }
+  }
+
+  // Redimensionar en canvas manteniendo proporción hasta maxHeight
+  const canvas = document.createElement('canvas');
+  let width = loadedImg.naturalWidth || loadedImg.width || 800;
+  let height = loadedImg.naturalHeight || loadedImg.height || 1000;
+
+  if (height > maxHeight) {
+    width = Math.round((width * maxHeight) / height);
+    height = maxHeight;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(loadedImg, 0, 0, width, height);
+
+  if (objectUrlToRevoke) {
+    URL.revokeObjectURL(objectUrlToRevoke);
+  }
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("Error al convertir canvas a Blob WebP"));
+      }
+    }, 'image/webp', quality);
+  });
+}
+
+/**
+ * Sube una imagen (Base64 o URL externa) a Firebase Storage en formato WebP real
+ * Retorna la URL pública oficial de firebasestorage.googleapis.com
+ * @param {string} imageSource
  * @param {string} productId
  * @param {number} index
- * @returns {Promise<string>} URL pública o dataUrl seguro
+ * @returns {Promise<string>}
  */
-export async function uploadProductImage(dataUrl, productId, index = 0) {
-  if (!dataUrl) return "";
-  if (dataUrl.startsWith("http://") || dataUrl.startsWith("https://")) {
-    return dataUrl;
+export async function uploadProductImage(imageSource, productId, index = 0) {
+  if (!imageSource) return "";
+
+  // Si ya es una URL oficial de Firebase Storage, devolverla directamente
+  if (typeof imageSource === 'string' && imageSource.startsWith("https://firebasestorage.googleapis.com/")) {
+    return imageSource;
   }
 
   try {
-    const filename = `products/${productId}/img_${Date.now()}_${index}.webp`;
-    const storageRef = ref(storage, filename);
-    await uploadString(storageRef, dataUrl, 'data_url');
-    const publicUrl = await getDownloadURL(storageRef);
-    return publicUrl;
+    const webpBlob = await imageSourceToWebpBlob(imageSource);
+    const filePath = `products/${productId}/foto_${index + 1}_${Date.now()}.webp`;
+    const storageRef = ref(storage, filePath);
+
+    await uploadBytes(storageRef, webpBlob, {
+      contentType: 'image/webp',
+      cacheControl: 'public,max-age=31536000'
+    });
+
+    const downloadUrl = await getDownloadURL(storageRef);
+    return downloadUrl;
   } catch (err) {
-    console.warn("[FirebaseStorage] Fallback a Base64 WebP por reglas de Storage:", err?.message || err);
-    return dataUrl;
+    console.error("[FIREBASE STORAGE ERROR]:", err);
+    throw err;
+  }
+}
+
+/**
+ * Migra todas las imágenes del catálogo que tengan URLs externas a Firebase Storage (.webp real)
+ * y actualiza los documentos en Cloud Firestore
+ * @param {Function} onProgressCallback ({ productTitle, current, total })
+ * @returns {Promise<{ ok: boolean, migratedCount: number, totalImages: number, error?: string }>}
+ */
+export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
+  try {
+    const snap = await getDocs(collection(db, "products"));
+    const allProducts = [];
+    let totalImagesToMigrate = 0;
+
+    snap.forEach(docSnap => {
+      const p = { id: docSnap.id, ...docSnap.data() };
+      allProducts.push(p);
+      const images = p.images || [];
+      const nonStorageCount = images.filter(img => typeof img === 'string' && !img.startsWith('https://firebasestorage.googleapis.com/')).length;
+      totalImagesToMigrate += nonStorageCount;
+    });
+
+    if (totalImagesToMigrate === 0) {
+      console.info("[Migrate] Todas las imágenes ya están alojadas en Firebase Storage.");
+      return { ok: true, migratedCount: 0, totalImages: 0 };
+    }
+
+    console.info(`[Migrate] Iniciando migración de ${totalImagesToMigrate} imágenes a Firebase Storage...`);
+    let currentProcessed = 0;
+
+    for (const product of allProducts) {
+      const images = product.images || [];
+      const updatedImages = [];
+      let productModified = false;
+
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (typeof img === 'string' && img.startsWith('https://firebasestorage.googleapis.com/')) {
+          updatedImages.push(img);
+        } else {
+          currentProcessed++;
+          if (typeof onProgressCallback === 'function') {
+            onProgressCallback({
+              productTitle: product.title,
+              current: currentProcessed,
+              total: totalImagesToMigrate
+            });
+          }
+
+          try {
+            const firebaseUrl = await uploadProductImage(img, product.id, i);
+            updatedImages.push(firebaseUrl);
+            productModified = true;
+          } catch (uploadErr) {
+            console.error(`[Migrate] Falló subida de imagen ${i} de "${product.title}":`, uploadErr);
+            updatedImages.push(img); // Conservar original en caso de fallo aislado
+          }
+        }
+      }
+
+      if (productModified) {
+        product.images = updatedImages;
+        product.updatedAt = Date.now();
+        await setDoc(doc(db, "products", product.id), sanitizeForFirestore(product), { merge: true });
+        console.info(`[Migrate] Producto "${product.title}" actualizado en Firestore con fotos de Firebase Storage.`);
+      }
+    }
+
+    // Refrescar caché local
+    const finalSnap = await getDocs(collection(db, "products"));
+    const finalProducts = [];
+    finalSnap.forEach(d => finalProducts.push({ id: d.id, ...d.data() }));
+    finalProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    saveProductsToLocalAndCache(finalProducts);
+
+    invalidateCacheAndNotify('images_migrated');
+    return { ok: true, migratedCount: currentProcessed, totalImages: totalImagesToMigrate };
+
+  } catch (err) {
+    console.error("[Migrate] Error general en migración de imágenes:", err);
+    return { ok: false, migratedCount: 0, totalImages: 0, error: err?.message || String(err) };
   }
 }
 

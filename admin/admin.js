@@ -21,7 +21,8 @@ import {
   getOrders,
   updateOrderStatus,
   resetDatabaseToFactory,
-  syncAllToFirestore
+  syncAllToFirestore,
+  migrateAllImagesToFirebaseStorage
 } from '../assets/js/store-service.js';
 
 import { formatPrice } from '../assets/js/ui.js';
@@ -69,6 +70,7 @@ function setupAuth() {
       if (loginRealBtn) loginRealBtn.style.display = 'none';
       await loadAdminData();
       await checkFirestoreStatus();
+      checkAndAutoMigrateStorage();
     } else {
       // Verificar si hay sesión demo local
       const isLocalDemo = sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
@@ -78,6 +80,7 @@ function setupAuth() {
         if (loginRealBtn) loginRealBtn.style.display = 'inline-flex';
         await loadAdminData();
         await checkFirestoreStatus();
+        checkAndAutoMigrateStorage();
       } else {
         if (loginScreen) loginScreen.style.display = 'flex';
         if (appScreen) appScreen.style.display = 'none';
@@ -160,7 +163,15 @@ async function checkFirestoreStatus() {
         cloudIndicator.title = `Firestore Activo: ${res.count} prendas en la nube (roneoshop-es)`;
       }
       if (cloudText) {
-        cloudText.textContent = `Firestore Activo (${res.count} prendas en nube)`;
+        // Verificar si todas las fotos están en Firebase Storage
+        const allInStorage = (currentProducts || []).every(p => 
+          (p.images || []).every(img => typeof img === 'string' && img.startsWith('https://firebasestorage.googleapis.com/'))
+        );
+        if (allInStorage && currentProducts.length > 0) {
+          cloudText.textContent = `Firestore + Storage Activos (Fotos en Nube)`;
+        } else {
+          cloudText.textContent = `Firestore Activo (${res.count} prendas en nube)`;
+        }
       }
       if (rulesAlert) rulesAlert.style.display = 'none';
     } else {
@@ -184,7 +195,69 @@ async function checkFirestoreStatus() {
 }
 
 /**
- * Configura el botón Sincronizar Nube (writeBatch forzado) y alertas
+ * Detecta si hay fotos con URLs externas y las migra automáticamente a Firebase Storage
+ */
+async function checkAndAutoMigrateStorage() {
+  const progressBanner = document.getElementById('storage-migration-progress');
+  const progressLabel = document.getElementById('storage-progress-label');
+  const progressFill = document.getElementById('storage-progress-fill');
+  const cloudText = document.getElementById('cloud-status-text');
+  const cloudIndicator = document.getElementById('header-cloud-status');
+
+  const products = await getProducts();
+  const hasExternalImages = products.some(p => 
+    (p.images || []).some(img => typeof img === 'string' && !img.startsWith('https://firebasestorage.googleapis.com/'))
+  );
+
+  if (!hasExternalImages) {
+    if (cloudText) {
+      cloudText.textContent = `Firestore + Storage Activos (Fotos en Nube)`;
+    }
+    if (cloudIndicator) {
+      cloudIndicator.className = 'admin-cloud-indicator is-connected';
+      cloudIndicator.title = 'Fotos y datos alojados en Firebase (roneoshop-es.firebasestorage.app)';
+    }
+    return;
+  }
+
+  if (progressBanner) progressBanner.style.display = 'block';
+
+  try {
+    const res = await migrateAllImagesToFirebaseStorage(({ productTitle, current, total }) => {
+      const pct = Math.round((current / total) * 100);
+      if (progressLabel) {
+        progressLabel.textContent = `Subiendo imágenes a Firebase Storage (${current} / ${total}): ${productTitle}...`;
+      }
+      if (progressFill) {
+        progressFill.style.width = `${pct}%`;
+      }
+    });
+
+    if (res.ok && res.migratedCount > 0) {
+      showToast(`¡${res.migratedCount} fotos convertidas a WebP y alojadas en Firebase Storage!`);
+      currentProducts = await getProducts({ forceRefresh: true });
+      renderKPIs();
+      renderProductsList();
+    }
+  } catch (migErr) {
+    console.error("[Admin] Error durante la migración a Storage:", migErr);
+    showToast(`Error al migrar fotos a Storage: ${migErr?.message || migErr}`);
+  } finally {
+    setTimeout(() => {
+      if (progressBanner) progressBanner.style.display = 'none';
+      if (cloudText) {
+        cloudText.textContent = `Firestore + Storage Activos (Fotos en Nube)`;
+      }
+      if (cloudIndicator) {
+        cloudIndicator.className = 'admin-cloud-indicator is-connected';
+        cloudIndicator.title = 'Fotos y datos alojados en Firebase (roneoshop-es.firebasestorage.app)';
+      }
+    }, 1200);
+  }
+}
+
+/**
+ * Configura el botón Sincronizar Nube (writeBatch forzado + Storage) y alertas
  */
 function setupSyncButton() {
   const syncBtn = document.getElementById('btn-sync-cloud');
@@ -233,17 +306,19 @@ function setupSyncButton() {
           <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
           <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
         </svg>
-        <span class="hide-mobile">Subiendo a Nube...</span>
+        <span class="hide-mobile">Sincronizando Nube...</span>
       `;
 
       try {
         const res = await syncAllToFirestore({ forceOverwrite: true });
         if (res.ok) {
-          showToast(`¡${res.count} productos, ajustes y pedidos subidos a Firebase Firestore con éxito!`);
+          showToast(`¡${res.count} productos sincronizados en Firestore! Subiendo fotos a Storage...`);
+          await checkAndAutoMigrateStorage();
           await checkFirestoreStatus();
           currentProducts = await getProducts({ forceRefresh: true });
           renderKPIs();
           renderProductsList();
+          showToast('¡Catálogo completo y fotos WebP sincronizados en Firebase!');
         } else {
           showToast(`Error al subir a Firestore: ${res.errorCode}`);
           await checkFirestoreStatus();
