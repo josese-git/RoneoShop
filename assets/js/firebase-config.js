@@ -1,3 +1,10 @@
+/**
+ * FIREBASE CONFIGURATION & SDK EXPORTS - YOANA ZAFIRO / RONEOSHOP
+ * Conexión oficial a Firebase v10.13.0 (roneoshop-es)
+ * Firestore Database (default) + Firebase Storage (gs://roneoshop-es.firebasestorage.app)
+ * Autenticación: 1roneoshop@gmail.com
+ */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
   getAuth, 
@@ -51,7 +58,9 @@ export const db = initializeFirestore(app, {
 
 export const storage = getStorage(app);
 
-// Limpiador profundo para garantizar que ningún dato enviado a Firestore tenga undefined o NaN
+/**
+ * Limpiador profundo para garantizar que ningún dato enviado a Firestore tenga undefined o NaN
+ */
 export function sanitizeForFirestore(data) {
   if (data === null || data === undefined) return null;
   return JSON.parse(JSON.stringify(data, (key, value) => {

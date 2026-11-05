@@ -17,9 +17,9 @@
 <body>
 
   <!-- ======================================================================
-       PANTALLA DE ACCESO SEGURO (FIREBASE AUTH LOGIN)
+       PANTALLA DE ACCESO SEGURO (FIREBASE AUTH LOGIN / DEMO UNLOCK GATE)
        ====================================================================== -->
-  <div id="admin-login-screen" class="login-overlay">
+  <div id="admin-login-gate" class="login-overlay">
     <div class="login-card">
       <div class="login-brand">
         <span class="login-symbol">✧</span>
@@ -27,12 +27,12 @@
         <p>Panel Privado de Administración</p>
       </div>
 
-      <form id="login-form" class="login-form">
+      <form id="admin-login-form" class="login-form">
         <div class="form-group">
-          <label for="login-email">Correo Electrónico (Firebase Auth)</label>
+          <label for="admin-login-email">Correo Electrónico (Firebase Auth)</label>
           <input 
             type="email" 
-            id="login-email" 
+            id="admin-login-email" 
             value="1roneoshop@gmail.com" 
             required 
             placeholder="1roneoshop@gmail.com" 
@@ -41,17 +41,16 @@
         </div>
 
         <div class="form-group">
-          <label for="login-password">Contraseña</label>
+          <label for="admin-login-password">Contraseña</label>
           <input 
             type="password" 
-            id="login-password" 
-            required 
-            placeholder="Introduce tu contraseña" 
+            id="admin-login-password" 
+            placeholder="Introduce tu contraseña o usa Modo Demo" 
             autocomplete="current-password"
           />
         </div>
 
-        <button type="submit" id="btn-login-submit" class="admin-btn-primary" style="width: 100%; height: 46px; margin-top: 8px; justify-content: center;">
+        <button type="submit" id="admin-login-submit-btn" class="admin-btn-primary" style="width: 100%; height: 46px; margin-top: 8px; justify-content: center;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -59,7 +58,7 @@
           <span id="btn-login-text">Iniciar Sesión</span>
         </button>
 
-        <button type="button" id="btn-demo-login" class="btn-admin-subtle" style="width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <button type="button" id="admin-demo-login-btn" onclick="window.forceUnlockAdmin && window.forceUnlockAdmin()" class="btn-admin-subtle" style="width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polygon points="10 8 16 12 10 16 10 8"></polygon>
@@ -67,7 +66,7 @@
           Modo Demo Local (Sin Conexión)
         </button>
 
-        <div id="login-error-msg" class="admin-error-box" style="display: none; margin-top: 12px;"></div>
+        <div id="admin-login-error" class="admin-error-box" style="display: none; margin-top: 12px;"></div>
       </form>
     </div>
   </div>
@@ -75,7 +74,7 @@
   <!-- ======================================================================
        APLICACIÓN PRINCIPAL DE ADMINISTRACIÓN
        ====================================================================== -->
-  <div id="admin-app-screen" class="admin-app" style="display: none;">
+  <div id="admin-app-shell" class="admin-app" style="display: none;">
     <!-- Cabecera Superior Fija -->
     <header class="admin-header">
       <div class="admin-header__inner">
@@ -478,7 +477,7 @@ service cloud.firestore {
 
           <div class="admin-insta-gallery" id="admin-insta-gallery">
             <!-- Botón interactivo de subida / Drop Target (primer hueco fijo) -->
-            <div class="admin-insta-upload-card" id="btn-trigger-upload" role="button" tabindex="0" title="Haz clic o arrastra fotos aquí">
+            <div class="admin-insta-upload-card" id="admin-photo-trigger" role="button" tabindex="0" title="Haz clic o arrastra fotos aquí">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <circle cx="12" cy="13" r="4"></circle>
@@ -502,7 +501,7 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- 2. TÍTULO, PRECIO Y CATEGORÍA (DIRECTO AL GRANO) -->
+        <!-- 2. TÍTULO, PRECIO Y CATEGORÍA -->
         <div class="form-group">
           <label for="prod-title" style="font-weight: 700;">2. Título de la Prenda *</label>
           <input type="text" id="prod-title" required placeholder="Ej. Vestido Midi Zafiro, Abrigo Pandora..." class="admin-input-hero" />
@@ -618,7 +617,7 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- 5. DESCRIPCIÓN (OPCIONAL) - CERO COMPOSICIÓN -->
+        <!-- 5. DESCRIPCIÓN (OPCIONAL) -->
         <div class="form-group">
           <label for="prod-desc" style="font-weight: 700;">5. Descripción (Opcional)</label>
           <textarea id="prod-desc" rows="2" placeholder="Escribe una descripción solo si quieres añadir detalles extra..."></textarea>

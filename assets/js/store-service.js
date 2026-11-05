@@ -15,6 +15,7 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  updateDoc,
   writeBatch,
   ref,
   uploadBytes,
@@ -33,6 +34,16 @@ const DB_PRODUCTS_KEY = 'store_db_products_v3';
 const DB_SETTINGS_KEY = 'store_db_settings_v3';
 const ORDERS_STORAGE_KEY = 'store_orders_v2';
 
+// Limpieza de claves obsoletas de versiones anteriores
+try {
+  if (typeof localStorage !== 'undefined') {
+    ['store_db_products_v1', 'store_db_products_v2', 'store_products_cache_v4', 'store_products_cache_v5', 'store_products_cache_v6'].forEach(k => localStorage.removeItem(k));
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    ['store_products_cache_v4', 'store_products_cache_v5', 'store_products_cache_v6'].forEach(k => sessionStorage.removeItem(k));
+  }
+} catch (e) {}
+
 // Canal de difusión en tiempo real entre pestañas
 const syncChannel = (typeof BroadcastChannel !== 'undefined') 
   ? new BroadcastChannel('roneoshop_live_sync') 
@@ -45,144 +56,136 @@ const syncChannel = (typeof BroadcastChannel !== 'undefined')
  */
 export function buildCleanStorageUrl(filePath, version = '') {
   const bucket = firebaseConfig.storageBucket || "roneoshop-es.firebasestorage.app";
-  const encodedPath = encodeURIComponent(filePath);
+  const cleanPath = filePath.replace(/^\/+/, '');
+  const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('%2F');
   const vParam = version ? `&v=${version}` : '';
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media${vParam}`;
 }
 
 /**
- * Invalida la caché de sesión, actualiza almacenamiento local y notifica a todas las pestañas
+ * Invalida cachés locales y notifica a todas las pestañas abiertas
  */
-export function invalidateCacheAndNotify(type = 'data_updated') {
+export function invalidateCacheAndNotify(type = 'all') {
   try {
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem(CACHE_KEY);
     }
-  } catch (e) {}
-
-  if (syncChannel) {
-    try {
-      syncChannel.postMessage({ type, timestamp: Date.now() });
-    } catch (e) {}
-  }
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('roneoshop:sync', { detail: { type } }));
-    window.dispatchEvent(new Event('storage'));
+    if (syncChannel) {
+      syncChannel.postMessage({
+        action: 'invalidate_cache',
+        type,
+        timestamp: Date.now()
+      });
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('roneoshop_catalog_changed', { detail: { type } }));
+    }
+  } catch (err) {
+    console.warn("[StoreService] Error notificando sincronización:", err);
   }
 }
 
 /**
- * Suscribe una función callback para reaccionar en vivo a cambios guardados en el admin
+ * Suscripción reactiva a cambios de catálogo en otras pestañas
  */
 export function onStoreDataChanged(callback) {
   if (typeof window === 'undefined') return () => {};
 
-  const handleMessage = (e) => {
-    callback(e.data || e.detail || {});
-  };
+  const handleCustomEvent = (e) => callback(e.detail);
+  window.addEventListener('roneoshop_catalog_changed', handleCustomEvent);
 
   if (syncChannel) {
-    syncChannel.addEventListener('message', handleMessage);
+    const handleBroadcast = (e) => {
+      if (e.data && e.data.action === 'invalidate_cache') {
+        callback(e.data);
+      }
+    };
+    syncChannel.addEventListener('message', handleBroadcast);
+    return () => {
+      window.removeEventListener('roneoshop_catalog_changed', handleCustomEvent);
+      syncChannel.removeEventListener('message', handleBroadcast);
+    };
   }
-  window.addEventListener('roneoshop:sync', handleMessage);
-  window.addEventListener('storage', handleMessage);
 
   return () => {
-    if (syncChannel) {
-      syncChannel.removeEventListener('message', handleMessage);
-    }
-    window.removeEventListener('roneoshop:sync', handleMessage);
-    window.removeEventListener('storage', handleMessage);
+    window.removeEventListener('roneoshop_catalog_changed', handleCustomEvent);
   };
 }
 
-/**
- * Configuración global de la tienda
- */
+// ============================================================================
+// 1. DATOS SEMILLA MAESTROS (MOCK Y AJUSTES)
+// ============================================================================
+
 export const MOCK_SETTINGS = {
   storeName: "Yoana Zafiro",
-  announcementText: "NUEVA COLECCIÓN 2026 OTOÑO & INVIERNO · ENVÍOS GRATIS A PARTIR DE 50€",
-  heroBannerDesktop: "https://yoanazafiro.com/cdn/shop/files/portada.jpg?v=1737318983&width=1200",
-  heroBannerMobile: "https://yoanazafiro.com/cdn/shop/files/portada.jpg?v=1737318983&width=800",
-  heroTitle: "Yoana Zafiro",
-  heroSubtitle: "Crea momentos inolvidables con nuestros artículos de ropa, zapatos, complementos y cuidados para la mujer.",
+  storeTagline: "Moda y Tendencias Exclusivas",
+  contactPhone: "+34 600 000 000",
+  contactEmail: "contacto@yoanazafiro.com",
+  freeShippingThreshold: 60.00,
   shippingStandardPrice: 4.90,
-  freeShippingThreshold: 50.00,
-  categories: ["ropa", "cabello", "cosmetica", "peikas", "novedades", "vestidos", "abrigos", "vaqueros", "rebajas"],
-  senderAddress: {
-    name: "Yoana Zafiro",
-    company: "Yoana Zafiro Moda S.L.",
-    street: "Calle Principal 12, Planta 2",
-    city: "Málaga",
-    zipCode: "29001",
-    province: "Málaga",
-    country: "ES",
-    phone: "600000000",
-    email: "info@yoanazafiro.com"
-  }
+  announcementText: "ENVÍOS GRATIS A PARTIR DE €60 · COMPRA HOY Y RECÍBELO EN 24/48H",
+  redsysMerchantCode: "999008881",
+  redsysTerminal: "001",
+  redsysCurrency: "978",
+  packlinkApiKey: "pk_prod_live_2026_roneoshop_secure_token",
+  packlinkDropoffActive: true,
+  packlinkDefaultCarrier: "Correos Express 24h",
+  categories: ["ropa", "calzado", "bolsos", "accesorios", "cabello"],
+  collections: ["novedades", "bestsellers", "rebajas", "fiesta", "otono-invierno"],
+  updatedAt: 1730715000000
 };
 
-/**
- * Fuentes maestras originales para descarga y subida inicial a Storage mediante wsrv.nl
- */
 export const MOCK_ORIGINAL_SOURCES = {
   "abrigo-pandora": [
-    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-26at11.52.51.jpg?v=1793029856",
-    "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=900&q=80"
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S3e430638541a46cf988863fdbf3dfc8eD.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S5f2762a5b6d94d3eb97c8d927db32fe6Z.webp?v=1730282121"
   ],
   "vaquero-faja-levis": [
-    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717",
-    "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80"
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S9eb61612aee44ea7ae630c50d3dd78f7o.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S9cf36104c86e426db4f61b0a887a0e5b7.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S4a2f8bdf942944b2a8d6b9d6a3628e93Y.webp?v=1730282121"
   ],
   "pantalon-hermes": [
-    "https://images.unsplash.com/photo-1551803091-e20673f15770?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1509551388413-e18d0ac5d495?auto=format&fit=crop&w=900&q=80"
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S068e8334460a4f5f8be78b54b0fcfa5ew.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S199859f9ef754aa9a7850ad043ebbb25v.webp?v=1730282121"
   ],
   "vaquero-mitos": [
-    "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80"
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/Sff9a17ce70094b8e907ea692e21b7642w.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/Sd5e9eaae7f3b4ba9bc4389df0b62e4f0X.webp?v=1730282121"
   ],
-  "camiseta-basica-blanca": [
-    "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80"
+  "pantalon-furor-bicolor": [
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/S8b1089d81dbe439f8021c37d6e4999ab9.webp?v=1730282121",
+    "https://cdn.shopify.com/s/files/1/0885/8494/6009/files/Sbbad07798363413da66a15db4ca2c418g.webp?v=1730282121"
   ],
-  "conjunto-punto-milan": [
-    "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711",
+  "conjunto-punto-roma": [
     "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+    "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80"
   ],
-  "vestido-boho-chic": [
+  "vestido-midi-seda": [
     "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
   ],
-  "bomber-espiga-paris": [
-    "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80"
+  "bota-cowboy-piel": [
+    "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80"
   ],
-  "champu-nutritivo-1000ml": [
-    "https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=800",
-    "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=900&q=80"
+  "bolso-shopper-cuero": [
+    "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=900&q=80"
   ],
-  "secador-profesional-ionic": [
+  "cinturon-hebilla-oro": [
+    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80"
+  ],
+  "extensiones-clip-natural": [
     "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80"
+    "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=80"
   ],
-  "pack-cosmetica-coreana-glow": [
-    "https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=800",
-    "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=80"
-  ],
-  "conjunto-volantes-nina-peikas": [
-    "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
-    "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=900&q=80"
+  "peluca-lace-front-ondulada": [
+    "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=900&q=80"
   ]
 };
 
-/**
- * Catálogo maestro con URLs oficiales y limpias de Firebase Storage (products/{id}/1.webp, 2.webp...)
- */
 export const MOCK_PRODUCTS = [
   // 1. ABRIGO PANDORA
   {
@@ -190,26 +193,28 @@ export const MOCK_PRODUCTS = [
     slug: "abrigo-pandora",
     title: "ABRIGO PANDORA",
     category: "ropa",
-    subCategory: "chaquetas",
-    collectionTags: ["otono-invierno", "novedades", "abrigos"],
-    price: 19.95,
-    compareAtPrice: null,
-    weightKg: 0.45,
-    description: "Abrigo midi estructurado en tejido suave con corte recto estilizado y solapa clásica de sastre. Una prenda atemporal indispensable para temperaturas bajas.",
+    subCategory: "abrigos",
+    collectionTags: ["otono-invierno", "novedades", "fiesta"],
+    price: 38.00,
+    compareAtPrice: 45.00,
+    weightKg: 0.95,
+    description: "Abrigo midi con diseño cruzado, solapas oversize y cinturón a juego para estilizar la silueta. Confeccionado en paño suave de primera calidad con forro interior térmico satinado.",
     hasSizes: true,
     colors: [
-      { name: "Beige", hex: "#e8dfc8", inStock: false },
-      { name: "Gris", hex: "#808080", inStock: false }
+      { name: "Gris", hex: "#8a8d91", inStock: true },
+      { name: "Negro", hex: "#121212", inStock: true },
+      { name: "Camel", hex: "#c19a6b", inStock: true }
     ],
     images: [
       buildCleanStorageUrl("products/abrigo-pandora/1.webp"),
-      buildCleanStorageUrl("products/abrigo-pandora/2.webp"),
-      buildCleanStorageUrl("products/abrigo-pandora/3.webp")
+      buildCleanStorageUrl("products/abrigo-pandora/2.webp")
     ],
     variants: [
-      { size: "S", stock: 0, sku: "AB-PAN-S" },
-      { size: "M", stock: 0, sku: "AB-PAN-M" },
-      { size: "L", stock: 0, sku: "AB-PAN-L" }
+      { size: "XS", stock: 3, sku: "AB-PAN-XS" },
+      { size: "S", stock: 6, sku: "AB-PAN-S" },
+      { size: "M", stock: 8, sku: "AB-PAN-M" },
+      { size: "L", stock: 4, sku: "AB-PAN-L" },
+      { size: "XL", stock: 2, sku: "AB-PAN-XL" }
     ],
     active: true,
     featured: true,
@@ -223,10 +228,10 @@ export const MOCK_PRODUCTS = [
     title: "VAQUERO FAJA LEVIS",
     category: "ropa",
     subCategory: "vaqueros",
-    collectionTags: ["otono-invierno", "novedades", "vaqueros"],
+    collectionTags: ["bestsellers", "novedades"],
     price: 24.95,
-    compareAtPrice: null,
-    weightKg: 0.50,
+    compareAtPrice: 29.95,
+    weightKg: 0.55,
     description: "Vaquero pitillo con efecto faja moldeadora y tiro extra alto que estiliza la figura proporcionando máxima comodidad.",
     hasSizes: true,
     colors: [
@@ -243,7 +248,7 @@ export const MOCK_PRODUCTS = [
       { size: "S", stock: 4, sku: "VF-LEV-S" },
       { size: "M", stock: 6, sku: "VF-LEV-M" },
       { size: "L", stock: 3, sku: "VF-LEV-L" },
-      { size: "XL", stock: 1, sku: "VF-LEV-XL" }
+      { size: "XL", stock: 2, sku: "VF-LEV-XL" }
     ],
     active: true,
     featured: true,
@@ -288,386 +293,371 @@ export const MOCK_PRODUCTS = [
     title: "VAQUERO MITOS",
     category: "ropa",
     subCategory: "vaqueros",
-    collectionTags: ["otono-invierno", "vaqueros"],
-    price: 24.95,
-    compareAtPrice: null,
-    weightKg: 0.52,
-    description: "Denim de pierna recta clásica con lavado medio y refuerzo interior que estiliza la silueta.",
+    collectionTags: ["bestsellers"],
+    price: 26.50,
+    compareAtPrice: 32.00,
+    weightKg: 0.58,
+    description: "Vaquero recto de inspiración retro con tiro alto y tejido denim 100% de textura premium y duradera.",
     hasSizes: true,
     colors: [
-      { name: "Azul Denim", hex: "#3b5998", inStock: true }
+      { name: "Lavado Medio", hex: "#4b6f96", inStock: true }
     ],
     images: [
       buildCleanStorageUrl("products/vaquero-mitos/1.webp"),
       buildCleanStorageUrl("products/vaquero-mitos/2.webp")
     ],
     variants: [
-      { size: "S", stock: 2, sku: "VA-MIT-S" },
-      { size: "M", stock: 4, sku: "VA-MIT-M" },
-      { size: "L", stock: 3, sku: "VA-MIT-L" },
-      { size: "XL", stock: 2, sku: "VA-MIT-XL" }
+      { size: "XS", stock: 1, sku: "VQ-MIT-XS" },
+      { size: "S", stock: 4, sku: "VQ-MIT-S" },
+      { size: "M", stock: 7, sku: "VQ-MIT-M" },
+      { size: "L", stock: 5, sku: "VQ-MIT-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715300000
   },
 
-  // 5. CAMISETA BÁSICA BLANCA
+  // 5. PANTALÓN FUROR BICOLOR
   {
-    id: "camiseta-basica-blanca",
-    slug: "camiseta-basica-blanca",
-    title: "CAMISETA BÁSICA BLANCA",
+    id: "pantalon-furor-bicolor",
+    slug: "pantalon-furor-bicolor",
+    title: "PANTALÓN FUROR BICOLOR",
     category: "ropa",
-    subCategory: "camisetas",
-    collectionTags: ["primavera-verano", "novedades"],
-    price: 14.25,
-    compareAtPrice: null,
-    weightKg: 0.18,
-    description: "Camiseta de algodón peinado con escote redondo ribeteado y tacto ultrasuave. Fondo de armario imprescindible.",
+    subCategory: "pantalones",
+    collectionTags: ["novedades", "fiesta"],
+    price: 22.00,
+    compareAtPrice: 28.00,
+    weightKg: 0.42,
+    description: "Diseño audaz en dos tonalidades contrastadas con pernera ancha wide-leg y cintura elástica muy confortable.",
     hasSizes: true,
     colors: [
-      { name: "Blanco", hex: "#ffffff", inStock: true },
-      { name: "Negro", hex: "#121212", inStock: true }
+      { name: "Blanco/Negro", hex: "#121212", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/camiseta-basica-blanca/1.webp"),
-      buildCleanStorageUrl("products/camiseta-basica-blanca/2.webp")
+      buildCleanStorageUrl("products/pantalon-furor-bicolor/1.webp"),
+      buildCleanStorageUrl("products/pantalon-furor-bicolor/2.webp")
     ],
     variants: [
-      { size: "S", stock: 6, sku: "CA-BAS-S" },
-      { size: "M", stock: 8, sku: "CA-BAS-M" },
-      { size: "L", stock: 5, sku: "CA-BAS-L" }
+      { size: "S", stock: 2, sku: "PA-FUR-S" },
+      { size: "M", stock: 6, sku: "PA-FUR-M" },
+      { size: "L", stock: 3, sku: "PA-FUR-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715400000
   },
 
-  // 6. CONJUNTO PUNTO MILÁN (Rebaja)
+  // 6. CONJUNTO PUNTO ROMA
   {
-    id: "conjunto-punto-milan",
-    slug: "conjunto-punto-milan",
-    title: "CONJUNTO PUNTO MILÁN",
+    id: "conjunto-punto-roma",
+    slug: "conjunto-punto-roma",
+    title: "CONJUNTO PUNTO ROMA",
     category: "ropa",
     subCategory: "conjuntos",
-    collectionTags: ["otono-invierno", "rebajas"],
-    price: 32.95,
+    collectionTags: ["otono-invierno", "bestsellers"],
+    price: 34.50,
     compareAtPrice: 42.00,
-    weightKg: 0.60,
-    description: "Dos piezas de punto fino con textura acanalada formado por jersey de cuello perkins y pantalón culotte a juego.",
+    weightKg: 0.70,
+    description: "Dos piezas en punto elástico de alta densidad compuesto por jersey oversize con cuello vuelto y pantalón culotte.",
     hasSizes: true,
     colors: [
-      { name: "Camel", hex: "#c19a6b", inStock: true },
-      { name: "Negro", hex: "#121212", inStock: true }
+      { name: "Beige Cálido", hex: "#d8c4b6", inStock: true },
+      { name: "Verde Oliva", hex: "#556b2f", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/conjunto-punto-milan/1.webp"),
-      buildCleanStorageUrl("products/conjunto-punto-milan/2.webp"),
-      buildCleanStorageUrl("products/conjunto-punto-milan/3.webp")
+      buildCleanStorageUrl("products/conjunto-punto-roma/1.webp"),
+      buildCleanStorageUrl("products/conjunto-punto-roma/2.webp")
     ],
     variants: [
-      { size: "S", stock: 3, sku: "CO-MIL-S" },
-      { size: "M", stock: 5, sku: "CO-MIL-M" },
-      { size: "L", stock: 2, sku: "CO-MIL-L" }
+      { size: "S", stock: 4, sku: "CJ-ROM-S" },
+      { size: "M", stock: 5, sku: "CJ-ROM-M" },
+      { size: "L", stock: 2, sku: "CJ-ROM-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715500000
   },
 
-  // 7. VESTIDO BOHO CHIC (Rebaja)
+  // 7. VESTIDO MIDI SEDA
   {
-    id: "vestido-boho-chic",
-    slug: "vestido-boho-chic",
-    title: "VESTIDO BOHO CHIC",
+    id: "vestido-midi-seda",
+    slug: "vestido-midi-seda",
+    title: "VESTIDO MIDI SEDA",
     category: "ropa",
     subCategory: "vestidos",
-    collectionTags: ["primavera-verano", "rebajas", "vestidos"],
-    price: 26.50,
-    compareAtPrice: 35.00,
-    weightKg: 0.38,
-    description: "Vestido midi con estampado floral étnico, mangas abullonadas y cintura con lazada regulable para máxima feminidad.",
+    collectionTags: ["fiesta", "novedades"],
+    price: 49.90,
+    compareAtPrice: 59.90,
+    weightKg: 0.32,
+    description: "Vestido lencero de corte al bies con escote cascada drapeado y tirantes finos regulables. Brillo suave y tacto sedoso.",
     hasSizes: true,
     colors: [
-      { name: "Marrón Teja", hex: "#8b4513", inStock: true }
+      { name: "Burdeos", hex: "#800020", inStock: true },
+      { name: "Champagne", hex: "#f7e7ce", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/vestido-boho-chic/1.webp"),
-      buildCleanStorageUrl("products/vestido-boho-chic/2.webp")
+      buildCleanStorageUrl("products/vestido-midi-seda/1.webp"),
+      buildCleanStorageUrl("products/vestido-midi-seda/2.webp")
     ],
     variants: [
-      { size: "S", stock: 2, sku: "VE-BOH-S" },
-      { size: "M", stock: 4, sku: "VE-BOH-M" },
-      { size: "L", stock: 1, sku: "VE-BOH-L" }
+      { size: "XS", stock: 2, sku: "VE-SED-XS" },
+      { size: "S", stock: 5, sku: "VE-SED-S" },
+      { size: "M", stock: 4, sku: "VE-SED-M" },
+      { size: "L", stock: 1, sku: "VE-SED-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715600000
   },
 
-  // 8. BOMBER ESPIGA PARIS
+  // 8. BOTA COWBOY PIEL
   {
-    id: "bomber-espiga-paris",
-    slug: "bomber-espiga-paris",
-    title: "BOMBER ESPIGA PARÍS",
-    category: "ropa",
-    subCategory: "chaquetas",
-    collectionTags: ["otono-invierno", "abrigos"],
-    price: 28.95,
-    compareAtPrice: null,
-    weightKg: 0.55,
-    description: "Cazadora bomber oversize en jacquard espiga con cremallera frontal metálica y acabados elásticos en canalé.",
+    id: "bota-cowboy-piel",
+    slug: "bota-cowboy-piel",
+    title: "BOTA COWBOY PIEL",
+    category: "calzado",
+    subCategory: "botas",
+    collectionTags: ["bestsellers", "otono-invierno"],
+    price: 59.00,
+    compareAtPrice: 75.00,
+    weightKg: 1.10,
+    description: "Bota campera de media caña con bordados florales tradicionales al tono, tacón cubano cómodo de 5cm y suela acolchada.",
     hasSizes: true,
     colors: [
-      { name: "Negro", hex: "#121212", inStock: true },
-      { name: "Blanco", hex: "#ffffff", inStock: true }
+      { name: "Cuero Marrón", hex: "#8b5a2b", inStock: true },
+      { name: "Negro Ébano", hex: "#121212", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/bomber-espiga-paris/1.webp"),
-      buildCleanStorageUrl("products/bomber-espiga-paris/2.webp")
+      buildCleanStorageUrl("products/bota-cowboy-piel/1.webp"),
+      buildCleanStorageUrl("products/bota-cowboy-piel/2.webp")
     ],
     variants: [
-      { size: "S", stock: 1, sku: "BO-ESP-S" },
-      { size: "M", stock: 3, sku: "BO-ESP-M" }
+      { size: "36", stock: 2, sku: "BO-COW-36" },
+      { size: "37", stock: 3, sku: "BO-COW-37" },
+      { size: "38", stock: 5, sku: "BO-COW-38" },
+      { size: "39", stock: 4, sku: "BO-COW-39" },
+      { size: "40", stock: 2, sku: "BO-COW-40" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715700000
   },
 
-  // 9. CHAMPÚ NUTRITIVO 1000ML (Talla Única)
+  // 9. BOLSO SHOPPER CUERO
   {
-    id: "champu-nutritivo-1000ml",
-    slug: "champu-nutritivo-1000ml",
-    title: "CHAMPÚ NUTRITIVO 1000ML",
-    category: "cabello",
-    subCategory: "champu",
-    collectionTags: ["cabello", "tratamiento-capilar"],
-    price: 18.00,
-    compareAtPrice: null,
-    weightKg: 1.05,
-    description: "Tratamiento capilar intensivo en formato salón de 1000ml con aminoácidos y proteínas de seda.",
+    id: "bolso-shopper-cuero",
+    slug: "bolso-shopper-cuero",
+    title: "BOLSO SHOPPER CUERO",
+    category: "bolsos",
+    subCategory: "shoppers",
+    collectionTags: ["novedades"],
+    price: 36.00,
+    compareAtPrice: 45.00,
+    weightKg: 0.65,
+    description: "Bolso de hombro de gran capacidad con doble asa reforzada, cierre con cremallera y neceser interior extraíble.",
     hasSizes: false,
-    colors: [],
+    colors: [
+      { name: "Cuero Natural", hex: "#966f33", inStock: true },
+      { name: "Negro", hex: "#121212", inStock: true }
+    ],
     images: [
-      buildCleanStorageUrl("products/champu-nutritivo-1000ml/1.webp"),
-      buildCleanStorageUrl("products/champu-nutritivo-1000ml/2.webp")
+      buildCleanStorageUrl("products/bolso-shopper-cuero/1.webp"),
+      buildCleanStorageUrl("products/bolso-shopper-cuero/2.webp")
     ],
     variants: [
-      { size: "ÚNICA", stock: 0, sku: "CH-NUT-1L" }
+      { size: "ÚNICA", stock: 12, sku: "BL-SHO-U" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715800000
   },
 
-  // 10. SECADOR PROFESIONAL IONIC (Talla Única)
+  // 10. CINTURÓN HEBILLA ORO
   {
-    id: "secador-profesional-ionic",
-    slug: "secador-profesional-ionic",
-    title: "SECADOR PROFESIONAL IONIC",
-    category: "cabello",
-    subCategory: "accesorios",
-    collectionTags: ["cabello"],
-    price: 54.95,
+    id: "cinturon-hebilla-oro",
+    slug: "cinturon-hebilla-oro",
+    title: "CINTURÓN HEBILLA ORO",
+    category: "accesorios",
+    subCategory: "cinturones",
+    collectionTags: ["bestsellers"],
+    price: 14.95,
     compareAtPrice: null,
-    weightKg: 0.78,
-    description: "Secador con motor digital de 2200W y tecnología dual iónica para un acabado brillante sin encrespamiento.",
-    hasSizes: false,
+    weightKg: 0.18,
+    description: "Cinturón de piel con hebilla metálica circular en baño dorado pulido. Ajustable para tiro de pantalón o cintura de vestido.",
+    hasSizes: true,
     colors: [
-      { name: "Negro", hex: "#121212", inStock: true }
+      { name: "Negro", hex: "#121212", inStock: true },
+      { name: "Marrón", hex: "#5c4033", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/secador-profesional-ionic/1.webp"),
-      buildCleanStorageUrl("products/secador-profesional-ionic/2.webp")
+      buildCleanStorageUrl("products/cinturon-hebilla-oro/1.webp")
     ],
     variants: [
-      { size: "ÚNICA", stock: 5, sku: "SEC-PRO-ION" }
+      { size: "85", stock: 5, sku: "CI-ORO-85" },
+      { size: "90", stock: 6, sku: "CI-ORO-90" },
+      { size: "95", stock: 4, sku: "CI-ORO-95" }
     ],
     active: true,
-    featured: true,
+    featured: false,
     createdAt: 1730715900000
   },
 
-  // 11. PACK COSMÉTICA COREANA SOME BY MI (Rebaja - Talla Única)
+  // 11. EXTENSIONES CLIP NATURAL
   {
-    id: "pack-cosmetica-coreana-glow",
-    slug: "pack-cosmetica-coreana-glow",
-    title: "PACK COSMÉTICA COREANA SOME BY MI",
-    category: "cosmetica",
-    subCategory: "tratamiento",
-    collectionTags: ["cosmetica", "rebajas", "novedades"],
-    price: 39.95,
-    compareAtPrice: 48.00,
-    weightKg: 0.65,
-    description: "Rutina facial completa de 4 pasos con Centella Asiática, Árbol del Té y AHA-BHA-PHA para efecto Glass Skin.",
-    hasSizes: false,
-    colors: [],
+    id: "extensiones-clip-natural",
+    slug: "extensiones-clip-natural",
+    title: "EXTENSIONES CLIP NATURAL",
+    category: "cabello",
+    subCategory: "extensiones",
+    collectionTags: ["novedades", "bestsellers"],
+    price: 78.00,
+    compareAtPrice: 95.00,
+    weightKg: 0.25,
+    description: "Set de 7 piezas de cabello 100% natural Remy de 55cm. Listas para moldear con plancha o tenacilla y máxima fijación con clips de silicona.",
+    hasSizes: true,
+    colors: [
+      { name: "Castaño Oscuro #2", hex: "#2b1e16", inStock: true },
+      { name: "Rubio Ceniza #18", hex: "#b5a382", inStock: true },
+      { name: "Negro Azabache #1", hex: "#0b0b0b", inStock: true }
+    ],
     images: [
-      buildCleanStorageUrl("products/pack-cosmetica-coreana-glow/1.webp"),
-      buildCleanStorageUrl("products/pack-cosmetica-coreana-glow/2.webp")
+      buildCleanStorageUrl("products/extensiones-clip-natural/1.webp"),
+      buildCleanStorageUrl("products/extensiones-clip-natural/2.webp")
     ],
     variants: [
-      { size: "ÚNICA", stock: 3, sku: "PACK-K-SOME" }
+      { size: "45 CM", stock: 3, sku: "EXT-45" },
+      { size: "55 CM", stock: 6, sku: "EXT-55" },
+      { size: "65 CM", stock: 2, sku: "EXT-65" }
     ],
     active: true,
     featured: true,
     createdAt: 1730716000000
   },
 
-  // 12. CONJUNTO VOLANTES NIÑA PEIKAS
+  // 12. PELUCA LACE FRONT ONDULADA
   {
-    id: "conjunto-volantes-nina-peikas",
-    slug: "conjunto-volantes-nina-peikas",
-    title: "CONJUNTO VOLANTES NIÑA PEIKAS",
-    category: "peikas",
-    subCategory: "accesorios",
-    collectionTags: ["peikas", "novedades", "primavera-verano"],
-    price: 22.95,
-    compareAtPrice: null,
-    weightKg: 0.28,
-    description: "Conjunto infantil de blusa y cubrepañal con volantes calados confeccionado en algodón pima hipoalergénico.",
-    hasSizes: true,
+    id: "peluca-lace-front-ondulada",
+    slug: "peluca-lace-front-ondulada",
+    title: "PELUCA LACE FRONT ONDULADA",
+    category: "cabello",
+    subCategory: "pelucas",
+    collectionTags: ["fiesta"],
+    price: 110.00,
+    compareAtPrice: 135.00,
+    weightKg: 0.45,
+    description: "Peluca lace front con nacimiento invisible HD y ondas al agua definidas de 60cm de longitud. Gorro interior transpirable y correas de sujeción.",
+    hasSizes: false,
     colors: [
-      { name: "Rosa", hex: "#f4c2c2", inStock: true }
+      { name: "Moreno Chocolate", hex: "#3d2314", inStock: true },
+      { name: "Rubio Balayage", hex: "#c9b086", inStock: true }
     ],
     images: [
-      buildCleanStorageUrl("products/conjunto-volantes-nina-peikas/1.webp"),
-      buildCleanStorageUrl("products/conjunto-volantes-nina-peikas/2.webp")
+      buildCleanStorageUrl("products/peluca-lace-front-ondulada/1.webp"),
+      buildCleanStorageUrl("products/peluca-lace-front-ondulada/2.webp")
     ],
     variants: [
-      { size: "3M", stock: 3, sku: "PEI-VOL-3M" },
-      { size: "6M", stock: 4, sku: "PEI-VOL-6M" },
-      { size: "12M", stock: 2, sku: "PEI-VOL-12M" }
+      { size: "ÚNICA", stock: 4, sku: "PEL-LAC-U" }
     ],
     active: true,
-    featured: true,
+    featured: false,
     createdAt: 1730716100000
   }
 ];
 
-// Pedidos de prueba iniciales con el nuevo formato oficial DD-MM-YYYY-NNN
 export const INITIAL_SAMPLE_ORDERS = [
   {
     orderNumber: "05-11-2026-001",
-    createdAt: Date.now() - 3600 * 1000 * 2,
-    customer: {
-      firstName: "María",
-      lastName: "García López",
-      email: "maria.garcia@gmail.com",
-      phone: "611223344",
-      street: "Calle Larios 4, 3ºB",
-      city: "Málaga",
-      zipCode: "29015",
-      province: "Málaga",
-      country: "ES"
-    },
-    items: [
-      {
-        productId: "vaquero-faja-levis",
-        title: "VAQUERO FAJA LEVIS",
-        size: "M",
-        price: 24.95,
-        quantity: 1,
-        image: buildCleanStorageUrl("products/vaquero-faja-levis/1.webp")
-      }
-    ],
-    subtotal: 24.95,
-    shippingCost: 4.90,
-    total: 29.85,
-    paymentMethod: "BIZUM",
     status: "PAID",
-    packlink: {
-      synced: false,
-      reference: null
-    },
-    totalWeightKg: 0.50
-  },
-  {
-    orderNumber: "05-11-2026-002",
-    createdAt: Date.now() - 3600 * 1000 * 24,
+    paymentMethod: "REDSYS",
+    redsysOrderId: "05112026001",
     customer: {
-      firstName: "Carmen",
-      lastName: "Navarro Ruiz",
-      email: "carmen.navarro@hotmail.com",
-      phone: "655998877",
-      street: "Gran Vía 32, 5ºA",
+      name: "Carmen Gómez Ruiz",
+      email: "carmen.gomez@gmail.com",
+      phone: "+34 654 321 987",
+      address: "Calle Serrano 45, 3º B",
+      postalCode: "28001",
       city: "Madrid",
-      zipCode: "28013",
       province: "Madrid",
       country: "ES"
     },
     items: [
       {
-        productId: "conjunto-punto-milan",
-        title: "CONJUNTO PUNTO MILÁN",
-        size: "S",
-        price: 32.95,
+        productId: "abrigo-pandora",
+        title: "ABRIGO PANDORA",
+        size: "M",
+        price: 38.00,
         quantity: 1,
-        image: buildCleanStorageUrl("products/conjunto-punto-milan/1.webp")
+        image: buildCleanStorageUrl("products/abrigo-pandora/1.webp")
       },
       {
-        productId: "camiseta-basica-blanca",
-        title: "CAMISETA BÁSICA BLANCA",
-        size: "M",
-        price: 14.25,
-        quantity: 2,
-        image: buildCleanStorageUrl("products/camiseta-basica-blanca/1.webp")
+        productId: "vaquero-faja-levis",
+        title: "VAQUERO FAJA LEVIS",
+        size: "S",
+        price: 24.95,
+        quantity: 1,
+        image: buildCleanStorageUrl("products/vaquero-faja-levis/1.webp")
       }
     ],
-    subtotal: 61.45,
-    shippingCost: 0.00,
-    total: 61.45,
-    paymentMethod: "CARD",
-    status: "PAID",
-    packlink: {
-      synced: true,
-      reference: "ES2026PRO918234",
-      trackingUrl: "https://pro.packlink.es/private/shipments"
+    pricing: {
+      subtotal: 62.95,
+      shipping: 0.00,
+      total: 62.95
     },
-    totalWeightKg: 0.96
+    packlink: {
+      service: "Correos Express 24h",
+      trackingNumber: "ES20261105001",
+      labelUrl: "https://api.packlink.com/v1/shipments/print/ES20261105001",
+      parcelWeightKg: 1.50
+    },
+    createdAt: 1730800000000
+  },
+  {
+    orderNumber: "05-11-2026-002",
+    status: "PAID",
+    paymentMethod: "BIZUM",
+    redsysOrderId: "05112026002",
+    customer: {
+      name: "Lucía Fernández Torres",
+      email: "lucia.ft@gmail.com",
+      phone: "+34 611 223 344",
+      address: "Avenida Diagonal 210, 4º 1ª",
+      postalCode: "08018",
+      city: "Barcelona",
+      province: "Barcelona",
+      country: "ES"
+    },
+    items: [
+      {
+        productId: "bota-cowboy-piel",
+        title: "BOTA COWBOY PIEL",
+        size: "38",
+        price: 59.00,
+        quantity: 1,
+        image: buildCleanStorageUrl("products/bota-cowboy-piel/1.webp")
+      }
+    ],
+    pricing: {
+      subtotal: 59.00,
+      shipping: 4.90,
+      total: 63.90
+    },
+    packlink: {
+      service: "Correos Express 24h",
+      trackingNumber: "ES20261105002",
+      labelUrl: "https://api.packlink.com/v1/shipments/print/ES20261105002",
+      parcelWeightKg: 1.10
+    },
+    createdAt: 1730803600000
   }
 ];
 
-/**
- * Purga de almacenamiento antiguo en localStorage y sessionStorage
- */
-function purgeLegacyCaches() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      ['store_db_products_v1', 'store_db_products_v2', 'store_db_settings_v1', 'store_db_settings_v2', 'store_orders_v1'].forEach(k => localStorage.removeItem(k));
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      ['store_products_cache_v4', 'store_products_cache_v5', 'store_products_cache_v6', 'firestore_verified_v1'].forEach(k => sessionStorage.removeItem(k));
-    }
-  } catch (e) {}
-}
-purgeLegacyCaches();
+// ============================================================================
+// 2. COMPRESIÓN Y GESTIÓN DE ARCHIVOS EN FIREBASE STORAGE
+// ============================================================================
 
 /**
- * Inicializa la base de datos local con datos semilla si no existen
- */
-function initLocalDatabase() {
-  try {
-    if (typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'function') return;
-    if (!localStorage.getItem(DB_PRODUCTS_KEY)) {
-      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
-    }
-    if (!localStorage.getItem(DB_SETTINGS_KEY)) {
-      localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(MOCK_SETTINGS));
-    }
-    if (!localStorage.getItem(ORDERS_STORAGE_KEY)) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
-    }
-  } catch (e) {
-    console.warn("[StoreService] Error inicializando localStorage:", e);
-  }
-}
-initLocalDatabase();
-
-/**
- * Convierte de forma infalible cualquier origen de imagen (File, Blob, DataURL o URL externa)
- * a un Blob con formato WebP nativo
+ * Convierte cualquier origen de imagen (File, Blob, DataURL o URL externa)
+ * en un Blob WebP optimizado con calidad 0.84 y altura máxima 1100px
  */
 export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 0.84) {
   if (!source) throw new Error("Origen de imagen vacío");
@@ -685,33 +675,49 @@ export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 
     if (source instanceof File || source instanceof Blob) {
       objectUrl = URL.createObjectURL(source);
       await new Promise((res, rej) => {
-        imgElement.onload = res;
+        imgElement.onload = () => res(imgElement);
         imgElement.onerror = rej;
         imgElement.src = objectUrl;
       });
-    } else if (typeof source === 'string' && source.startsWith('data:image')) {
-      await new Promise((res, rej) => {
-        imgElement.onload = res;
-        imgElement.onerror = rej;
-        imgElement.src = source;
-      });
-    } else if (typeof source === 'string' && source.startsWith('http')) {
-      // Para URLs externas (cdn.shopify.com, unsplash, etc.) pasamos siempre por proxy CORS wsrv.nl
-      const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(source)}&h=${maxHeight}&output=webp&q=${Math.round(quality * 100)}`;
-      const response = await fetch(proxyUrl, { mode: 'cors' });
-      if (!response.ok) throw new Error(`Proxy fetch falló con status ${response.status}`);
-      const webpBlob = await response.blob();
-      return webpBlob;
-    } else {
-      throw new Error("Formato de imagen no soportado");
+    } else if (typeof source === 'string') {
+      if (source.startsWith('data:image')) {
+        await new Promise((res, rej) => {
+          imgElement.onload = () => res(imgElement);
+          imgElement.onerror = rej;
+          imgElement.src = source;
+        });
+      } else {
+        // Para URLs externas de Shopify o Unsplash con CORS restringido, usar wsrv.nl proxy
+        const safeUrl = (source.includes('cdn.shopify.com') || source.includes('unsplash.com'))
+          ? `https://wsrv.nl/?url=${encodeURIComponent(source)}&h=${maxHeight}&output=webp&q=84`
+          : source;
+
+        try {
+          const resp = await fetch(safeUrl, { mode: 'cors' });
+          if (!resp.ok) throw new Error(`Fetch falló con status ${resp.status}`);
+          const blob = await resp.blob();
+          objectUrl = URL.createObjectURL(blob);
+          await new Promise((res, rej) => {
+            imgElement.onload = () => res(imgElement);
+            imgElement.onerror = rej;
+            imgElement.src = objectUrl;
+          });
+        } catch (fetchErr) {
+          // Fallback directo sobre imgElement
+          await new Promise((res, rej) => {
+            imgElement.onload = () => res(imgElement);
+            imgElement.onerror = rej;
+            imgElement.src = source;
+          });
+        }
+      }
     }
 
-    // Redimensionado proporcional en canvas para File / Blob / DataURL
-    let width = imgElement.naturalWidth || imgElement.width || 800;
-    let height = imgElement.naturalHeight || imgElement.height || 1000;
+    let width = imgElement.width || 800;
+    let height = imgElement.height || 1000;
 
     if (height > maxHeight) {
-      width = Math.round((width * maxHeight) / height);
+      width = Math.round(width * (maxHeight / height));
       height = maxHeight;
     }
 
@@ -722,21 +728,23 @@ export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgElement, 0, 0, width, height);
 
-    const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Error toBlob"))), 'image/webp', quality);
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Canvas toBlob retornó null"));
+      }, 'image/webp', quality);
     });
 
-    return blob;
   } finally {
     if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
+      try { URL.revokeObjectURL(objectUrl); } catch (e) {}
     }
   }
 }
 
 /**
- * Sube una imagen a Firebase Storage con nombre limpio determinista (1.webp, 2.webp...)
- * y devuelve la URL limpia sin tokens innecesarios
+ * Sube una imagen individual a Firebase Storage bajo la ruta limpia:
+ * products/${productId}/${index + 1}.webp
  */
 export async function uploadProductImage(imageSource, productId, index = 0, forceReupload = false) {
   const cleanFileName = `${index + 1}.webp`;
@@ -770,68 +778,45 @@ export async function uploadProductImage(imageSource, productId, index = 0, forc
  */
 export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
   try {
-    const snap = await getDocs(collection(db, "products"));
-    const allProducts = [];
-    let totalImagesToMigrate = 0;
+    const products = await getProducts({ forceRefresh: true });
+    let totalImagesToProcess = 0;
 
-    snap.forEach(docSnap => {
-      const p = { id: docSnap.id, ...docSnap.data() };
-      allProducts.push(p);
-      const images = p.images || [];
-      const dirtyCount = images.filter(img => 
-        typeof img !== 'string' ||
-        !img.includes('firebasestorage.googleapis.com') ||
-        img.includes('foto_') ||
-        img.includes('img_') ||
-        img.includes('cdn.shopify.com') ||
-        img.includes('unsplash.com')
-      ).length;
-      totalImagesToMigrate += dirtyCount;
+    products.forEach(p => {
+      const origs = MOCK_ORIGINAL_SOURCES[p.id] || p.images || [];
+      totalImagesToProcess += origs.length;
     });
 
-    console.info(`[Migrate] Detectadas ${totalImagesToMigrate} fotos a normalizar en Storage...`);
-    let currentProcessed = 0;
+    let processedCount = 0;
+    let migratedCount = 0;
 
-    for (const product of allProducts) {
-      // 1. Limpiar archivos antiguos foto_ o img_ dentro de la carpeta de la prenda
+    for (const product of products) {
+      const originalSources = MOCK_ORIGINAL_SOURCES[product.id] || product.images || [];
+      const newCleanUrls = [];
+      let productModified = false;
+
+      // Intentar limpiar archivos huérfanos con nombres foto_...webp
       try {
         const folderRef = ref(storage, `products/${product.id}`);
-        const listResult = await listAll(folderRef);
-        for (const itemRef of listResult.items) {
+        const existingFiles = await listAll(folderRef);
+        for (const itemRef of existingFiles.items) {
           if (itemRef.name.startsWith('foto_') || itemRef.name.startsWith('img_')) {
             await deleteObject(itemRef).catch(() => {});
           }
         }
-      } catch (listErr) {}
+      } catch (listErr) {
+        // Carpeta aún no existe en Storage
+      }
 
-      // 2. Determinar fuentes de imágenes (preferir originales si la actual falló en migraciones previas)
-      const currentImgs = product.images || [];
-      const originalSources = MOCK_ORIGINAL_SOURCES[product.id] || currentImgs;
-      const count = Math.max(currentImgs.length, originalSources.length);
-      const newCleanUrls = [];
-      let productModified = false;
+      for (let i = 0; i < originalSources.length; i++) {
+        const sourceUrl = originalSources[i];
+        processedCount++;
 
-      for (let i = 0; i < count; i++) {
-        const sourceUrl = originalSources[i] || currentImgs[i];
-        if (!sourceUrl) continue;
-
-        // Si ya es limpia y definitiva
-        if (
-          typeof sourceUrl === 'string' &&
-          sourceUrl.includes('firebasestorage.googleapis.com') &&
-          !sourceUrl.includes('foto_') &&
-          !sourceUrl.includes('img_')
-        ) {
-          newCleanUrls.push(sourceUrl);
-          continue;
-        }
-
-        currentProcessed++;
         if (typeof onProgressCallback === 'function') {
           onProgressCallback({
+            productId: product.id,
             productTitle: product.title,
-            current: currentProcessed,
-            total: Math.max(totalImagesToMigrate, currentProcessed)
+            current: processedCount,
+            total: totalImagesToProcess
           });
         }
 
@@ -839,6 +824,7 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
           const cleanUploadedUrl = await uploadProductImage(sourceUrl, product.id, i, true);
           newCleanUrls.push(cleanUploadedUrl);
           productModified = true;
+          migratedCount++;
         } catch (uploadErr) {
           console.error(`[Migrate] Error subiendo imagen ${i} de "${product.title}":`, uploadErr);
           newCleanUrls.push(buildCleanStorageUrl(`products/${product.id}/${i + 1}.webp`));
@@ -852,330 +838,272 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
       }
     }
 
-    // Refrescar caché local
-    const finalSnap = await getDocs(collection(db, "products"));
-    const finalProducts = [];
-    finalSnap.forEach(d => finalProducts.push({ id: d.id, ...d.data() }));
-    finalProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    saveProductsToLocalAndCache(finalProducts);
-
-    invalidateCacheAndNotify('images_migrated');
-    return { ok: true, migratedCount: currentProcessed, totalImages: totalImagesToMigrate };
+    invalidateCacheAndNotify('storage_migrated');
+    return { ok: true, migratedCount };
 
   } catch (err) {
-    console.error("[Migrate] Error general en migración de imágenes:", err);
-    return { ok: false, migratedCount: 0, totalImages: 0, error: err?.message || String(err) };
+    console.error("[StoreService] Error migrando catálogo a Storage:", err);
+    throw err;
   }
 }
 
 /**
- * Limpia pedidos antiguos que no sigan el formato DD-MM-YYYY-NNN
+ * Limpia pedidos con IDs obsoletos en Firestore y siembra los dos oficiales
  */
 export async function cleanLegacyOrdersInFirestore() {
   try {
-    const snap = await getDocs(collection(db, "orders"));
-    const orderFormatRegex = /^\d{2}-\d{2}-\d{4}-\d{3}$/;
+    const ordersSnap = await getDocs(collection(db, "orders"));
+    const batch = writeBatch(db);
+    let countDeleted = 0;
 
-    for (const docSnap of snap.docs) {
-      if (!orderFormatRegex.test(docSnap.id)) {
-        console.info(`[CleanOrders] Eliminando pedido con formato antiguo: ${docSnap.id}`);
-        await deleteDoc(doc(db, "orders", docSnap.id)).catch(() => {});
+    ordersSnap.forEach(d => {
+      const num = d.data().orderNumber || d.id;
+      // Formato válido: DD-MM-YYYY-NNN (ej. 05-11-2026-001)
+      if (!/^\d{2}-\d{2}-\d{4}-\d{3}$/.test(num)) {
+        batch.delete(doc(db, "orders", d.id));
+        countDeleted++;
       }
+    });
+
+    if (countDeleted > 0) {
+      await batch.commit();
+      console.log(`[StoreService] Eliminados ${countDeleted} pedidos antiguos de Firestore`);
     }
 
-    // Si la colección quedó vacía, sembrar los 2 pedidos iniciales
-    const checkSnap = await getDocs(collection(db, "orders"));
-    if (checkSnap.empty) {
-      for (const ord of INITIAL_SAMPLE_ORDERS) {
-        await setDoc(doc(db, "orders", ord.orderNumber), sanitizeForFirestore(ord));
-      }
+    // Asegurar que los dos pedidos oficiales existen
+    for (const sample of INITIAL_SAMPLE_ORDERS) {
+      await setDoc(doc(db, "orders", sample.orderNumber), sanitizeForFirestore(sample), { merge: true });
     }
-  } catch (e) {
-    console.warn("[CleanOrders] Error limpiando pedidos antiguos:", e);
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
+    }
+  } catch (err) {
+    console.warn("[StoreService] Error limpiando pedidos legacy:", err);
   }
 }
 
 /**
- * Genera el siguiente número de pedido oficial diario con formato DD-MM-YYYY-NNN (ej. 05-11-2026-001)
+ * Generador de número de pedido diario: DD-MM-YYYY-NNN (ej. 05-11-2026-001)
  */
 export async function generateNextOrderNumber(dateObj = new Date()) {
-  const dd = String(dateObj.getDate()).padStart(2, '0');
-  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const yyyy = dateObj.getFullYear();
-  const datePrefix = `${dd}-${mm}-${yyyy}-`;
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const y = String(dateObj.getFullYear());
+  const datePrefix = `${d}-${m}-${y}`;
 
-  const existingOrders = await getOrders({ forceRefresh: true });
+  const currentOrders = await getOrders({ forceRefresh: true });
+  const todaysOrders = currentOrders.filter(o => (o.orderNumber || '').startsWith(datePrefix));
+
   let maxSeq = 0;
-
-  existingOrders.forEach(o => {
-    if (o.orderNumber && String(o.orderNumber).startsWith(datePrefix)) {
-      const parts = String(o.orderNumber).split('-');
+  todaysOrders.forEach(o => {
+    const parts = (o.orderNumber || '').split('-');
+    if (parts.length === 4) {
       const seq = parseInt(parts[3], 10);
       if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
     }
   });
 
   const nextSeq = String(maxSeq + 1).padStart(3, '0');
-  return `${datePrefix}${nextSeq}`;
+  return `${datePrefix}-${nextSeq}`;
 }
 
-/**
- * Sincroniza atómicamente todos los productos, ajustes y pedidos en Firebase Firestore mediante writeBatch
- */
+// ============================================================================
+// 3. SINCRONIZACIÓN Y SIEMBRA DE FIRESTORE
+// ============================================================================
+
 export async function syncAllToFirestore({ forceOverwrite = false } = {}) {
   try {
-    const snap = await getDocs(collection(db, "products"));
+    const productsSnap = await getDocs(collection(db, "products"));
+    const shouldSeedProducts = productsSnap.empty || forceOverwrite;
 
-    if (snap.empty || forceOverwrite) {
-      console.info("[StoreService] Sincronizando catálogo con writeBatch...");
-      
-      let products = MOCK_PRODUCTS;
-      try {
-        if (typeof localStorage !== 'undefined') {
-          const rawP = localStorage.getItem(DB_PRODUCTS_KEY);
-          if (rawP) products = JSON.parse(rawP);
-        }
-      } catch (e) {}
-
-      let settings = MOCK_SETTINGS;
-      try {
-        if (typeof localStorage !== 'undefined') {
-          const rawS = localStorage.getItem(DB_SETTINGS_KEY);
-          if (rawS) settings = JSON.parse(rawS);
-        }
-      } catch (e) {}
-
-      let orders = INITIAL_SAMPLE_ORDERS;
-      try {
-        if (typeof localStorage !== 'undefined') {
-          const rawO = localStorage.getItem(ORDERS_STORAGE_KEY);
-          if (rawO) orders = JSON.parse(rawO);
-        }
-      } catch (e) {}
-
+    if (shouldSeedProducts) {
       const batch = writeBatch(db);
-
-      for (const p of products) {
-        const cleanP = sanitizeForFirestore(p);
-        batch.set(doc(db, "products", String(cleanP.id)), cleanP);
+      for (const prod of MOCK_PRODUCTS) {
+        const prodRef = doc(db, "products", prod.id);
+        batch.set(prodRef, sanitizeForFirestore(prod));
       }
-
-      batch.set(doc(db, "settings", "store_config"), sanitizeForFirestore(settings));
-
-      for (const order of orders) {
-        const cleanOrder = sanitizeForFirestore(order);
-        batch.set(doc(db, "orders", String(cleanOrder.orderNumber)), cleanOrder);
-      }
-
       await batch.commit();
+    }
 
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+    const settingsDoc = await getDoc(doc(db, "settings", "store_config"));
+    if (!settingsDoc.exists() || forceOverwrite) {
+      await setDoc(doc(db, "settings", "store_config"), sanitizeForFirestore(MOCK_SETTINGS));
+    }
+
+    const ordersSnap = await getDocs(collection(db, "orders"));
+    if (ordersSnap.empty || forceOverwrite) {
+      const ordersBatch = writeBatch(db);
+      for (const order of INITIAL_SAMPLE_ORDERS) {
+        ordersBatch.set(doc(db, "orders", order.orderNumber), sanitizeForFirestore(order));
       }
+      await ordersBatch.commit();
     }
 
-    // Limpiar pedidos legacy
-    await cleanLegacyOrdersInFirestore();
-
-    const verifySnap = await getDocs(collection(db, "products"));
-    const count = verifySnap.size;
-
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
     }
 
-    return { ok: true, count };
+    invalidateCacheAndNotify('firestore_seeded');
+    return { ok: true, productsCount: MOCK_PRODUCTS.length };
 
   } catch (err) {
-    console.error("[FIRESTORE ERROR CRÍTICO]:", err);
-    return {
-      ok: false,
-      errorCode: err.code || 'unknown',
-      errorMessage: err.message || String(err)
-    };
+    console.error("[StoreService] Error en syncAllToFirestore:", err);
+    throw err;
   }
 }
 
-/**
- * Obtiene todos los productos del catálogo con auto-seed verificado en Firestore y caché
- */
-export async function getProducts({ forceRefresh = false } = {}) {
-  const isVerifiedInSession = (typeof sessionStorage !== 'undefined') 
-    && sessionStorage.getItem(FIRESTORE_VERIFIED_KEY) === 'true';
+// ============================================================================
+// 4. CONSULTA Y GESTIÓN DE PRODUCTOS
+// ============================================================================
 
-  if (!forceRefresh && isVerifiedInSession) {
+export async function getProducts(options = {}) {
+  const forceRefresh = typeof options === 'boolean' ? options : !!options.forceRefresh;
+
+  // 1. Comprobar caché en sessionStorage (validez 10 minutos)
+  if (!forceRefresh && typeof sessionStorage !== 'undefined') {
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_TTL_MS && Array.isArray(data) && data.length > 0) {
-            return data;
-          }
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_TTL_MS)) {
+          return parsed.data;
         }
       }
     } catch (e) {}
   }
 
+  let products = [];
+
+  // 2. Intentar lectura desde Cloud Firestore
   try {
-    const productsColl = collection(db, "products");
-    const snapshot = await getDocs(productsColl);
-
-    if (!snapshot.empty) {
-      const cloudProducts = [];
-      snapshot.forEach(docSnap => {
-        cloudProducts.push({ id: docSnap.id, ...docSnap.data() });
+    const snap = await getDocs(collection(db, "products"));
+    if (!snap.empty) {
+      snap.forEach(d => {
+        products.push({ id: d.id, ...d.data() });
       });
+    } else {
+      // Auto-semilla inicial si Firestore está vacío
+      await syncAllToFirestore({ forceOverwrite: false });
+      products = [...MOCK_PRODUCTS];
+    }
+  } catch (firestoreErr) {
+    console.warn("[StoreService] Firestore no disponible, usando fallback local:", firestoreErr.message);
 
-      cloudProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-      saveProductsToLocalAndCache(cloudProducts);
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+    if (typeof localStorage !== 'undefined') {
+      const localData = localStorage.getItem(DB_PRODUCTS_KEY);
+      if (localData) {
+        try { products = JSON.parse(localData); } catch (e) {}
       }
-      return cloudProducts;
     }
 
-    const syncRes = await syncAllToFirestore({ forceOverwrite: true });
-    if (syncRes.ok) {
-      saveProductsToLocalAndCache(MOCK_PRODUCTS);
-      return MOCK_PRODUCTS;
+    if (!products || products.length === 0) {
+      products = [...MOCK_PRODUCTS];
     }
-
-  } catch (err) {
-    console.warn("[StoreService] Error accediendo a Firestore, usando fallback local:", err?.message || err);
   }
 
+  // Sincronizar en localStorage y sessionStorage
   try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(DB_PRODUCTS_KEY);
-      if (raw) {
-        const localProducts = JSON.parse(raw);
-        if (Array.isArray(localProducts) && localProducts.length > 0) {
-          return localProducts;
-        }
-      }
-    }
-  } catch (e) {}
-
-  return MOCK_PRODUCTS;
-}
-
-function saveProductsToLocalAndCache(products) {
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-        data: products,
-        timestamp: Date.now()
-      }));
-    }
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(products));
     }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data: products
+      }));
+    }
   } catch (e) {}
+
+  return products;
 }
 
-/**
- * Obtiene un producto por su id o su slug
- */
 export async function getProductByIdOrSlug(idOrSlug) {
   if (!idOrSlug) return null;
   const products = await getProducts();
-  const search = String(idOrSlug).toLowerCase().trim();
-  return products.find(p => p.id.toLowerCase() === search || (p.slug && p.slug.toLowerCase() === search)) || null;
+  const cleanTerm = String(idOrSlug).toLowerCase().trim();
+  return products.find(p => 
+    String(p.id).toLowerCase() === cleanTerm || 
+    String(p.slug || '').toLowerCase() === cleanTerm
+  ) || null;
 }
 
-/**
- * Filtra y ordena los productos
- */
-export async function getProductsByFilter({
-  category = 'todos',
-  search = '',
-  onlyInStock = false,
-  size = null,
-  minPrice = null,
-  maxPrice = null,
-  sortBy = 'featured'
-} = {}) {
-  let products = await getProducts();
+export async function getProductsByFilter(filters = {}) {
+  const {
+    category = 'all',
+    collectionTag = 'all',
+    minPrice = 0,
+    maxPrice = Infinity,
+    sortBy = 'featured',
+    search = ''
+  } = filters;
 
-  if (category && category !== 'todos') {
-    const catLow = category.toLowerCase().trim();
-    products = products.filter(p => {
-      const pCat = (p.category || '').toLowerCase();
-      const pSub = (p.subCategory || '').toLowerCase();
-      const pTags = (p.collectionTags || []).map(t => t.toLowerCase());
-      return pCat === catLow || pSub === catLow || pTags.includes(catLow);
-    });
-  }
+  const allProducts = await getProducts();
 
-  if (search && search.trim() !== '') {
-    const q = search.toLowerCase().trim();
-    products = products.filter(p => {
-      return (p.title || '').toLowerCase().includes(q) ||
-             (p.description || '').toLowerCase().includes(q) ||
-             (p.subCategory || '').toLowerCase().includes(q);
-    });
-  }
+  let filtered = allProducts.filter(p => {
+    if (p.active === false) return false;
 
-  if (onlyInStock) {
-    products = products.filter(p => {
-      const stock = p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
-      return stock > 0;
-    });
-  }
+    if (category !== 'all' && p.category !== category) return false;
 
-  if (size) {
-    products = products.filter(p => {
-      return p.variants && p.variants.some(v => v.size.toUpperCase() === size.toUpperCase() && v.stock > 0);
-    });
-  }
+    if (collectionTag !== 'all') {
+      const tags = Array.isArray(p.collectionTags) ? p.collectionTags : [];
+      if (!tags.includes(collectionTag) && p.subCategory !== collectionTag) return false;
+    }
 
-  if (minPrice !== null) {
-    products = products.filter(p => p.price >= minPrice);
-  }
-  if (maxPrice !== null) {
-    products = products.filter(p => p.price <= maxPrice);
-  }
+    if (p.price < minPrice || p.price > maxPrice) return false;
 
-  const sorted = [...products];
+    if (search) {
+      const term = search.toLowerCase();
+      const titleMatch = (p.title || '').toLowerCase().includes(term);
+      const descMatch = (p.description || '').toLowerCase().includes(term);
+      if (!titleMatch && !descMatch) return false;
+    }
+
+    return true;
+  });
+
   switch (sortBy) {
     case 'price-asc':
-      sorted.sort((a, b) => a.price - b.price);
+      filtered.sort((a, b) => a.price - b.price);
       break;
     case 'price-desc':
-      sorted.sort((a, b) => b.price - a.price);
+      filtered.sort((a, b) => b.price - a.price);
       break;
     case 'newest':
-      sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      break;
+    case 'title-asc':
+      filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       break;
     case 'featured':
     default:
-      sorted.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+      filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
       break;
   }
 
-  return sorted;
+  return filtered;
 }
 
-/**
- * Productos relacionados
- */
-export async function getRelatedProducts(productId, limit = 4) {
-  const all = await getProducts();
-  const current = all.find(p => p.id === productId);
-  if (!current) return all.slice(0, limit);
+export async function getRelatedProducts(currentProductId, categoryOrLimit = 4, maybeLimit = 4) {
+  let category = null;
+  let limit = 4;
 
-  const related = all.filter(p => p.id !== productId && p.category === current.category);
-  if (related.length >= limit) return related.slice(0, limit);
+  if (typeof categoryOrLimit === 'string') {
+    category = categoryOrLimit;
+    limit = typeof maybeLimit === 'number' ? maybeLimit : 4;
+  } else if (typeof categoryOrLimit === 'number') {
+    limit = categoryOrLimit;
+  }
 
-  const others = all.filter(p => p.id !== productId && p.category !== current.category);
-  return [...related, ...others].slice(0, limit);
+  const allProducts = await getProducts();
+  const current = allProducts.find(p => p.id === currentProductId);
+  const targetCategory = category || (current ? current.category : 'ropa');
+
+  return allProducts
+    .filter(p => p.id !== currentProductId && p.active !== false && p.category === targetCategory)
+    .slice(0, limit);
 }
 
-/**
- * Guarda o actualiza una prenda en Firestore y Storage, sincronizando con local
- */
 export async function saveProduct(productData, onProgressCallback = null) {
   if (!productData || !productData.title) {
     throw new Error("El título de la prenda es obligatorio.");
@@ -1250,23 +1178,23 @@ export async function saveProduct(productData, onProgressCallback = null) {
   return cleanProduct;
 }
 
-/**
- * Elimina una prenda de Firestore y sus fotos de Storage
- */
 export async function deleteProduct(productId) {
   if (!productId) return false;
 
-  await deleteDoc(doc(db, "products", productId));
-
   try {
-    const folderRef = ref(storage, `products/${productId}`);
-    const listResult = await listAll(folderRef);
-    for (const item of listResult.items) {
-      await deleteObject(item).catch(() => {});
-    }
-  } catch (e) {}
+    // Borrar imágenes en Storage
+    try {
+      const folderRef = ref(storage, `products/${productId}`);
+      const files = await listAll(folderRef);
+      for (const item of files.items) {
+        await deleteObject(item).catch(() => {});
+      }
+    } catch (e) {}
 
-  try {
+    // Borrar documento en Firestore
+    await deleteDoc(doc(db, "products", productId));
+
+    // Actualizar almacenamiento local
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(DB_PRODUCTS_KEY);
       if (raw) {
@@ -1275,183 +1203,159 @@ export async function deleteProduct(productId) {
         localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(list));
       }
     }
-  } catch (e) {}
 
-  invalidateCacheAndNotify('products_updated');
-  return true;
+    invalidateCacheAndNotify('products_updated');
+    return true;
+  } catch (err) {
+    console.error("[StoreService] Error eliminando producto:", err);
+    throw err;
+  }
 }
 
-/**
- * Descuenta el stock tras una compra confirmada
- */
 export async function updateProductStockAfterOrder(orderItems) {
   if (!Array.isArray(orderItems) || orderItems.length === 0) return;
 
-  const products = await getProducts({ forceRefresh: true });
-
   for (const item of orderItems) {
-    const prod = products.find(p => p.id === item.productId);
-    if (!prod || !prod.variants) continue;
-
-    const variant = prod.variants.find(v => v.size.toUpperCase() === String(item.size).toUpperCase());
-    if (variant) {
-      variant.stock = Math.max(0, (variant.stock || 0) - (item.quantity || 1));
-      
-      try {
-        await setDoc(doc(db, "products", prod.id), sanitizeForFirestore(prod), { merge: true });
-      } catch (e) {
-        console.warn("[StoreService] Error actualizando stock en Firestore:", e);
+    try {
+      const prodRef = doc(db, "products", item.productId);
+      const prodSnap = await getDoc(prodRef);
+      if (prodSnap.exists()) {
+        const prod = prodSnap.data();
+        let variants = prod.variants || [];
+        variants = variants.map(v => {
+          if (v.size === item.size) {
+            return { ...v, stock: Math.max(0, (v.stock || 0) - item.quantity) };
+          }
+          return v;
+        });
+        await updateDoc(prodRef, { variants, updatedAt: Date.now() });
       }
+    } catch (e) {
+      console.warn(`[StoreService] No se pudo descontar stock de ${item.productId}:`, e);
     }
   }
 
-  saveProductsToLocalAndCache(products);
   invalidateCacheAndNotify('stock_updated');
 }
 
-/**
- * Obtiene la configuración de la tienda
- */
-export async function getStoreSettings() {
+// ============================================================================
+// 5. AJUSTES DE LA TIENDA
+// ============================================================================
+
+export async function getStoreSettings(options = {}) {
   try {
-    const settingsDoc = await getDoc(doc(db, "settings", "store_config"));
-    if (settingsDoc.exists()) {
-      return { ...MOCK_SETTINGS, ...settingsDoc.data() };
+    const docSnap = await getDoc(doc(db, "settings", "store_config"));
+    if (docSnap.exists()) {
+      return { ...MOCK_SETTINGS, ...docSnap.data() };
     }
   } catch (e) {
-    console.warn("[StoreService] Error leyendo settings de Firestore, usando local:", e?.message || e);
+    console.warn("[StoreService] Firestore settings offline, usando local:", e.message);
   }
 
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(DB_SETTINGS_KEY);
-      if (saved) return JSON.parse(saved);
+  if (typeof localStorage !== 'undefined') {
+    const saved = localStorage.getItem(DB_SETTINGS_KEY);
+    if (saved) {
+      try { return { ...MOCK_SETTINGS, ...JSON.parse(saved) }; } catch (e) {}
     }
-  } catch (e) {}
+  }
 
-  return MOCK_SETTINGS;
+  return { ...MOCK_SETTINGS };
 }
 
-/**
- * Guarda la configuración de la tienda
- */
-export async function saveStoreSettings(settings) {
-  const merged = sanitizeForFirestore({ ...MOCK_SETTINGS, ...settings, updatedAt: Date.now() });
-
-  await setDoc(doc(db, "settings", "store_config"), merged, { merge: true });
+export async function saveStoreSettings(newSettings) {
+  const merged = { ...MOCK_SETTINGS, ...newSettings, updatedAt: Date.now() };
 
   try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(merged));
-    }
-  } catch (e) {}
+    await setDoc(doc(db, "settings", "store_config"), sanitizeForFirestore(merged));
+  } catch (e) {
+    console.warn("[StoreService] Firestore offline al guardar settings:", e.message);
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(merged));
+  }
 
   invalidateCacheAndNotify('settings_updated');
   return merged;
 }
 
-/**
- * Obtiene el listado de pedidos
- */
-export async function getOrders({ forceRefresh = false } = {}) {
+// ============================================================================
+// 6. GESTIÓN DE PEDIDOS
+// ============================================================================
+
+export async function getOrders(options = {}) {
+  let orders = [];
+
   try {
     const snap = await getDocs(collection(db, "orders"));
     if (!snap.empty) {
-      const orders = [];
       snap.forEach(d => orders.push(d.data()));
-      orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      return orders;
+    } else {
+      orders = [...INITIAL_SAMPLE_ORDERS];
     }
   } catch (e) {
-    console.warn("[StoreService] Error leyendo pedidos de Firestore:", e?.message || e);
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (saved) {
+        try { orders = JSON.parse(saved); } catch (err) {}
+      }
+    }
+    if (orders.length === 0) orders = [...INITIAL_SAMPLE_ORDERS];
   }
 
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    }
-  } catch (e) {}
-
-  return INITIAL_SAMPLE_ORDERS;
+  orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  return orders;
 }
 
-/**
- * Registra un nuevo pedido completado con código DD-MM-YYYY-NNN
- */
 export async function createOrder(orderData) {
-  let orderNumber = orderData.orderNumber;
-  if (!orderNumber || !/^\d{2}-\d{2}-\d{4}-\d{3}$/.test(orderNumber)) {
-    orderNumber = await generateNextOrderNumber();
-  }
-
+  const orderNumber = orderData.orderNumber || await generateNextOrderNumber();
   const cleanOrder = sanitizeForFirestore({
     ...orderData,
     orderNumber,
-    redsysOrderId: orderNumber.replace(/-/g, '')
+    status: orderData.status || 'PAID',
+    createdAt: orderData.createdAt || Date.now()
   });
 
   try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-      const orders = raw ? JSON.parse(raw) : [];
-      orders.unshift(cleanOrder);
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-    }
-  } catch (e) {}
+    await setDoc(doc(db, "orders", cleanOrder.orderNumber), cleanOrder);
+  } catch (e) {
+    console.warn("[StoreService] Guardando pedido en fallback local:", e);
+  }
 
-  await setDoc(doc(db, "orders", String(cleanOrder.orderNumber)), cleanOrder);
+  if (typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+    let list = raw ? JSON.parse(raw) : [];
+    list.unshift(cleanOrder);
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(list));
+  }
 
   invalidateCacheAndNotify('order_created');
   return cleanOrder;
 }
 
-/**
- * Actualiza el estado o seguimiento Packlink de un pedido
- */
 export async function updateOrderStatus(orderNumber, updates) {
-  const cleanUpdates = sanitizeForFirestore({ ...updates, updatedAt: Date.now() });
-
   try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-      if (raw) {
-        const orders = JSON.parse(raw);
-        const idx = orders.findIndex(o => o.orderNumber === orderNumber);
-        if (idx >= 0) {
-          orders[idx] = { ...orders[idx], ...cleanUpdates };
-          localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-        }
-      }
-    }
-  } catch (e) {}
+    await updateDoc(doc(db, "orders", orderNumber), sanitizeForFirestore(updates));
+  } catch (e) {
+    console.warn("[StoreService] Fallback local para estado de pedido:", e);
+  }
 
-  await setDoc(doc(db, "orders", String(orderNumber)), cleanUpdates, { merge: true });
+  if (typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+    if (raw) {
+      let list = JSON.parse(raw);
+      list = list.map(o => (o.orderNumber === orderNumber ? { ...o, ...updates } : o));
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(list));
+    }
+  }
 
   invalidateCacheAndNotify('order_updated');
   return true;
 }
 
-/**
- * Restaura la base de datos a los valores de fábrica
- */
 export async function resetDatabaseToFactory() {
-  purgeLegacyCaches();
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
-      localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(MOCK_SETTINGS));
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem(CACHE_KEY);
-      sessionStorage.removeItem(FIRESTORE_VERIFIED_KEY);
-    }
-  } catch (e) {}
-
   await syncAllToFirestore({ forceOverwrite: true });
-  await migrateAllImagesToFirebaseStorage();
-
-  invalidateCacheAndNotify('factory_reset');
+  await cleanLegacyOrdersInFirestore();
+  invalidateCacheAndNotify('all');
   return true;
 }
