@@ -191,6 +191,109 @@ button, input, select, textarea {
   color: var(--badge-green-text);
 }
 
+.admin-cloud-indicator.is-error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.admin-cloud-indicator.is-error .cloud-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.admin-btn-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: var(--radius-btn);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-btn-sync:hover {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.admin-btn-sync:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-btn-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: var(--radius-btn);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-btn-warning:hover {
+  background-color: #fde68a;
+}
+
+.firestore-rules-alert {
+  background-color: #fff1f2;
+  border-bottom: 1px solid #fecdd3;
+  padding: 12px 20px;
+  color: #9f1239;
+  font-size: 13px;
+}
+
+.rules-alert-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.rules-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rules-alert-header h4 {
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.rules-alert-header button {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #9f1239;
+}
+
+.firestore-rules-alert pre {
+  background: #1e1e2e;
+  color: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: monospace;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
 .cloud-dot {
   width: 7px;
   height: 7px;

@@ -20,7 +20,8 @@ import {
   saveStoreSettings,
   getOrders,
   updateOrderStatus,
-  resetDatabaseToFactory
+  resetDatabaseToFactory,
+  syncAllToFirestore
 } from '../assets/js/store-service.js';
 
 import { formatPrice } from '../assets/js/ui.js';
@@ -43,10 +44,11 @@ let currentSelectedColors = []; // Array de { name: string, hex: string, inStock
 document.addEventListener('DOMContentLoaded', async () => {
   setupAuth();
   setupTabNavigation();
+  setupSyncButton();
 });
 
 /* ==========================================================================
-   1. GESTIÓN DE AUTENTICACIÓN CON FIREBASE AUTH
+   1. GESTIÓN DE AUTENTICACIÓN CON FIREBASE AUTH Y ESTADO DE FIRESTORE
    ========================================================================== */
 function setupAuth() {
   const loginScreen = document.getElementById('admin-login-screen');
@@ -57,29 +59,25 @@ function setupAuth() {
   const demoLoginBtn = document.getElementById('btn-demo-login');
   const logoutBtn = document.getElementById('btn-logout');
   const errorMsg = document.getElementById('login-error-msg');
-  const cloudIndicator = document.getElementById('header-cloud-status');
+  const loginRealBtn = document.getElementById('btn-header-login-real');
 
   // 1. Escuchar estado de autenticación real de Firebase
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
       if (loginScreen) loginScreen.style.display = 'none';
       if (appScreen) appScreen.style.display = 'block';
-      if (cloudIndicator) {
-        cloudIndicator.className = 'admin-cloud-indicator is-connected';
-        cloudIndicator.innerHTML = '<span class="cloud-dot"></span><span class="hide-mobile">Cloud Conectado (roneoshop-es)</span>';
-      }
-      loadAdminData();
+      if (loginRealBtn) loginRealBtn.style.display = 'none';
+      await loadAdminData();
+      await checkFirestoreStatus();
     } else {
       // Verificar si hay sesión demo local
       const isLocalDemo = sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
       if (isLocalDemo) {
         if (loginScreen) loginScreen.style.display = 'none';
         if (appScreen) appScreen.style.display = 'block';
-        if (cloudIndicator) {
-          cloudIndicator.className = 'admin-cloud-indicator';
-          cloudIndicator.innerHTML = '<span class="cloud-dot" style="background:#888;"></span><span class="hide-mobile">Modo Local (Demo)</span>';
-        }
-        loadAdminData();
+        if (loginRealBtn) loginRealBtn.style.display = 'inline-flex';
+        await loadAdminData();
+        await checkFirestoreStatus();
       } else {
         if (loginScreen) loginScreen.style.display = 'flex';
         if (appScreen) appScreen.style.display = 'none';
@@ -122,15 +120,13 @@ function setupAuth() {
 
   // 3. Acceso rápido Modo Demo Local
   if (demoLoginBtn) {
-    demoLoginBtn.addEventListener('click', () => {
+    demoLoginBtn.addEventListener('click', async () => {
       sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
       if (loginScreen) loginScreen.style.display = 'none';
       if (appScreen) appScreen.style.display = 'block';
-      if (cloudIndicator) {
-        cloudIndicator.className = 'admin-cloud-indicator';
-        cloudIndicator.innerHTML = '<span class="cloud-dot" style="background:#888;"></span><span class="hide-mobile">Modo Local (Demo)</span>';
-      }
-      loadAdminData();
+      if (loginRealBtn) loginRealBtn.style.display = 'inline-flex';
+      await loadAdminData();
+      await checkFirestoreStatus();
       showToast('Acceso en Modo Local');
     });
   }
@@ -143,6 +139,122 @@ function setupAuth() {
         await signOut(auth);
       } catch (e) {}
       window.location.reload();
+    });
+  }
+}
+
+/**
+ * Verifica el estado real de conexión y documentos en Firebase Firestore
+ */
+async function checkFirestoreStatus() {
+  const cloudIndicator = document.getElementById('header-cloud-status');
+  const cloudText = document.getElementById('cloud-status-text');
+  const rulesAlert = document.getElementById('firestore-rules-alert');
+  const errorCodeEl = document.getElementById('firestore-error-code');
+
+  try {
+    const res = await syncAllToFirestore();
+    if (res.ok) {
+      if (cloudIndicator) {
+        cloudIndicator.className = 'admin-cloud-indicator is-connected';
+        cloudIndicator.title = `Firestore Activo: ${res.count} prendas en la nube (roneoshop-es)`;
+      }
+      if (cloudText) {
+        cloudText.textContent = `Firestore Activo (${res.count} prendas en nube)`;
+      }
+      if (rulesAlert) rulesAlert.style.display = 'none';
+    } else {
+      if (cloudIndicator) {
+        cloudIndicator.className = 'admin-cloud-indicator is-error';
+        cloudIndicator.title = `Error Firestore: ${res.errorCode} — Pulsa para ver solución`;
+      }
+      if (cloudText) {
+        cloudText.textContent = `Error Firestore: ${res.errorCode}`;
+      }
+      if (rulesAlert) {
+        rulesAlert.style.display = 'block';
+        if (errorCodeEl) errorCodeEl.textContent = res.errorCode;
+      }
+    }
+    return res;
+  } catch (err) {
+    console.warn("[Admin] Error al verificar estado de Firestore:", err);
+    return { ok: false, errorCode: 'unknown', errorMessage: err?.message };
+  }
+}
+
+/**
+ * Configura el botón Sincronizar Nube (writeBatch forzado) y alertas
+ */
+function setupSyncButton() {
+  const syncBtn = document.getElementById('btn-sync-cloud');
+  const rulesAlert = document.getElementById('firestore-rules-alert');
+  const closeAlertBtn = document.getElementById('close-rules-alert');
+  const loginRealBtn = document.getElementById('btn-header-login-real');
+  const cloudIndicator = document.getElementById('header-cloud-status');
+
+  if (closeAlertBtn && rulesAlert) {
+    closeAlertBtn.addEventListener('click', () => {
+      rulesAlert.style.display = 'none';
+    });
+  }
+
+  if (cloudIndicator) {
+    cloudIndicator.addEventListener('click', () => {
+      if (cloudIndicator.classList.contains('is-error') && rulesAlert) {
+        rulesAlert.style.display = rulesAlert.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+  }
+
+  if (loginRealBtn) {
+    loginRealBtn.addEventListener('click', () => {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+      const loginScreen = document.getElementById('admin-login-screen');
+      const appScreen = document.getElementById('admin-app-screen');
+      if (loginScreen) loginScreen.style.display = 'flex';
+      if (appScreen) appScreen.style.display = 'none';
+      const emailInput = document.getElementById('login-email');
+      if (emailInput) emailInput.value = '1roneoshop@gmail.com';
+      const passInput = document.getElementById('login-password');
+      if (passInput) {
+        passInput.value = '';
+        passInput.focus();
+      }
+    });
+  }
+
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true;
+      const originalHtml = syncBtn.innerHTML;
+      syncBtn.innerHTML = `
+        <svg class="admin-spinner-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+          <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+        </svg>
+        <span class="hide-mobile">Subiendo a Nube...</span>
+      `;
+
+      try {
+        const res = await syncAllToFirestore({ forceOverwrite: true });
+        if (res.ok) {
+          showToast(`¡${res.count} productos, ajustes y pedidos subidos a Firebase Firestore con éxito!`);
+          await checkFirestoreStatus();
+          currentProducts = await getProducts({ forceRefresh: true });
+          renderKPIs();
+          renderProductsList();
+        } else {
+          showToast(`Error al subir a Firestore: ${res.errorCode}`);
+          await checkFirestoreStatus();
+        }
+      } catch (err) {
+        console.error("[Admin] Error forzando sincronización:", err);
+        showToast(`Error: ${err?.message || 'Error de conexión'}`);
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = originalHtml;
+      }
     });
   }
 }
@@ -893,15 +1005,17 @@ async function handleSaveProductSubmit(e) {
     currentProducts = await getProducts({ forceRefresh: true });
     renderKPIs();
     renderProductsList();
+    await checkFirestoreStatus();
 
     const modal = document.getElementById('product-modal');
     if (modal) modal.classList.remove('is-open');
     document.body.style.overflow = '';
 
-    showToast(editingProductId ? 'Prenda actualizada con éxito' : 'Nueva prenda guardada y publicada');
+    showToast(editingProductId ? 'Prenda actualizada con éxito' : 'Nueva prenda guardada y publicada en Firebase');
   } catch (err) {
     console.error("[Admin] Error guardando producto:", err);
-    showToast('Error al guardar la prenda.');
+    showToast(`Error al guardar en Firebase: ${err?.message || 'Error en Firestore'}`);
+    await checkFirestoreStatus();
   } finally {
     if (submitBtn) submitBtn.disabled = false;
     if (btnText) btnText.style.display = 'inline';
@@ -925,6 +1039,7 @@ async function handleDeleteProduct(productId) {
     currentProducts = await getProducts({ forceRefresh: true });
     renderKPIs();
     renderProductsList();
+    await checkFirestoreStatus();
     showToast('Prenda eliminada correctamente.');
   } catch (err) {
     console.error("[Admin] Error eliminando producto:", err);
@@ -1248,7 +1363,8 @@ function setupSettingsEvents() {
 
       await resetDatabaseToFactory();
       await loadAdminData();
-      showToast('Base de datos restaurada a valores de fábrica.');
+      await checkFirestoreStatus();
+      showToast('Base de datos y Firebase restaurados a valores de fábrica.');
     });
   }
 }

@@ -1,7 +1,7 @@
 /**
  * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP (FASE 3.5 DEFINITIVA)
  * Motor central de datos conectado a Firebase Firestore + Firebase Storage
- * con auto-seed de catálogo, compresión .webp a Storage, caché en sessionStorage
+ * con subida por lotes atómica (writeBatch), auto-seed verificado, compresión .webp
  * y sincronización instantánea multi-pestaña mediante BroadcastChannel('roneoshop_live_sync').
  */
 
@@ -14,14 +14,17 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  writeBatch,
   ref,
   uploadString,
-  getDownloadURL
+  getDownloadURL,
+  sanitizeForFirestore
 } from './firebase-config.js';
 
 // Claves de almacenamiento local y caché
-const CACHE_KEY = 'store_products_cache_v5';
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos para proteger la cuota gratuita de Firebase
+const CACHE_KEY = 'store_products_cache_v6';
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos para proteger la cuota gratuita de Firebase Spark
+const FIRESTORE_VERIFIED_KEY = 'firestore_verified_v1';
 const DB_PRODUCTS_KEY = 'store_db_products_v2';
 const DB_SETTINGS_KEY = 'store_db_settings_v2';
 const ORDERS_STORAGE_KEY = 'store_orders_v1';
@@ -261,27 +264,27 @@ export const MOCK_PRODUCTS = [
       "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80"
     ],
     variants: [
-      { size: "S", stock: 4, sku: "CA-BAS-S" },
-      { size: "M", stock: 6, sku: "CA-BAS-M" },
-      { size: "L", stock: 3, sku: "CA-BAS-L" }
+      { size: "S", stock: 6, sku: "CA-BAS-S" },
+      { size: "M", stock: 8, sku: "CA-BAS-M" },
+      { size: "L", stock: 5, sku: "CA-BAS-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715400000
   },
 
-  // 6. CONJUNTO PUNTO MILÁN (En Rebaja)
+  // 6. CONJUNTO PUNTO MILÁN (Rebaja)
   {
     id: "conjunto-punto-milan",
     slug: "conjunto-punto-milan",
     title: "CONJUNTO PUNTO MILÁN",
     category: "ropa",
-    subCategory: "punto",
-    collectionTags: ["rebajas", "novedades", "otono-invierno"],
+    subCategory: "conjuntos",
+    collectionTags: ["otono-invierno", "rebajas"],
     price: 32.95,
-    compareAtPrice: 39.95,
+    compareAtPrice: 42.00,
     weightKg: 0.60,
-    description: "Conjunto de dos piezas tejido en punto canalé fino ultrasuave al tacto con top manga caída y pantalón recto fluido.",
+    description: "Dos piezas de punto fino con textura acanalada formado por jersey de cuello perkins y pantalón culotte a juego.",
     hasSizes: true,
     colors: [
       { name: "Camel", hex: "#c19a6b", inStock: true },
@@ -289,61 +292,61 @@ export const MOCK_PRODUCTS = [
     ],
     images: [
       "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711",
-      "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=900&q=80"
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
     ],
     variants: [
-      { size: "S", stock: 2, sku: "CP-MIL-S" },
-      { size: "M", stock: 4, sku: "CP-MIL-M" },
-      { size: "L", stock: 1, sku: "CP-MIL-L" }
+      { size: "S", stock: 3, sku: "CO-MIL-S" },
+      { size: "M", stock: 5, sku: "CO-MIL-M" },
+      { size: "L", stock: 2, sku: "CO-MIL-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715500000
   },
 
-  // 7. VESTIDO MIDI ZAFIRO
+  // 7. VESTIDO BOHO CHIC (Rebaja)
   {
-    id: "vestido-midi-zafiro",
-    slug: "vestido-midi-zafiro",
-    title: "VESTIDO MIDI ZAFIRO",
+    id: "vestido-boho-chic",
+    slug: "vestido-boho-chic",
+    title: "VESTIDO BOHO CHIC",
     category: "ropa",
     subCategory: "vestidos",
-    collectionTags: ["primavera-verano", "novedades", "vestidos"],
-    price: 29.95,
-    compareAtPrice: null,
-    weightKg: 0.32,
-    description: "Vestido midi lencero confeccionado en satén fluido con caída diagonal y espalda abierta.",
+    collectionTags: ["primavera-verano", "rebajas", "vestidos"],
+    price: 26.50,
+    compareAtPrice: 35.00,
+    weightKg: 0.38,
+    description: "Vestido midi con estampado floral étnico, mangas abullonadas y cintura con lazada regulable para máxima feminidad.",
     hasSizes: true,
     colors: [
-      { name: "Verde Esmeralda", hex: "#2e6f40", inStock: true },
-      { name: "Negro", hex: "#121212", inStock: true }
+      { name: "Marrón Teja", hex: "#8b4513", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=900&q=80",
       "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
     ],
     variants: [
-      { size: "S", stock: 3, sku: "VM-ZAF-S" },
-      { size: "M", stock: 2, sku: "VM-ZAF-M" },
-      { size: "L", stock: 4, sku: "VM-ZAF-L" }
+      { size: "S", stock: 2, sku: "VE-BOH-S" },
+      { size: "M", stock: 4, sku: "VE-BOH-M" },
+      { size: "L", stock: 1, sku: "VE-BOH-L" }
     ],
     active: true,
     featured: true,
     createdAt: 1730715600000
   },
 
-  // 8. BODY ESCOTE ESPALDA (Rebaja)
+  // 8. BOMBER ESPIGA PARIS
   {
-    id: "body-escote-espalda",
-    slug: "body-escote-espalda",
-    title: "BODY ESCOTE ESPALDA",
+    id: "bomber-espiga-paris",
+    slug: "bomber-espiga-paris",
+    title: "BOMBER ESPIGA PARÍS",
     category: "ropa",
-    subCategory: "camisetas",
-    collectionTags: ["rebajas", "primavera-verano"],
-    price: 18.95,
-    compareAtPrice: 24.95,
-    weightKg: 0.18,
-    description: "Body sin costuras confeccionado en punto técnico moldeador con escote profundo en espalda.",
+    subCategory: "chaquetas",
+    collectionTags: ["otono-invierno", "abrigos"],
+    price: 28.95,
+    compareAtPrice: null,
+    weightKg: 0.55,
+    description: "Cazadora bomber oversize en jacquard espiga con cremallera frontal metálica y acabados elásticos en canalé.",
     hasSizes: true,
     colors: [
       { name: "Negro", hex: "#121212", inStock: true },
@@ -557,7 +560,7 @@ export const INITIAL_SAMPLE_ORDERS = [
 ];
 
 /**
- * Inicializa la base de datos local con MOCK_PRODUCTS si no existe
+ * Inicializa la base de datos local con datos semilla si no existen
  */
 function initLocalDatabase() {
   try {
@@ -587,7 +590,6 @@ initLocalDatabase();
  */
 export async function uploadProductImage(dataUrl, productId, index = 0) {
   if (!dataUrl) return "";
-  // Si ya es una URL externa o pública
   if (dataUrl.startsWith("http://") || dataUrl.startsWith("https://")) {
     return dataUrl;
   }
@@ -605,13 +607,101 @@ export async function uploadProductImage(dataUrl, productId, index = 0) {
 }
 
 /**
- * Obtiene todos los productos del catálogo con auto-seed en Firestore y caché
+ * Sincroniza atómicamente todos los productos, ajustes y pedidos en Firebase Firestore mediante writeBatch
+ * @param {Object} options { forceOverwrite = false }
+ * @returns {Promise<{ ok: boolean, count?: number, errorCode?: string, errorMessage?: string }>}
+ */
+export async function syncAllToFirestore({ forceOverwrite = false } = {}) {
+  try {
+    const snap = await getDocs(collection(db, "products"));
+
+    if (snap.empty || forceOverwrite) {
+      console.info("[StoreService] Subiendo catálogo completo a Firestore mediante writeBatch...");
+      
+      // 1. Obtener datos locales o iniciales
+      let products = MOCK_PRODUCTS;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const rawP = localStorage.getItem(DB_PRODUCTS_KEY);
+          if (rawP) products = JSON.parse(rawP);
+        }
+      } catch (e) {}
+
+      let settings = MOCK_SETTINGS;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const rawS = localStorage.getItem(DB_SETTINGS_KEY);
+          if (rawS) settings = JSON.parse(rawS);
+        }
+      } catch (e) {}
+
+      let orders = INITIAL_SAMPLE_ORDERS;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const rawO = localStorage.getItem(ORDERS_STORAGE_KEY);
+          if (rawO) orders = JSON.parse(rawO);
+        }
+      } catch (e) {}
+
+      // 2. Crear lote de escritura atómico
+      const batch = writeBatch(db);
+
+      // Añadir productos
+      for (const p of products) {
+        const cleanP = sanitizeForFirestore(p);
+        batch.set(doc(db, "products", String(cleanP.id)), cleanP);
+      }
+
+      // Añadir ajustes de tienda
+      batch.set(doc(db, "settings", "store_config"), sanitizeForFirestore(settings));
+
+      // Añadir pedidos
+      for (const order of orders) {
+        const cleanOrder = sanitizeForFirestore(order);
+        batch.set(doc(db, "orders", String(cleanOrder.orderNumber)), cleanOrder);
+      }
+
+      // 3. Ejecutar lote de forma atómica en el servidor Firestore
+      await batch.commit();
+
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+      }
+
+      console.info("[StoreService] ¡writeBatch completado con éxito en Firestore!");
+    }
+
+    // 4. Verificar conteo real en el servidor Firestore
+    const verifySnap = await getDocs(collection(db, "products"));
+    const count = verifySnap.size;
+
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+    }
+
+    return { ok: true, count };
+
+  } catch (err) {
+    console.error("[FIRESTORE ERROR CRÍTICO]:", err);
+    return {
+      ok: false,
+      errorCode: err.code || 'unknown',
+      errorMessage: err.message || String(err)
+    };
+  }
+}
+
+/**
+ * Obtiene todos los productos del catálogo con auto-seed verificado en Firestore y caché
  * @param {Object} options { forceRefresh = false }
  * @returns {Promise<Array>}
  */
 export async function getProducts({ forceRefresh = false } = {}) {
-  // 1. Verificar caché en sessionStorage si no se fuerza recarga
-  if (!forceRefresh) {
+  const isVerifiedInSession = (typeof sessionStorage !== 'undefined') 
+    && sessionStorage.getItem(FIRESTORE_VERIFIED_KEY) === 'true';
+
+  // 1. Si no forzamos refresco y ya está verificado en Firestore en esta sesión, consultar caché de sesión
+  if (!forceRefresh && isVerifiedInSession) {
     try {
       if (typeof sessionStorage !== 'undefined') {
         const cached = sessionStorage.getItem(CACHE_KEY);
@@ -625,7 +715,7 @@ export async function getProducts({ forceRefresh = false } = {}) {
     } catch (e) {}
   }
 
-  // 2. Consultar Firebase Firestore
+  // 2. Consultar Firebase Firestore directamente
   try {
     const productsColl = collection(db, "products");
     const snapshot = await getDocs(productsColl);
@@ -637,45 +727,41 @@ export async function getProducts({ forceRefresh = false } = {}) {
         cloudProducts.push({ id: docSnap.id, ...docSnap.data() });
       });
 
-      // Ordenar por fecha de creación descendente
       cloudProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-      // Guardar en caché y en localStorage
       saveProductsToLocalAndCache(cloudProducts);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(FIRESTORE_VERIFIED_KEY, 'true');
+      }
       return cloudProducts;
     }
 
-    // Caso B: Colección vacía en Firestore -> AUTO-SEED AUTOMÁTICO de los 12 productos
-    console.log("[StoreService] Colección vacía en Firestore. Ejecutando Auto-Seed inicial...");
-    for (const prod of MOCK_PRODUCTS) {
-      try {
-        await setDoc(doc(db, "products", prod.id), prod);
-      } catch (seedErr) {
-        console.warn("[StoreService] Error guardando producto semilla:", prod.id, seedErr);
-      }
+    // Caso B: Colección vacía en Firestore -> Auto-seed forzado con writeBatch
+    console.info("[StoreService] Colección vacía en Firestore. Ejecutando syncAllToFirestore...");
+    const syncRes = await syncAllToFirestore({ forceOverwrite: true });
+    if (syncRes.ok) {
+      saveProductsToLocalAndCache(MOCK_PRODUCTS);
+      return MOCK_PRODUCTS;
     }
-
-    saveProductsToLocalAndCache(MOCK_PRODUCTS);
-    return MOCK_PRODUCTS;
 
   } catch (err) {
     console.warn("[StoreService] Error accediendo a Firestore, usando fallback local:", err?.message || err);
+  }
 
-    // Fallback transparente a localStorage
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const raw = localStorage.getItem(DB_PRODUCTS_KEY);
-        if (raw) {
-          const localProducts = JSON.parse(raw);
-          if (Array.isArray(localProducts) && localProducts.length > 0) {
-            return localProducts;
-          }
+  // Fallback transparente a localStorage para que la web nunca se quede en blanco
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(DB_PRODUCTS_KEY);
+      if (raw) {
+        const localProducts = JSON.parse(raw);
+        if (Array.isArray(localProducts) && localProducts.length > 0) {
+          return localProducts;
         }
       }
-    } catch (e) {}
+    }
+  } catch (e) {}
 
-    return MOCK_PRODUCTS;
-  }
+  return MOCK_PRODUCTS;
 }
 
 function saveProductsToLocalAndCache(products) {
@@ -807,7 +893,7 @@ export async function saveProduct(productData) {
   // Normalización estricta de precios
   const price = parseFloat(String(productData.price || '0').replace(',', '.')) || 0;
   const compareAtPrice = productData.compareAtPrice 
-    ? parseFloat(String(productData.compareAtPrice).replace(',', '.')) 
+    ? (parseFloat(String(productData.compareAtPrice).replace(',', '.')) || null)
     : null;
   const weightKg = parseFloat(String(productData.weightKg || '0.35').replace(',', '.')) || 0.35;
 
@@ -831,7 +917,7 @@ export async function saveProduct(productData) {
     finalImages.push(imgUrl);
   }
 
-  const cleanProduct = {
+  const cleanProduct = sanitizeForFirestore({
     ...productData,
     id,
     slug: id,
@@ -846,14 +932,10 @@ export async function saveProduct(productData) {
     active: productData.active !== false,
     createdAt: productData.createdAt || Date.now(),
     updatedAt: Date.now()
-  };
+  });
 
-  // 1. Guardar en Firestore
-  try {
-    await setDoc(doc(db, "products", cleanProduct.id), cleanProduct, { merge: true });
-  } catch (err) {
-    console.warn("[StoreService] Error guardando en Firestore, guardando en local:", err?.message || err);
-  }
+  // 1. Guardar en Firestore directamente (lanza error si falla para diagnóstico)
+  await setDoc(doc(db, "products", cleanProduct.id), cleanProduct);
 
   // 2. Guardar en localStorage
   try {
@@ -881,12 +963,10 @@ export async function saveProduct(productData) {
 export async function deleteProduct(productId) {
   if (!productId) return false;
 
-  try {
-    await deleteDoc(doc(db, "products", productId));
-  } catch (err) {
-    console.warn("[StoreService] Error eliminando de Firestore:", err?.message || err);
-  }
+  // Eliminar en Firestore
+  await deleteDoc(doc(db, "products", productId));
 
+  // Eliminar en localStorage
   try {
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(DB_PRODUCTS_KEY);
@@ -920,8 +1000,10 @@ export async function updateProductStockAfterOrder(orderItems) {
       
       // Actualizar en Firestore
       try {
-        await setDoc(doc(db, "products", prod.id), prod, { merge: true });
-      } catch (e) {}
+        await setDoc(doc(db, "products", prod.id), sanitizeForFirestore(prod), { merge: true });
+      } catch (e) {
+        console.warn("[StoreService] Error actualizando stock en Firestore:", e);
+      }
     }
   }
 
@@ -956,13 +1038,9 @@ export async function getStoreSettings() {
  * Guarda la configuración de la tienda
  */
 export async function saveStoreSettings(settings) {
-  const merged = { ...MOCK_SETTINGS, ...settings, updatedAt: Date.now() };
+  const merged = sanitizeForFirestore({ ...MOCK_SETTINGS, ...settings, updatedAt: Date.now() });
 
-  try {
-    await setDoc(doc(db, "settings", "store_config"), merged, { merge: true });
-  } catch (e) {
-    console.warn("[StoreService] Error guardando settings en Firestore:", e?.message || e);
-  }
+  await setDoc(doc(db, "settings", "store_config"), merged, { merge: true });
 
   try {
     if (typeof localStorage !== 'undefined') {
@@ -977,13 +1055,26 @@ export async function saveStoreSettings(settings) {
 /**
  * Obtiene el listado de pedidos
  */
-export function getOrders() {
+export async function getOrders() {
+  try {
+    const snap = await getDocs(collection(db, "orders"));
+    if (!snap.empty) {
+      const orders = [];
+      snap.forEach(d => orders.push(d.data()));
+      orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return orders;
+    }
+  } catch (e) {
+    console.warn("[StoreService] Error leyendo pedidos de Firestore:", e?.message || e);
+  }
+
   try {
     if (typeof localStorage !== 'undefined') {
       const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
       if (raw) return JSON.parse(raw);
     }
   } catch (e) {}
+
   return INITIAL_SAMPLE_ORDERS;
 }
 
@@ -991,45 +1082,47 @@ export function getOrders() {
  * Registra un nuevo pedido completado
  */
 export async function createOrder(orderData) {
-  const orders = getOrders();
-  orders.unshift(orderData);
+  const cleanOrder = sanitizeForFirestore(orderData);
 
   try {
     if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+      const orders = raw ? JSON.parse(raw) : [];
+      orders.unshift(cleanOrder);
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
     }
   } catch (e) {}
 
-  try {
-    await setDoc(doc(db, "orders", String(orderData.orderNumber)), orderData);
-  } catch (e) {}
+  await setDoc(doc(db, "orders", String(cleanOrder.orderNumber)), cleanOrder);
 
   invalidateCacheAndNotify('order_created');
-  return orderData;
+  return cleanOrder;
 }
 
 /**
  * Actualiza el estado o seguimiento Packlink de un pedido
  */
 export async function updateOrderStatus(orderNumber, updates) {
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.orderNumber === orderNumber);
-  if (idx < 0) return false;
-
-  orders[idx] = { ...orders[idx], ...updates, updatedAt: Date.now() };
+  const cleanUpdates = sanitizeForFirestore({ ...updates, updatedAt: Date.now() });
 
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (raw) {
+        const orders = JSON.parse(raw);
+        const idx = orders.findIndex(o => o.orderNumber === orderNumber);
+        if (idx >= 0) {
+          orders[idx] = { ...orders[idx], ...cleanUpdates };
+          localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+        }
+      }
     }
   } catch (e) {}
 
-  try {
-    await setDoc(doc(db, "orders", String(orderNumber)), orders[idx], { merge: true });
-  } catch (e) {}
+  await setDoc(doc(db, "orders", String(orderNumber)), cleanUpdates, { merge: true });
 
   invalidateCacheAndNotify('order_updated');
-  return orders[idx];
+  return true;
 }
 
 /**
@@ -1044,15 +1137,12 @@ export async function resetDatabaseToFactory() {
     }
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem(CACHE_KEY);
+      sessionStorage.removeItem(FIRESTORE_VERIFIED_KEY);
     }
   } catch (e) {}
 
-  // Sincronizar también con Firestore
-  try {
-    for (const prod of MOCK_PRODUCTS) {
-      await setDoc(doc(db, "products", prod.id), prod);
-    }
-  } catch (e) {}
+  // Sincronizar atómicamente con Firestore
+  await syncAllToFirestore({ forceOverwrite: true });
 
   invalidateCacheAndNotify('factory_reset');
   return true;

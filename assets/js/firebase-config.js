@@ -6,7 +6,7 @@ import {
   onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { 
-  getFirestore, 
+  initializeFirestore,
   collection, 
   doc, 
   getDocs, 
@@ -14,6 +14,7 @@ import {
   setDoc, 
   deleteDoc, 
   updateDoc, 
+  writeBatch,
   query, 
   orderBy 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
@@ -39,8 +40,23 @@ export const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// CRÍTICO: ignoreUndefinedProperties evita que setDoc o writeBatch fallen si algún campo opcional es undefined
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true
+});
+
 export const storage = getStorage(app);
+
+// Limpiador profundo para garantizar que ningún dato enviado a Firestore tenga undefined o NaN
+export function sanitizeForFirestore(data) {
+  if (data === null || data === undefined) return null;
+  return JSON.parse(JSON.stringify(data, (key, value) => {
+    if (value === undefined) return null;
+    if (typeof value === 'number' && isNaN(value)) return 0;
+    return value;
+  }));
+}
 
 export {
   signInWithEmailAndPassword,
@@ -53,6 +69,7 @@ export {
   setDoc,
   deleteDoc,
   updateDoc,
+  writeBatch,
   query,
   orderBy,
   ref,
