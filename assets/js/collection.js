@@ -6,7 +6,8 @@
 
 import {
   getProductsByFilter,
-  getStoreSettings
+  getStoreSettings,
+  onStoreDataChanged
 } from './store-service.js';
 import {
   renderProductCardMarkup,
@@ -117,14 +118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await applyAndRender();
 
     // 4. Sincronización en vivo con /admin y otras pestañas
-    const syncChannel = new BroadcastChannel('yoana_store_sync');
-    syncChannel.onmessage = async () => {
+    onStoreDataChanged(async () => {
       await applyAndRender();
-    };
-    window.addEventListener('storage', async (e) => {
-      if (e.key === 'store_db_products_v2') {
-        await applyAndRender();
-      }
     });
   } catch (err) {
     console.error("[CollectionPage] Error durante la inicialización:", err);

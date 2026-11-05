@@ -5,7 +5,7 @@
  */
 
 import { getCart, getCartTotals, clearCart } from './cart.js';
-import { getProducts, getStoreSettings, updateProductStockAfterOrder } from './store-service.js';
+import { getProducts, getStoreSettings, updateProductStockAfterOrder, createOrder } from './store-service.js';
 import { formatPrice } from './ui.js';
 
 // Clave de pedidos locales para el panel de administración
@@ -332,8 +332,8 @@ function setupFormSubmission() {
     try {
       await initiateRedsysPayment(newOrder);
 
-      // Guardar pedido en almacenamiento local
-      saveOrderLocally(newOrder);
+      // Guardar pedido en Firestore y almacenamiento sincronizado
+      await createOrder(newOrder);
 
       // Descontar stock de prendas en tiempo real (Fase 3)
       await updateProductStockAfterOrder(newOrder.items);

@@ -1,40 +1,87 @@
 /**
- * STORE SERVICE - CAPA DE DATOS CONTRATO FIRESTORE & SINCRONIZACIÓN EN VIVO (FASE 3.5)
- * Soporta modo local reactivo con BroadcastChannel y conexión real a Firebase Firestore.
- * Sin dependencias de emojis, con soporte para colores, tallas opcionales y esquema V2.
+ * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP (FASE 3.5 DEFINITIVA)
+ * Motor central de datos conectado a Firebase Firestore + Firebase Storage
+ * con auto-seed de catálogo, compresión .webp a Storage, caché en sessionStorage
+ * y sincronización instantánea multi-pestaña mediante BroadcastChannel('roneoshop_live_sync').
  */
 
-import { isFirebaseActive, db } from './firebase-config.js';
+import {
+  db,
+  storage,
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  ref,
+  uploadString,
+  getDownloadURL
+} from './firebase-config.js';
 
-// Claves de base de datos local compartida
-export const DB_PRODUCTS_KEY = 'store_db_products_v2';
-export const DB_SETTINGS_KEY = 'store_db_settings_v2';
-export const ORDERS_STORAGE_KEY = 'store_orders_v1';
+// Claves de almacenamiento local y caché
+const CACHE_KEY = 'store_products_cache_v5';
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos para proteger la cuota gratuita de Firebase
+const DB_PRODUCTS_KEY = 'store_db_products_v2';
+const DB_SETTINGS_KEY = 'store_db_settings_v2';
+const ORDERS_STORAGE_KEY = 'store_orders_v1';
 
-// Canal de difusión para sincronización en tiempo real entre pestañas
-let syncChannel = null;
-try {
-  syncChannel = new BroadcastChannel('yoana_store_sync');
-} catch (e) {
-  // Fallback si BroadcastChannel no estuviera disponible
-}
+// Canal de difusión en tiempo real entre pestañas
+const syncChannel = (typeof BroadcastChannel !== 'undefined') 
+  ? new BroadcastChannel('roneoshop_live_sync') 
+  : null;
 
 /**
- * Emite una notificación de actualización a todas las pestañas abiertas
+ * Invalida la caché de sesión, actualiza almacenamiento local y notifica a todas las pestañas
  */
-export function broadcastStoreChange(type = 'catalog_updated', data = null) {
+export function invalidateCacheAndNotify(type = 'data_updated') {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(CACHE_KEY);
+    }
+  } catch (e) {}
+
   if (syncChannel) {
     try {
-      syncChannel.postMessage({ type, data, timestamp: Date.now() });
+      syncChannel.postMessage({ type, timestamp: Date.now() });
     } catch (e) {}
   }
-  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-    window.dispatchEvent(new CustomEvent('store:updated', { detail: { type, data } }));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('roneoshop:sync', { detail: { type } }));
+    window.dispatchEvent(new Event('storage'));
   }
 }
 
 /**
- * Configuración global de la tienda por defecto
+ * Suscribe una función callback para reaccionar en vivo a cambios guardados en el admin
+ * @param {Function} callback
+ * @returns {Function} Función para cancelar la suscripción
+ */
+export function onStoreDataChanged(callback) {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleMessage = (e) => {
+    callback(e.data || e.detail || {});
+  };
+
+  if (syncChannel) {
+    syncChannel.addEventListener('message', handleMessage);
+  }
+  window.addEventListener('roneoshop:sync', handleMessage);
+  window.addEventListener('storage', handleMessage);
+
+  return () => {
+    if (syncChannel) {
+      syncChannel.removeEventListener('message', handleMessage);
+    }
+    window.removeEventListener('roneoshop:sync', handleMessage);
+    window.removeEventListener('storage', handleMessage);
+  };
+}
+
+/**
+ * Configuración global por defecto de la tienda
  */
 export const MOCK_SETTINGS = {
   storeName: "Yoana Zafiro",
@@ -61,6 +108,7 @@ export const MOCK_SETTINGS = {
 
 /**
  * Catálogo maestro inicial con datos exactos del catálogo y PDF de Yoana Zafiro
+ * Esquema limpio: sin composition, con colors, hasSizes y description
  */
 export const MOCK_PRODUCTS = [
   // 1. ABRIGO PANDORA (Clon exacto PDF oficial - Agotado)
@@ -69,7 +117,7 @@ export const MOCK_PRODUCTS = [
     slug: "abrigo-pandora",
     title: "ABRIGO PANDORA",
     category: "ropa",
-    subcategory: "chaquetas",
+    subCategory: "chaquetas",
     collectionTags: ["otono-invierno", "novedades", "abrigos"],
     price: 19.95,
     compareAtPrice: null,
@@ -101,7 +149,7 @@ export const MOCK_PRODUCTS = [
     slug: "vaquero-faja-levis",
     title: "VAQUERO FAJA LEVIS",
     category: "ropa",
-    subcategory: "vaqueros",
+    subCategory: "vaqueros",
     collectionTags: ["otono-invierno", "novedades", "vaqueros"],
     price: 24.95,
     compareAtPrice: null,
@@ -109,7 +157,8 @@ export const MOCK_PRODUCTS = [
     description: "Vaquero pitillo con efecto faja moldeadora y tiro extra alto que estiliza la figura proporcionando máxima comodidad.",
     hasSizes: true,
     colors: [
-      { name: "Azul Denim", hex: "#3b5998", inStock: true }
+      { name: "Azul Denim", hex: "#3b5998", inStock: true },
+      { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
       "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717",
@@ -128,13 +177,13 @@ export const MOCK_PRODUCTS = [
     createdAt: 1730715100000
   },
 
-  // 3. PANTALÓN HERMES (Del catálogo real)
+  // 3. PANTALÓN HERMES
   {
     id: "pantalon-hermes",
     slug: "pantalon-hermes",
     title: "PANTALÓN HERMES",
     category: "ropa",
-    subcategory: "pantalones",
+    subCategory: "pantalones",
     collectionTags: ["otono-invierno", "novedades"],
     price: 18.75,
     compareAtPrice: null,
@@ -159,13 +208,13 @@ export const MOCK_PRODUCTS = [
     createdAt: 1730715200000
   },
 
-  // 4. VAQUERO MITOS (Del catálogo real)
+  // 4. VAQUERO MITOS
   {
     id: "vaquero-mitos",
     slug: "vaquero-mitos",
     title: "VAQUERO MITOS",
     category: "ropa",
-    subcategory: "vaqueros",
+    subCategory: "vaqueros",
     collectionTags: ["otono-invierno", "vaqueros"],
     price: 24.95,
     compareAtPrice: null,
@@ -173,7 +222,7 @@ export const MOCK_PRODUCTS = [
     description: "Denim de pierna recta clásica con lavado medio y refuerzo interior que estiliza la silueta.",
     hasSizes: true,
     colors: [
-      { name: "Azul Medio", hex: "#4a6fa5", inStock: true }
+      { name: "Azul Denim", hex: "#3b5998", inStock: true }
     ],
     images: [
       "https://images.unsplash.com/photo-1582418702059-97ebafb35d09?auto=format&fit=crop&w=900&q=80",
@@ -196,7 +245,7 @@ export const MOCK_PRODUCTS = [
     slug: "camiseta-basica-blanca",
     title: "CAMISETA BÁSICA BLANCA",
     category: "ropa",
-    subcategory: "partes-de-arriba",
+    subCategory: "camisetas",
     collectionTags: ["primavera-verano", "novedades"],
     price: 14.25,
     compareAtPrice: null,
@@ -204,7 +253,7 @@ export const MOCK_PRODUCTS = [
     description: "Camiseta de algodón peinado con escote redondo ribeteado y tacto ultrasuave. Fondo de armario imprescindible.",
     hasSizes: true,
     colors: [
-      { name: "Blanco", hex: "#f9f9f9", inStock: true },
+      { name: "Blanco", hex: "#ffffff", inStock: true },
       { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
@@ -227,7 +276,7 @@ export const MOCK_PRODUCTS = [
     slug: "conjunto-punto-milan",
     title: "CONJUNTO PUNTO MILÁN",
     category: "ropa",
-    subcategory: "conjuntos",
+    subCategory: "punto",
     collectionTags: ["rebajas", "novedades", "otono-invierno"],
     price: 32.95,
     compareAtPrice: 39.95,
@@ -258,7 +307,7 @@ export const MOCK_PRODUCTS = [
     slug: "vestido-midi-zafiro",
     title: "VESTIDO MIDI ZAFIRO",
     category: "ropa",
-    subcategory: "vestidos",
+    subCategory: "vestidos",
     collectionTags: ["primavera-verano", "novedades", "vestidos"],
     price: 29.95,
     compareAtPrice: null,
@@ -289,7 +338,7 @@ export const MOCK_PRODUCTS = [
     slug: "body-escote-espalda",
     title: "BODY ESCOTE ESPALDA",
     category: "ropa",
-    subcategory: "partes-de-arriba",
+    subCategory: "camisetas",
     collectionTags: ["rebajas", "primavera-verano"],
     price: 18.95,
     compareAtPrice: 24.95,
@@ -297,7 +346,8 @@ export const MOCK_PRODUCTS = [
     description: "Body sin costuras confeccionado en punto técnico moldeador con escote profundo en espalda.",
     hasSizes: true,
     colors: [
-      { name: "Negro", hex: "#121212", inStock: true }
+      { name: "Negro", hex: "#121212", inStock: true },
+      { name: "Blanco", hex: "#ffffff", inStock: true }
     ],
     images: [
       "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=80",
@@ -318,7 +368,7 @@ export const MOCK_PRODUCTS = [
     slug: "champu-nutritivo-1000ml",
     title: "CHAMPÚ NUTRITIVO 1000ML",
     category: "cabello",
-    subcategory: "tratamiento-capilar",
+    subCategory: "champu",
     collectionTags: ["cabello", "tratamiento-capilar"],
     price: 18.00,
     compareAtPrice: null,
@@ -344,7 +394,7 @@ export const MOCK_PRODUCTS = [
     slug: "secador-profesional-ionic",
     title: "SECADOR PROFESIONAL IONIC",
     category: "cabello",
-    subcategory: "herramientas",
+    subCategory: "accesorios",
     collectionTags: ["cabello"],
     price: 54.95,
     compareAtPrice: null,
@@ -352,7 +402,7 @@ export const MOCK_PRODUCTS = [
     description: "Secador con motor digital de 2200W y tecnología dual iónica para un acabado brillante sin encrespamiento.",
     hasSizes: false,
     colors: [
-      { name: "Negro Mate", hex: "#1a1a1a", inStock: true }
+      { name: "Negro", hex: "#121212", inStock: true }
     ],
     images: [
       "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=80",
@@ -372,7 +422,7 @@ export const MOCK_PRODUCTS = [
     slug: "pack-cosmetica-coreana-glow",
     title: "PACK COSMÉTICA COREANA SOME BY MI",
     category: "cosmetica",
-    subcategory: "cosmetica",
+    subCategory: "tratamiento",
     collectionTags: ["cosmetica", "rebajas", "novedades"],
     price: 39.95,
     compareAtPrice: 48.00,
@@ -398,7 +448,7 @@ export const MOCK_PRODUCTS = [
     slug: "conjunto-volantes-nina-peikas",
     title: "CONJUNTO VOLANTES NIÑA PEIKAS",
     category: "peikas",
-    subcategory: "infantil",
+    subCategory: "accesorios",
     collectionTags: ["peikas", "novedades", "primavera-verano"],
     price: 22.95,
     compareAtPrice: null,
@@ -406,16 +456,16 @@ export const MOCK_PRODUCTS = [
     description: "Conjunto infantil de blusa y cubrepañal con volantes calados confeccionado en algodón pima hipoalergénico.",
     hasSizes: true,
     colors: [
-      { name: "Rosa Empolvado", hex: "#f4c2c2", inStock: true }
+      { name: "Rosa", hex: "#f4c2c2", inStock: true }
     ],
     images: [
-      "https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=900&q=80",
       "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=900&q=80"
     ],
     variants: [
-      { size: "2-3A", stock: 2, sku: "PK-VOL-23" },
-      { size: "4-5A", stock: 4, sku: "PK-VOL-45" },
-      { size: "6-7A", stock: 3, sku: "PK-VOL-67" }
+      { size: "3M", stock: 3, sku: "PEI-VOL-3M" },
+      { size: "6M", stock: 4, sku: "PEI-VOL-6M" },
+      { size: "12M", stock: 2, sku: "PEI-VOL-12M" }
     ],
     active: true,
     featured: true,
@@ -423,64 +473,55 @@ export const MOCK_PRODUCTS = [
   }
 ];
 
-/**
- * Pedidos de demostración iniciales
- */
+// Pedidos de muestra iniciales
 export const INITIAL_SAMPLE_ORDERS = [
   {
-    orderNumber: "261104194012",
-    status: "PAID",
-    paymentMethod: "BIZUM",
-    subtotal: 19.95,
-    shippingCost: 4.90,
-    total: 24.85,
-    totalWeightKg: 0.45,
+    orderNumber: "YZ-8041",
+    createdAt: Date.now() - 3600 * 1000 * 2,
     customer: {
-      firstName: "Laura",
-      lastName: "Gómez Pérez",
-      email: "laura.gomez@email.com",
+      firstName: "María",
+      lastName: "García López",
+      email: "maria.garcia@gmail.com",
       phone: "611223344",
-      street: "Calle Larios 14, 3º Izq",
+      street: "Calle Larios 4, 3ºB",
       city: "Málaga",
+      zipCode: "29015",
       province: "Málaga",
-      zipCode: "29005",
       country: "ES"
     },
     items: [
       {
-        productId: "abrigo-pandora",
-        title: "ABRIGO PANDORA",
-        size: "S",
-        price: 19.95,
+        productId: "vaquero-faja-levis",
+        title: "VAQUERO FAJA LEVIS",
+        size: "M",
+        price: 24.95,
         quantity: 1,
-        image: "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-26at11.52.51.jpg?v=1793029856"
+        image: "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-20at18.44.17.jpg?v=1792619717"
       }
     ],
+    subtotal: 24.95,
+    shippingCost: 4.90,
+    total: 29.85,
+    paymentMethod: "BIZUM",
+    status: "PAID",
     packlink: {
       synced: false,
-      reference: "PENDIENTE-API",
-      trackingUrl: ""
+      reference: null
     },
-    createdAt: 1762281612000,
-    paidAt: 1762281655000
+    totalWeightKg: 0.50
   },
   {
-    orderNumber: "261104162005",
-    status: "PAID",
-    paymentMethod: "CARD",
-    subtotal: 62.90,
-    shippingCost: 0.00,
-    total: 62.90,
-    totalWeightKg: 0.92,
+    orderNumber: "YZ-8040",
+    createdAt: Date.now() - 3600 * 1000 * 24,
     customer: {
       firstName: "Carmen",
-      lastName: "Ruiz Navarro",
-      email: "carmen.ruiz@email.com",
-      phone: "655889900",
-      street: "Avenida Diagonal 450, 4º 1ª",
-      city: "Barcelona",
-      province: "Barcelona",
-      zipCode: "08006",
+      lastName: "Navarro Ruiz",
+      email: "carmen.navarro@hotmail.com",
+      phone: "655998877",
+      street: "Gran Vía 32, 5ºA",
+      city: "Madrid",
+      zipCode: "28013",
+      province: "Madrid",
       country: "ES"
     },
     items: [
@@ -493,26 +534,30 @@ export const INITIAL_SAMPLE_ORDERS = [
         image: "https://cdn.shopify.com/s/files/1/0893/4391/8412/files/WhatsAppImage2026-10-30at09.40.20.jpg?v=1793354711"
       },
       {
-        productId: "vestido-midi-zafiro",
-        title: "VESTIDO MIDI ZAFIRO",
+        productId: "camiseta-basica-blanca",
+        title: "CAMISETA BÁSICA BLANCA",
         size: "M",
-        price: 29.95,
-        quantity: 1,
-        image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80"
+        price: 14.25,
+        quantity: 2,
+        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80"
       }
     ],
+    subtotal: 61.45,
+    shippingCost: 0.00,
+    total: 61.45,
+    paymentMethod: "CARD",
+    status: "PAID",
     packlink: {
       synced: true,
-      reference: "ES2026PRO88412",
+      reference: "ES2026PRO918234",
       trackingUrl: "https://pro.packlink.es/private/shipments"
     },
-    createdAt: 1762269605000,
-    paidAt: 1762269632000
+    totalWeightKg: 0.96
   }
 ];
 
 /**
- * Inicializa la base de datos local si no existe
+ * Inicializa la base de datos local con MOCK_PRODUCTS si no existe
  */
 function initLocalDatabase() {
   try {
@@ -530,455 +575,485 @@ function initLocalDatabase() {
     console.warn("[StoreService] Error inicializando localStorage:", e);
   }
 }
-
 initLocalDatabase();
+
+/**
+ * Sube una imagen base64 a Firebase Storage en formato WebP
+ * Si Storage falla por reglas o red, devuelve el dataUrl original comprimido
+ * @param {string} dataUrl
+ * @param {string} productId
+ * @param {number} index
+ * @returns {Promise<string>} URL pública o dataUrl seguro
+ */
+export async function uploadProductImage(dataUrl, productId, index = 0) {
+  if (!dataUrl) return "";
+  // Si ya es una URL externa o pública
+  if (dataUrl.startsWith("http://") || dataUrl.startsWith("https://")) {
+    return dataUrl;
+  }
+
+  try {
+    const filename = `products/${productId}/img_${Date.now()}_${index}.webp`;
+    const storageRef = ref(storage, filename);
+    await uploadString(storageRef, dataUrl, 'data_url');
+    const publicUrl = await getDownloadURL(storageRef);
+    return publicUrl;
+  } catch (err) {
+    console.warn("[FirebaseStorage] Fallback a Base64 WebP por reglas de Storage:", err?.message || err);
+    return dataUrl;
+  }
+}
+
+/**
+ * Obtiene todos los productos del catálogo con auto-seed en Firestore y caché
+ * @param {Object} options { forceRefresh = false }
+ * @returns {Promise<Array>}
+ */
+export async function getProducts({ forceRefresh = false } = {}) {
+  // 1. Verificar caché en sessionStorage si no se fuerza recarga
+  if (!forceRefresh) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL_MS && Array.isArray(data) && data.length > 0) {
+            return data;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Consultar Firebase Firestore
+  try {
+    const productsColl = collection(db, "products");
+    const snapshot = await getDocs(productsColl);
+
+    // Caso A: Hay documentos en Firestore
+    if (!snapshot.empty) {
+      const cloudProducts = [];
+      snapshot.forEach(docSnap => {
+        cloudProducts.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      // Ordenar por fecha de creación descendente
+      cloudProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      // Guardar en caché y en localStorage
+      saveProductsToLocalAndCache(cloudProducts);
+      return cloudProducts;
+    }
+
+    // Caso B: Colección vacía en Firestore -> AUTO-SEED AUTOMÁTICO de los 12 productos
+    console.log("[StoreService] Colección vacía en Firestore. Ejecutando Auto-Seed inicial...");
+    for (const prod of MOCK_PRODUCTS) {
+      try {
+        await setDoc(doc(db, "products", prod.id), prod);
+      } catch (seedErr) {
+        console.warn("[StoreService] Error guardando producto semilla:", prod.id, seedErr);
+      }
+    }
+
+    saveProductsToLocalAndCache(MOCK_PRODUCTS);
+    return MOCK_PRODUCTS;
+
+  } catch (err) {
+    console.warn("[StoreService] Error accediendo a Firestore, usando fallback local:", err?.message || err);
+
+    // Fallback transparente a localStorage
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(DB_PRODUCTS_KEY);
+        if (raw) {
+          const localProducts = JSON.parse(raw);
+          if (Array.isArray(localProducts) && localProducts.length > 0) {
+            return localProducts;
+          }
+        }
+      }
+    } catch (e) {}
+
+    return MOCK_PRODUCTS;
+  }
+}
+
+function saveProductsToLocalAndCache(products) {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: products,
+        timestamp: Date.now()
+      }));
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(products));
+    }
+  } catch (e) {}
+}
+
+/**
+ * Obtiene un producto por su id o su slug
+ */
+export async function getProductByIdOrSlug(idOrSlug) {
+  if (!idOrSlug) return null;
+  const products = await getProducts();
+  const search = String(idOrSlug).toLowerCase().trim();
+  return products.find(p => p.id.toLowerCase() === search || (p.slug && p.slug.toLowerCase() === search)) || null;
+}
+
+/**
+ * Filtra y ordena los productos
+ */
+export async function getProductsByFilter({
+  category = 'todos',
+  search = '',
+  onlyInStock = false,
+  size = null,
+  minPrice = null,
+  maxPrice = null,
+  sortBy = 'featured'
+} = {}) {
+  let products = await getProducts();
+
+  // 1. Categoría
+  if (category && category !== 'todos') {
+    const catLow = category.toLowerCase().trim();
+    products = products.filter(p => {
+      const pCat = (p.category || '').toLowerCase();
+      const pSub = (p.subCategory || '').toLowerCase();
+      const pTags = (p.collectionTags || []).map(t => t.toLowerCase());
+      return pCat === catLow || pSub === catLow || pTags.includes(catLow);
+    });
+  }
+
+  // 2. Búsqueda por texto
+  if (search && search.trim() !== '') {
+    const q = search.toLowerCase().trim();
+    products = products.filter(p => {
+      return (p.title || '').toLowerCase().includes(q) ||
+             (p.description || '').toLowerCase().includes(q) ||
+             (p.subCategory || '').toLowerCase().includes(q);
+    });
+  }
+
+  // 3. Solo en stock
+  if (onlyInStock) {
+    products = products.filter(p => {
+      const stock = p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
+      return stock > 0;
+    });
+  }
+
+  // 4. Filtrar por talla
+  if (size) {
+    products = products.filter(p => {
+      return p.variants && p.variants.some(v => v.size.toUpperCase() === size.toUpperCase() && v.stock > 0);
+    });
+  }
+
+  // 5. Rango de precio
+  if (minPrice !== null) {
+    products = products.filter(p => p.price >= minPrice);
+  }
+  if (maxPrice !== null) {
+    products = products.filter(p => p.price <= maxPrice);
+  }
+
+  // 6. Ordenación
+  const sorted = [...products];
+  switch (sortBy) {
+    case 'price-asc':
+      sorted.sort((a, b) => a.price - b.price);
+      break;
+    case 'price-desc':
+      sorted.sort((a, b) => b.price - a.price);
+      break;
+    case 'newest':
+      sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      break;
+    case 'featured':
+    default:
+      sorted.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+      break;
+  }
+
+  return sorted;
+}
+
+/**
+ * Productos relacionados (excluyendo el actual)
+ */
+export async function getRelatedProducts(productId, limit = 4) {
+  const all = await getProducts();
+  const current = all.find(p => p.id === productId);
+  if (!current) return all.slice(0, limit);
+
+  const related = all.filter(p => p.id !== productId && p.category === current.category);
+  if (related.length >= limit) return related.slice(0, limit);
+
+  const others = all.filter(p => p.id !== productId && p.category !== current.category);
+  return [...related, ...others].slice(0, limit);
+}
+
+/**
+ * Guarda o actualiza una prenda en Firestore y Storage, sincronizando con local
+ */
+export async function saveProduct(productData) {
+  if (!productData || !productData.title) {
+    throw new Error("El título de la prenda es obligatorio.");
+  }
+
+  // Normalización estricta de precios
+  const price = parseFloat(String(productData.price || '0').replace(',', '.')) || 0;
+  const compareAtPrice = productData.compareAtPrice 
+    ? parseFloat(String(productData.compareAtPrice).replace(',', '.')) 
+    : null;
+  const weightKg = parseFloat(String(productData.weightKg || '0.35').replace(',', '.')) || 0.35;
+
+  // Generar ID/slug limpio si no existe
+  let id = productData.id;
+  if (!id) {
+    const slugBase = productData.title
+      .toLowerCase()
+      .trim()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    id = `${slugBase}-${Date.now().toString().slice(-4)}`;
+  }
+
+  // Subir imágenes base64 a Firebase Storage
+  const finalImages = [];
+  const rawImages = productData.images || [];
+  for (let i = 0; i < rawImages.length; i++) {
+    const imgUrl = await uploadProductImage(rawImages[i], id, i);
+    finalImages.push(imgUrl);
+  }
+
+  const cleanProduct = {
+    ...productData,
+    id,
+    slug: id,
+    price,
+    compareAtPrice,
+    weightKg,
+    images: finalImages.length > 0 ? finalImages : ['assets/img/placeholder.webp'],
+    hasSizes: productData.hasSizes !== false,
+    colors: Array.isArray(productData.colors) ? productData.colors : [],
+    variants: Array.isArray(productData.variants) ? productData.variants : [{ size: 'ÚNICA', stock: 10 }],
+    description: productData.description || "",
+    active: productData.active !== false,
+    createdAt: productData.createdAt || Date.now(),
+    updatedAt: Date.now()
+  };
+
+  // 1. Guardar en Firestore
+  try {
+    await setDoc(doc(db, "products", cleanProduct.id), cleanProduct, { merge: true });
+  } catch (err) {
+    console.warn("[StoreService] Error guardando en Firestore, guardando en local:", err?.message || err);
+  }
+
+  // 2. Guardar en localStorage
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(DB_PRODUCTS_KEY);
+      let list = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(p => p.id === cleanProduct.id);
+      if (idx >= 0) {
+        list[idx] = cleanProduct;
+      } else {
+        list.unshift(cleanProduct);
+      }
+      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(list));
+    }
+  } catch (e) {}
+
+  // 3. Notificar a todas las pestañas abiertas
+  invalidateCacheAndNotify('products_updated');
+  return cleanProduct;
+}
+
+/**
+ * Elimina una prenda de Firestore y del almacenamiento local
+ */
+export async function deleteProduct(productId) {
+  if (!productId) return false;
+
+  try {
+    await deleteDoc(doc(db, "products", productId));
+  } catch (err) {
+    console.warn("[StoreService] Error eliminando de Firestore:", err?.message || err);
+  }
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(DB_PRODUCTS_KEY);
+      if (raw) {
+        let list = JSON.parse(raw);
+        list = list.filter(p => p.id !== productId);
+        localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(list));
+      }
+    }
+  } catch (e) {}
+
+  invalidateCacheAndNotify('products_updated');
+  return true;
+}
+
+/**
+ * Descuenta el stock tras una compra confirmada
+ */
+export async function updateProductStockAfterOrder(orderItems) {
+  if (!Array.isArray(orderItems) || orderItems.length === 0) return;
+
+  const products = await getProducts({ forceRefresh: true });
+
+  for (const item of orderItems) {
+    const prod = products.find(p => p.id === item.productId);
+    if (!prod || !prod.variants) continue;
+
+    const variant = prod.variants.find(v => v.size.toUpperCase() === String(item.size).toUpperCase());
+    if (variant) {
+      variant.stock = Math.max(0, (variant.stock || 0) - (item.quantity || 1));
+      
+      // Actualizar en Firestore
+      try {
+        await setDoc(doc(db, "products", prod.id), prod, { merge: true });
+      } catch (e) {}
+    }
+  }
+
+  saveProductsToLocalAndCache(products);
+  invalidateCacheAndNotify('stock_updated');
+}
 
 /**
  * Obtiene la configuración de la tienda
  */
 export async function getStoreSettings() {
-  let settings = MOCK_SETTINGS;
-
-  if (isFirebaseActive() && db) {
-    try {
-      const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      const docRef = doc(db, "settings", "store_config");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        settings = docSnap.data();
-      } else {
-        // Sembrar settings iniciales en Firestore
-        const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-        await setDoc(docRef, MOCK_SETTINGS);
-      }
-    } catch (err) {
-      console.warn("[StoreService] Fallo lectura Firestore settings, usando local:", err);
+  try {
+    const settingsDoc = await getDoc(doc(db, "settings", "store_config"));
+    if (settingsDoc.exists()) {
+      return { ...MOCK_SETTINGS, ...settingsDoc.data() };
     }
-  } else {
-    try {
-      const local = localStorage.getItem(DB_SETTINGS_KEY);
-      if (local) settings = JSON.parse(local);
-    } catch (e) {
-      settings = MOCK_SETTINGS;
-    }
+  } catch (e) {
+    console.warn("[StoreService] Error leyendo settings de Firestore, usando local:", e?.message || e);
   }
 
-  return settings;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(DB_SETTINGS_KEY);
+      if (saved) return JSON.parse(saved);
+    }
+  } catch (e) {}
+
+  return MOCK_SETTINGS;
 }
 
 /**
  * Guarda la configuración de la tienda
  */
-export async function saveStoreSettings(newSettings) {
-  if (isFirebaseActive() && db) {
-    try {
-      const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      await setDoc(doc(db, "settings", "store_config"), newSettings, { merge: true });
-    } catch (err) {
-      console.warn("[StoreService] Error guardando settings en Firestore:", err);
-    }
+export async function saveStoreSettings(settings) {
+  const merged = { ...MOCK_SETTINGS, ...settings, updatedAt: Date.now() };
+
+  try {
+    await setDoc(doc(db, "settings", "store_config"), merged, { merge: true });
+  } catch (e) {
+    console.warn("[StoreService] Error guardando settings en Firestore:", e?.message || e);
   }
 
   try {
-    localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(newSettings));
-  } catch (e) {
-    console.error("[StoreService] Error guardando settings en localStorage:", e);
-  }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(merged));
+    }
+  } catch (e) {}
 
-  broadcastStoreChange('settings_updated', newSettings);
-  return newSettings;
+  invalidateCacheAndNotify('settings_updated');
+  return merged;
 }
 
 /**
- * Obtiene todos los productos del catálogo
- */
-export async function getProducts() {
-  let products = [];
-
-  if (isFirebaseActive() && db) {
-    try {
-      const { collection, getDocs, query, where, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      const q = query(collection(db, "products"), where("active", "==", true));
-      const querySnapshot = await getDocs(q);
-
-      const list = [];
-      querySnapshot.forEach((d) => {
-        list.push({ id: d.id, ...d.data() });
-      });
-
-      if (list.length > 0) {
-        products = list;
-        // Sincronizar en local
-        localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(products));
-      } else {
-        // La colección en Firestore está vacía: sembrar automáticamente los 12 productos
-        console.info("[StoreService] Sembrando catálogo inicial en Firestore...");
-        for (const p of MOCK_PRODUCTS) {
-          await setDoc(doc(db, "products", p.id), p);
-        }
-        products = MOCK_PRODUCTS;
-        localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(products));
-      }
-    } catch (err) {
-      console.warn("[StoreService] Error Firestore getProducts, recurriendo a local:", err);
-      products = readLocalProducts();
-    }
-  } else {
-    products = readLocalProducts();
-  }
-
-  return products;
-}
-
-function readLocalProducts() {
-  try {
-    const raw = localStorage.getItem(DB_PRODUCTS_KEY);
-    return raw ? JSON.parse(raw) : MOCK_PRODUCTS;
-  } catch (e) {
-    return MOCK_PRODUCTS;
-  }
-}
-
-/**
- * Guarda o actualiza un producto (sincronizado en local y Firestore)
- */
-export async function saveProduct(productData) {
-  const currentCatalog = await getProducts();
-  const index = currentCatalog.findIndex(p => p.id === productData.id);
-
-  let updatedProduct;
-
-  if (index > -1) {
-    updatedProduct = {
-      ...currentCatalog[index],
-      ...productData,
-      updatedAt: Date.now()
-    };
-    currentCatalog[index] = updatedProduct;
-  } else {
-    const cleanSlug = (productData.slug || productData.title || 'prenda')
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    const newId = productData.id || `${cleanSlug}-${Date.now().toString().slice(-4)}`;
-
-    updatedProduct = {
-      ...productData,
-      id: newId,
-      slug: cleanSlug,
-      hasSizes: productData.hasSizes !== undefined ? productData.hasSizes : true,
-      colors: productData.colors || [],
-      active: productData.active !== undefined ? productData.active : true,
-      featured: productData.featured !== undefined ? productData.featured : false,
-      createdAt: Date.now()
-    };
-
-    currentCatalog.unshift(updatedProduct);
-  }
-
-  // Guardar en Firestore si está conectado
-  if (isFirebaseActive() && db) {
-    try {
-      const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      await setDoc(doc(db, "products", updatedProduct.id), updatedProduct, { merge: true });
-    } catch (err) {
-      console.warn("[StoreService] Error guardando en Firestore:", err);
-    }
-  }
-
-  // Guardar en localStorage
-  try {
-    localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(currentCatalog));
-  } catch (e) {
-    console.error("[StoreService] Error guardando producto en localStorage:", e);
-  }
-
-  broadcastStoreChange('product_saved', updatedProduct);
-  return updatedProduct;
-}
-
-/**
- * Elimina una prenda del catálogo
- */
-export async function deleteProduct(productId) {
-  const currentCatalog = await getProducts();
-  const filtered = currentCatalog.filter(p => p.id !== productId);
-
-  if (isFirebaseActive() && db) {
-    try {
-      const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      await deleteDoc(doc(db, "products", productId));
-    } catch (err) {
-      console.warn("[StoreService] Error borrando en Firestore:", err);
-    }
-  }
-
-  try {
-    localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(filtered));
-  } catch (e) {
-    console.error("[StoreService] Error borrando en localStorage:", e);
-  }
-
-  broadcastStoreChange('product_deleted', productId);
-  return true;
-}
-
-/**
- * Descuenta stock tras pedido y sincroniza inmediatamente
- */
-export async function updateProductStockAfterOrder(orderItems) {
-  if (!orderItems || orderItems.length === 0) return;
-
-  const currentCatalog = await getProducts();
-  let modified = false;
-
-  for (const item of orderItems) {
-    const prod = currentCatalog.find(p => p.id === item.productId);
-    if (!prod || !prod.variants) continue;
-
-    const variant = prod.variants.find(v => v.size === item.size);
-    if (variant) {
-      variant.stock = Math.max(0, variant.stock - (item.quantity || 1));
-      modified = true;
-    }
-  }
-
-  if (modified) {
-    try {
-      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(currentCatalog));
-    } catch (e) {}
-
-    if (isFirebaseActive() && db) {
-      try {
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-        for (const item of orderItems) {
-          const prod = currentCatalog.find(p => p.id === item.productId);
-          if (prod) {
-            await updateDoc(doc(db, "products", prod.id), { variants: prod.variants });
-          }
-        }
-      } catch (err) {
-        console.warn("[StoreService] Error actualizando stock en Firestore:", err);
-      }
-    }
-
-    broadcastStoreChange('stock_updated', orderItems);
-  }
-}
-
-/**
- * Obtiene la lista de pedidos
+ * Obtiene el listado de pedidos
  */
 export function getOrders() {
   try {
-    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (!raw) {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    }
+  } catch (e) {}
+  return INITIAL_SAMPLE_ORDERS;
+}
+
+/**
+ * Registra un nuevo pedido completado
+ */
+export async function createOrder(orderData) {
+  const orders = getOrders();
+  orders.unshift(orderData);
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    }
+  } catch (e) {}
+
+  try {
+    await setDoc(doc(db, "orders", String(orderData.orderNumber)), orderData);
+  } catch (e) {}
+
+  invalidateCacheAndNotify('order_created');
+  return orderData;
+}
+
+/**
+ * Actualiza el estado o seguimiento Packlink de un pedido
+ */
+export async function updateOrderStatus(orderNumber, updates) {
+  const orders = getOrders();
+  const idx = orders.findIndex(o => o.orderNumber === orderNumber);
+  if (idx < 0) return false;
+
+  orders[idx] = { ...orders[idx], ...updates, updatedAt: Date.now() };
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    }
+  } catch (e) {}
+
+  try {
+    await setDoc(doc(db, "orders", String(orderNumber)), orders[idx], { merge: true });
+  } catch (e) {}
+
+  invalidateCacheAndNotify('order_updated');
+  return orders[idx];
+}
+
+/**
+ * Restaura la base de datos a los valores de fábrica
+ */
+export async function resetDatabaseToFactory() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
+      localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(MOCK_SETTINGS));
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
-      return INITIAL_SAMPLE_ORDERS;
     }
-    const orders = JSON.parse(raw);
-    return orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  } catch (e) {
-    return [];
-  }
-}
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(CACHE_KEY);
+    }
+  } catch (e) {}
 
-/**
- * Guarda o actualiza un pedido
- */
-export function updateOrderStatus(orderNumber, updates) {
+  // Sincronizar también con Firestore
   try {
-    const orders = getOrders();
-    const index = orders.findIndex(o => o.orderNumber === orderNumber);
-    if (index === -1) return null;
-
-    orders[index] = {
-      ...orders[index],
-      ...updates,
-      packlink: {
-        ...orders[index].packlink,
-        ...(updates.packlink || {})
-      }
-    };
-
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-
-    if (isFirebaseActive() && db) {
-      import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js").then(({ doc, updateDoc }) => {
-        updateDoc(doc(db, "orders", orderNumber), orders[index]).catch(() => {});
-      });
+    for (const prod of MOCK_PRODUCTS) {
+      await setDoc(doc(db, "products", prod.id), prod);
     }
+  } catch (e) {}
 
-    broadcastStoreChange('order_updated', orders[index]);
-    return orders[index];
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Restaura base de datos completa de fábrica
- */
-export function resetDatabaseToFactory() {
-  try {
-    localStorage.setItem(DB_PRODUCTS_KEY, JSON.stringify(MOCK_PRODUCTS));
-    localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(MOCK_SETTINGS));
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
-    broadcastStoreChange('database_reset');
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
- * Sincroniza todo el catálogo local con Firebase Firestore en 1 clic
- */
-export async function syncLocalCatalogToFirestore() {
-  if (!isFirebaseActive() || !db) return false;
-
-  try {
-    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-    const products = readLocalProducts();
-
-    for (const p of products) {
-      await setDoc(doc(db, "products", p.id), p, { merge: true });
-    }
-
-    const settings = await getStoreSettings();
-    await setDoc(doc(db, "settings", "store_config"), settings, { merge: true });
-
-    broadcastStoreChange('firestore_synced');
-    return true;
-  } catch (err) {
-    console.error("[StoreService] Error al sincronizar con Firestore:", err);
-    return false;
-  }
-}
-
-/**
- * Busca un producto por ID o slug
- */
-export async function getProductByIdOrSlug(idOrSlug) {
-  if (!idOrSlug) return null;
-  const products = await getProducts();
-  const normalized = String(idOrSlug).toLowerCase().trim();
-  return products.find(p => 
-    p.id.toLowerCase() === normalized || 
-    (p.slug && p.slug.toLowerCase() === normalized)
-  ) || null;
-}
-
-/**
- * Filtra y ordena productos dinámicamente
- */
-export async function getProductsByFilter({ 
-  category = null, 
-  collection = null, 
-  search = '', 
-  onlyInStock = false, 
-  size = null,
-  minPrice = null,
-  maxPrice = null,
-  sortBy = 'featured' 
-} = {}) {
-  const products = await getProducts();
-  let list = [...products];
-
-  if (category && category !== 'todos' && category !== 'all') {
-    const c = category.toLowerCase();
-    if (c === 'rebajas') {
-      list = list.filter(p => p.compareAtPrice && p.compareAtPrice > p.price);
-    } else if (['otono-invierno', 'primavera-verano', 'tratamiento-capilar', 'novedades'].includes(c)) {
-      list = list.filter(p => 
-        (p.collectionTags && p.collectionTags.includes(c)) || 
-        p.subcategory === c
-      );
-    } else {
-      list = list.filter(p => 
-        p.category.toLowerCase() === c || 
-        (p.subcategory && p.subcategory.toLowerCase() === c) ||
-        (p.collectionTags && p.collectionTags.includes(c))
-      );
-    }
-  }
-
-  if (collection && collection !== 'todos') {
-    const col = collection.toLowerCase();
-    list = list.filter(p => 
-      (p.collectionTags && p.collectionTags.includes(col)) ||
-      p.subcategory === col
-    );
-  }
-
-  if (search && search.trim() !== '') {
-    const q = search.toLowerCase().trim();
-    list = list.filter(p => 
-      p.title.toLowerCase().includes(q) ||
-      (p.description && p.description.toLowerCase().includes(q)) ||
-      p.category.toLowerCase().includes(q) ||
-      (p.subcategory && p.subcategory.toLowerCase().includes(q))
-    );
-  }
-
-  if (onlyInStock) {
-    list = list.filter(p => {
-      const totalStock = p.variants ? p.variants.reduce((acc, v) => acc + v.stock, 0) : 0;
-      return totalStock > 0;
-    });
-  }
-
-  if (size && size.trim() !== '') {
-    const targetSize = size.toUpperCase().trim();
-    list = list.filter(p => 
-      p.variants && p.variants.some(v => v.size.toUpperCase() === targetSize && v.stock > 0)
-    );
-  }
-
-  if (minPrice !== null && !isNaN(minPrice)) {
-    list = list.filter(p => p.price >= Number(minPrice));
-  }
-  if (maxPrice !== null && !isNaN(maxPrice)) {
-    list = list.filter(p => p.price <= Number(maxPrice));
-  }
-
-  if (sortBy === 'price-asc') {
-    list.sort((a, b) => a.price - b.price);
-  } else if (sortBy === 'price-desc') {
-    list.sort((a, b) => b.price - a.price);
-  } else if (sortBy === 'newest') {
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  } else {
-    list.sort((a, b) => {
-      const stockA = a.variants ? a.variants.reduce((acc, v) => acc + v.stock, 0) : 0;
-      const stockB = b.variants ? b.variants.reduce((acc, v) => acc + v.stock, 0) : 0;
-      if (stockA > 0 && stockB === 0) return -1;
-      if (stockA === 0 && stockB > 0) return 1;
-      return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
-    });
-  }
-
-  return list;
-}
-
-/**
- * Obtiene productos relacionados
- */
-export async function getRelatedProducts(currentProductId, category, limit = 4) {
-  const products = await getProducts();
-  const filtered = products.filter(p => p.id !== currentProductId);
-
-  let sameCategory = filtered.filter(p => p.category.toLowerCase() === (category || '').toLowerCase());
-  
-  if (sameCategory.length < limit) {
-    const others = filtered.filter(p => p.category.toLowerCase() !== (category || '').toLowerCase());
-    sameCategory = [...sameCategory, ...others];
-  }
-
-  return sameCategory.slice(0, limit);
+  invalidateCacheAndNotify('factory_reset');
+  return true;
 }

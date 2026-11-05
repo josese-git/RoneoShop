@@ -4,7 +4,7 @@
  * carrusel de colecciones, modales Bottom-Sheet, Cart Drawer y barra de 5 botones.
  */
 
-import { getStoreSettings, getProducts } from './store-service.js';
+import { getStoreSettings, getProducts, onStoreDataChanged } from './store-service.js';
 import {
   getCart,
   addToCart,
@@ -141,8 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateCartBadges();
 
     // Sincronización en vivo con /admin y otras pestañas
-    const syncChannel = new BroadcastChannel('yoana_store_sync');
-    const refreshStorefront = async () => {
+    onStoreDataChanged(async () => {
       try {
         const [refreshedSettings, refreshedProducts] = await Promise.all([
           getStoreSettings(),
@@ -157,12 +156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateCartBadges();
       } catch (e) {
         console.warn("[UI] Error actualizando escaparate en vivo:", e);
-      }
-    };
-    syncChannel.onmessage = refreshStorefront;
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'store_db_products_v2' || e.key === 'store_db_settings_v2') {
-        refreshStorefront();
       }
     });
   } catch (err) {

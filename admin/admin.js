@@ -1,14 +1,16 @@
 /**
- * ADMIN CONTROLLER - YOANA ZAFIRO (FASE 3.5)
- * Panel de Administración Mobile-First estilo Instagram / Vinted & Shopify
- * - Compresión obligatoria en navegador a WebP vía <canvas> (<80 KB por foto)
- * - Galería horizontal de tarjetas 3:4 (estilo Vinted/Instagram)
- * - Toggle iOS "Esta prenda tiene tallas" (con matriz de tallas o contador simple)
- * - Selector visual de paleta de colores y selector personalizado
- * - Conector de sincronización en la nube con Firebase Firestore
- * - Sincronización en tiempo real con escaparate mediante BroadcastChannel('yoana_store_sync')
- * - Cero emojis Unicode: 100% iconos SVG vectoriales de trazo fino
+ * ADMIN CONTROLLER - YOANA ZAFIRO / RONEOSHOP (FASE 3.5 DEFINITIVA)
+ * Mini-Shopify Mobile-First con autenticación real Firebase Auth (1roneoshop@gmail.com),
+ * editor de prendas estilo Instagram / Vinted, compresión WebP en cliente,
+ * y sincronización con Firestore y Storage.
  */
+
+import {
+  auth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from '../assets/js/firebase-config.js';
 
 import {
   getProducts,
@@ -18,21 +20,13 @@ import {
   saveStoreSettings,
   getOrders,
   updateOrderStatus,
-  resetDatabaseToFactory,
-  syncLocalCatalogToFirestore
+  resetDatabaseToFactory
 } from '../assets/js/store-service.js';
-
-import {
-  isFirebaseActive,
-  getFirebaseConfig,
-  saveFirebaseCredentials,
-  disconnectFirebase
-} from '../assets/js/firebase-config.js';
 
 import { formatPrice } from '../assets/js/ui.js';
 
 // Estado global de la sesión de administración
-const AUTH_SESSION_KEY = 'admin_auth_session';
+const AUTH_SESSION_KEY = 'admin_demo_session';
 
 let currentProducts = [];
 let currentOrders = [];
@@ -40,11 +34,11 @@ let currentSettings = null;
 let activeTab = 'tab-products';
 let currentOrderFilter = 'all';
 
-// Estado temporal del modal de producto
+// Estado temporal del modal de producto (Instagram / Vinted)
 let editingProductId = null;
-let currentModalImages = []; // Array de { url: string, savings?: string }
+let currentModalImages = []; // Array de strings URL o DataURL
 let currentModalVariants = []; // Array de { size: string, stock: number, sku?: string }
-let currentSelectedColor = null; // { name: string, hex: string }
+let currentSelectedColors = []; // Array de { name: string, hex: string, inStock: boolean }
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupAuth();
@@ -52,58 +46,105 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ==========================================================================
-   1. GESTIÓN DE AUTENTICACIÓN
+   1. GESTIÓN DE AUTENTICACIÓN CON FIREBASE AUTH
    ========================================================================== */
 function setupAuth() {
   const loginScreen = document.getElementById('admin-login-screen');
   const appScreen = document.getElementById('admin-app-screen');
   const loginForm = document.getElementById('login-form');
-  const quickLoginBtn = document.getElementById('btn-quick-login');
+  const loginSubmitBtn = document.getElementById('btn-login-submit');
+  const loginText = document.getElementById('btn-login-text');
+  const demoLoginBtn = document.getElementById('btn-demo-login');
   const logoutBtn = document.getElementById('btn-logout');
+  const errorMsg = document.getElementById('login-error-msg');
+  const cloudIndicator = document.getElementById('header-cloud-status');
 
-  const isAuthenticated = sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
+  // 1. Escuchar estado de autenticación real de Firebase
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appScreen) appScreen.style.display = 'block';
+      if (cloudIndicator) {
+        cloudIndicator.className = 'admin-cloud-indicator is-connected';
+        cloudIndicator.innerHTML = '<span class="cloud-dot"></span><span class="hide-mobile">Cloud Conectado (roneoshop-es)</span>';
+      }
+      loadAdminData();
+    } else {
+      // Verificar si hay sesión demo local
+      const isLocalDemo = sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
+      if (isLocalDemo) {
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (appScreen) appScreen.style.display = 'block';
+        if (cloudIndicator) {
+          cloudIndicator.className = 'admin-cloud-indicator';
+          cloudIndicator.innerHTML = '<span class="cloud-dot" style="background:#888;"></span><span class="hide-mobile">Modo Local (Demo)</span>';
+        }
+        loadAdminData();
+      } else {
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (appScreen) appScreen.style.display = 'none';
+      }
+    }
+  });
 
-  if (isAuthenticated) {
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appScreen) appScreen.style.display = 'block';
-    loadAdminData();
-  } else {
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (appScreen) appScreen.style.display = 'none';
-  }
-
-  // Submit de login
+  // 2. Submit de Login real con Firebase Auth
   if (loginForm) {
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      performLogin();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (errorMsg) errorMsg.style.display = 'none';
+      if (loginSubmitBtn) loginSubmitBtn.disabled = true;
+      if (loginText) loginText.textContent = 'Autenticando...';
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast('Sesión iniciada en Firebase (roneoshop-es)');
+      } catch (err) {
+        console.warn("[FirebaseAuth] Error al iniciar sesión:", err.code, err.message);
+        if (errorMsg) {
+          errorMsg.style.display = 'block';
+          if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+            errorMsg.textContent = 'Contraseña o correo incorrectos en Firebase Auth.';
+          } else if (err.code === 'auth/too-many-requests') {
+            errorMsg.textContent = 'Demasiados intentos. Espera unos momentos o usa Modo Demo.';
+          } else {
+            errorMsg.textContent = `Error (${err.code}): ${err.message}`;
+          }
+        }
+      } finally {
+        if (loginSubmitBtn) loginSubmitBtn.disabled = false;
+        if (loginText) loginText.textContent = 'Iniciar Sesión';
+      }
     });
   }
 
-  // Acceso rápido seguro
-  if (quickLoginBtn) {
-    quickLoginBtn.addEventListener('click', () => {
-      performLogin();
+  // 3. Acceso rápido Modo Demo Local
+  if (demoLoginBtn) {
+    demoLoginBtn.addEventListener('click', () => {
+      sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appScreen) appScreen.style.display = 'block';
+      if (cloudIndicator) {
+        cloudIndicator.className = 'admin-cloud-indicator';
+        cloudIndicator.innerHTML = '<span class="cloud-dot" style="background:#888;"></span><span class="hide-mobile">Modo Local (Demo)</span>';
+      }
+      loadAdminData();
+      showToast('Acceso en Modo Local');
     });
   }
 
-  // Logout
+  // 4. Logout
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', async () => {
       sessionStorage.removeItem(AUTH_SESSION_KEY);
+      try {
+        await signOut(auth);
+      } catch (e) {}
       window.location.reload();
     });
   }
-}
-
-function performLogin() {
-  sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
-  const loginScreen = document.getElementById('admin-login-screen');
-  const appScreen = document.getElementById('admin-app-screen');
-  if (loginScreen) loginScreen.style.display = 'none';
-  if (appScreen) appScreen.style.display = 'block';
-  loadAdminData();
-  showToast('Bienvenida al Panel de Gestión');
 }
 
 /**
@@ -112,7 +153,7 @@ function performLogin() {
 async function loadAdminData() {
   try {
     const [products, settings] = await Promise.all([
-      getProducts(),
+      getProducts({ forceRefresh: true }),
       getStoreSettings()
     ]);
 
@@ -127,7 +168,6 @@ async function loadAdminData() {
     setupProductModalEvents();
     setupOrdersEvents();
     setupSettingsEvents();
-    setupCloudEvents();
   } catch (err) {
     console.error("[Admin] Error cargando datos iniciales:", err);
   }
@@ -224,7 +264,7 @@ function renderProductsList() {
       return stock <= 0;
     });
   } else if (filterCat !== 'all') {
-    filtered = filtered.filter(p => p.category.toLowerCase() === filterCat);
+    filtered = filtered.filter(p => (p.category || '').toLowerCase() === filterCat);
   }
 
   if (filtered.length === 0) {
@@ -315,12 +355,11 @@ if (catFilter) {
 }
 
 /* ==========================================================================
-   4. MODAL: CREAR / EDITAR PRENDA ESTILO INSTAGRAM / VINTED
+   4. MODAL: CREADOR / EDITOR DE PRENDA ESTILO INSTAGRAM / VINTED
    ========================================================================== */
 function setupProductModalEvents() {
   const newBtnHeader = document.getElementById('btn-header-new-product');
   const closeBtn = document.getElementById('product-modal-close');
-  const cancelBtn = document.getElementById('btn-cancel-modal');
   const modal = document.getElementById('product-modal');
   const form = document.getElementById('product-form');
 
@@ -335,9 +374,60 @@ function setupProductModalEvents() {
   };
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-  // Pastillas de Categoría Rápida
+  // Subida de fotos: input file
+  const fileInput = document.getElementById('prod-file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', handleImageUpload);
+  }
+
+  // Toggle de URL externa
+  const toggleUrlBtn = document.getElementById('btn-toggle-url-input');
+  const urlRow = document.getElementById('url-input-row');
+  const addUrlBtn = document.getElementById('btn-add-url-img');
+  const urlInput = document.getElementById('prod-url-input');
+
+  if (toggleUrlBtn && urlRow) {
+    toggleUrlBtn.addEventListener('click', () => {
+      const isHidden = urlRow.style.display === 'none';
+      urlRow.style.display = isHidden ? 'flex' : 'none';
+    });
+  }
+
+  if (addUrlBtn && urlInput) {
+    addUrlBtn.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (url) {
+        currentModalImages.push(url);
+        urlInput.value = '';
+        renderModalImages();
+      }
+    });
+  }
+
+  // Cálculo en vivo de rebaja %
+  const priceInput = document.getElementById('prod-price');
+  const compareInput = document.getElementById('prod-compare-price');
+  const discountPill = document.getElementById('discount-pill-preview');
+
+  const updateDiscountPreview = () => {
+    const p = parsePrice(priceInput?.value);
+    const cp = parsePrice(compareInput?.value);
+    if (discountPill) {
+      if (cp > p && p > 0) {
+        const pct = Math.round(((cp - p) / cp) * 100);
+        discountPill.textContent = `Rebaja activa: -${pct}%`;
+        discountPill.style.display = 'inline-block';
+      } else {
+        discountPill.style.display = 'none';
+      }
+    }
+  };
+
+  priceInput?.addEventListener('input', updateDiscountPreview);
+  compareInput?.addEventListener('input', updateDiscountPreview);
+
+  // Pastillas de Categoría
   const catPills = document.querySelectorAll('.admin-cat-pill');
   catPills.forEach(pill => {
     pill.addEventListener('click', () => {
@@ -346,41 +436,46 @@ function setupProductModalEvents() {
       const catVal = pill.dataset.cat;
       const hiddenInput = document.getElementById('prod-category');
       if (hiddenInput) hiddenInput.value = catVal;
-      updateSubcategoriesForCategory(catVal);
     });
   });
 
-  // Selector de Color
-  const colorSwatches = document.querySelectorAll('.admin-color-swatch-btn');
+  // Burbujas de color
+  const colorBubbles = document.querySelectorAll('.admin-color-bubble');
   const customColorInput = document.getElementById('admin-custom-color');
   const selectedColorLabel = document.getElementById('admin-color-selected-name');
 
-  colorSwatches.forEach(btn => {
-    btn.addEventListener('click', () => {
-      colorSwatches.forEach(b => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      currentSelectedColor = {
-        name: btn.dataset.colorName,
-        hex: btn.dataset.hex,
-        inStock: true
-      };
-      if (selectedColorLabel) selectedColorLabel.textContent = btn.dataset.colorName;
+  colorBubbles.forEach(bubble => {
+    bubble.addEventListener('click', () => {
+      const name = bubble.dataset.colorName;
+      const hex = bubble.dataset.hex;
+
+      const existingIndex = currentSelectedColors.findIndex(c => c.name === name);
+      if (existingIndex >= 0) {
+        currentSelectedColors.splice(existingIndex, 1);
+        bubble.classList.remove('is-active');
+      } else {
+        currentSelectedColors.push({ name, hex, inStock: true });
+        bubble.classList.add('is-active');
+      }
+
+      if (selectedColorLabel) {
+        selectedColorLabel.textContent = currentSelectedColors.map(c => c.name).join(', ') || 'Sin color';
+      }
     });
   });
 
   if (customColorInput) {
-    customColorInput.addEventListener('input', (e) => {
-      colorSwatches.forEach(b => b.classList.remove('is-active'));
-      currentSelectedColor = {
-        name: 'Personalizado',
-        hex: e.target.value,
-        inStock: true
-      };
-      if (selectedColorLabel) selectedColorLabel.textContent = `Personalizado (${e.target.value})`;
+    customColorInput.addEventListener('change', (e) => {
+      const hex = e.target.value;
+      const name = `Tono ${hex.toUpperCase()}`;
+      currentSelectedColors.push({ name, hex, inStock: true });
+      if (selectedColorLabel) {
+        selectedColorLabel.textContent = currentSelectedColors.map(c => c.name).join(', ');
+      }
     });
   }
 
-  // Toggle iOS: "Esta prenda tiene tallas"
+  // Toggle iOS: "Prenda con tallas"
   const hasSizesToggle = document.getElementById('prod-has-sizes-toggle');
   const sizesWrapper = document.getElementById('admin-sizes-wrapper');
   const singleStockWrapper = document.getElementById('admin-single-stock-wrapper');
@@ -393,95 +488,33 @@ function setupProductModalEvents() {
     });
   }
 
-  // Stepper de Stock Simple (hasSizes === false)
+  // Stepper grande de stock único
   const singleMinus = document.getElementById('admin-stock-minus');
   const singlePlus = document.getElementById('admin-stock-plus');
-  const singleVal = document.getElementById('admin-stock-val');
+  const singleInput = document.getElementById('admin-stock-val');
 
-  if (singleMinus && singleVal) {
-    singleMinus.addEventListener('click', () => {
-      let cur = parseInt(singleVal.textContent, 10) || 0;
-      if (cur > 0) singleVal.textContent = cur - 1;
-    });
-  }
+  singleMinus?.addEventListener('click', () => {
+    let cur = parseInt(singleInput.value, 10) || 0;
+    if (cur > 0) singleInput.value = cur - 1;
+  });
 
-  if (singlePlus && singleVal) {
-    singlePlus.addEventListener('click', () => {
-      let cur = parseInt(singleVal.textContent, 10) || 0;
-      singleVal.textContent = cur + 1;
-    });
-  }
+  singlePlus?.addEventListener('click', () => {
+    let cur = parseInt(singleInput.value, 10) || 0;
+    singleInput.value = cur + 1;
+  });
 
-  // Plantillas de Tallas
-  const tplClothingBtn = document.getElementById('btn-tpl-clothing');
-  if (tplClothingBtn) {
-    tplClothingBtn.addEventListener('click', () => {
-      currentModalVariants = [
-        { size: 'XS', stock: 2, sku: '' },
-        { size: 'S', stock: 4, sku: '' },
-        { size: 'M', stock: 6, sku: '' },
-        { size: 'L', stock: 3, sku: '' },
-        { size: 'XL', stock: 1, sku: '' }
-      ];
+  // Botón añadir talla personalizada
+  const addSizeBtn = document.getElementById('btn-add-custom-size');
+  if (addSizeBtn) {
+    addSizeBtn.addEventListener('click', () => {
+      currentModalVariants.push({ size: '', stock: 2, sku: '' });
       renderVariantsInModal();
     });
   }
 
-  const addCustomSizeBtn = document.getElementById('btn-add-custom-size');
-  if (addCustomSizeBtn) {
-    addCustomSizeBtn.addEventListener('click', () => {
-      currentModalVariants.push({ size: '', stock: 1, sku: '' });
-      renderVariantsInModal();
-    });
-  }
-
-  // Motor de Subida de Fotos con Compresor WebP Obligatorio
-  const fileInput = document.getElementById('prod-file-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', handleImageUpload);
-  }
-
-  const addUrlBtn = document.getElementById('btn-add-url-img');
-  const urlInput = document.getElementById('prod-url-input');
-  if (addUrlBtn && urlInput) {
-    addUrlBtn.addEventListener('click', () => {
-      const url = urlInput.value.trim();
-      if (url) {
-        currentModalImages.push({ url, savings: 'URL Externa' });
-        urlInput.value = '';
-        renderModalImages();
-      }
-    });
-  }
-
-  // Guardar formulario de prenda
+  // Submit del formulario
   if (form) {
     form.addEventListener('submit', handleSaveProductSubmit);
-  }
-}
-
-/**
- * Ajusta subcategorías según categoría seleccionada
- */
-function updateSubcategoriesForCategory(category) {
-  const select = document.getElementById('prod-subcategory');
-  if (!select) return;
-
-  if (category === 'cabello' || category === 'cosmetica') {
-    select.innerHTML = `
-      <option value="champu">Champú / Lavado</option>
-      <option value="tratamiento">Tratamiento Capilar</option>
-      <option value="accesorios">Accesorios</option>
-    `;
-  } else {
-    select.innerHTML = `
-      <option value="chaquetas">Chaquetas / Abrigos</option>
-      <option value="vaqueros">Vaqueros / Pantalones</option>
-      <option value="vestidos">Vestidos</option>
-      <option value="camisetas">Camisetas / Tops</option>
-      <option value="punto">Punto</option>
-      <option value="accesorios">Accesorios</option>
-    `;
   }
 }
 
@@ -498,8 +531,12 @@ function openProductModal(productId = null) {
   const hasSizesToggle = document.getElementById('prod-has-sizes-toggle');
   const sizesWrapper = document.getElementById('admin-sizes-wrapper');
   const singleStockWrapper = document.getElementById('admin-single-stock-wrapper');
-  const singleVal = document.getElementById('admin-stock-val');
+  const singleInput = document.getElementById('admin-stock-val');
   const selectedColorLabel = document.getElementById('admin-color-selected-name');
+  const discountPill = document.getElementById('discount-pill-preview');
+
+  // Limpiar selección de colores previa en la UI
+  document.querySelectorAll('.admin-color-bubble').forEach(b => b.classList.remove('is-active'));
 
   if (productId) {
     const prod = currentProducts.find(p => p.id === productId);
@@ -510,28 +547,29 @@ function openProductModal(productId = null) {
     document.getElementById('prod-id').value = prod.id;
     document.getElementById('prod-title').value = prod.title;
     document.getElementById('prod-category').value = prod.category || 'ropa';
-    document.getElementById('prod-subcategory').value = prod.subCategory || 'chaquetas';
+    document.getElementById('prod-collection').value = (prod.collectionTags && prod.collectionTags[0]) || 'novedades';
     document.getElementById('prod-active').value = String(prod.active !== false);
     document.getElementById('prod-desc').value = prod.description || '';
-    document.getElementById('prod-price').value = prod.price;
-    document.getElementById('prod-compare-price').value = prod.compareAtPrice || '';
-    document.getElementById('prod-weight').value = prod.weightKg || 0.35;
+    document.getElementById('prod-price').value = String(prod.price).replace('.', ',');
+    document.getElementById('prod-compare-price').value = prod.compareAtPrice ? String(prod.compareAtPrice).replace('.', ',') : '';
 
-    // Actualizar pastillas de categoría
+    // Pastillas de categoría
     document.querySelectorAll('.admin-cat-pill').forEach(pill => {
       pill.classList.toggle('is-active', pill.dataset.cat === (prod.category || 'ropa'));
     });
 
     // Colores
-    if (prod.colors && prod.colors.length > 0) {
-      currentSelectedColor = prod.colors[0];
-      if (selectedColorLabel) selectedColorLabel.textContent = currentSelectedColor.name;
-    } else {
-      currentSelectedColor = null;
-      if (selectedColorLabel) selectedColorLabel.textContent = 'Sin color específico';
+    currentSelectedColors = Array.isArray(prod.colors) ? JSON.parse(JSON.stringify(prod.colors)) : [];
+    if (selectedColorLabel) {
+      selectedColorLabel.textContent = currentSelectedColors.map(c => c.name).join(', ') || 'Sin color';
     }
+    // Marcar burbujas activas
+    document.querySelectorAll('.admin-color-bubble').forEach(b => {
+      const isAct = currentSelectedColors.some(c => c.name.toLowerCase() === b.dataset.colorName.toLowerCase());
+      b.classList.toggle('is-active', isAct);
+    });
 
-    // Toggle de tallas
+    // Tallas
     const hasSizes = prod.hasSizes !== false;
     if (hasSizesToggle) hasSizesToggle.checked = hasSizes;
     if (sizesWrapper) sizesWrapper.style.display = hasSizes ? 'block' : 'none';
@@ -539,16 +577,25 @@ function openProductModal(productId = null) {
 
     if (!hasSizes) {
       const sum = prod.variants ? prod.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 10;
-      if (singleVal) singleVal.textContent = sum;
+      if (singleInput) singleInput.value = sum;
     }
 
-    currentModalImages = (prod.images || []).map(url => ({ url }));
-    currentModalVariants = JSON.parse(JSON.stringify(prod.variants || []));
+    currentModalImages = Array.isArray(prod.images) ? [...prod.images] : [];
+    currentModalVariants = Array.isArray(prod.variants) ? JSON.parse(JSON.stringify(prod.variants)) : [];
+
+    // Rebaja preview
+    if (discountPill && prod.compareAtPrice && prod.compareAtPrice > prod.price) {
+      const pct = Math.round(((prod.compareAtPrice - prod.price) / prod.compareAtPrice) * 100);
+      discountPill.textContent = `Rebaja activa: -${pct}%`;
+      discountPill.style.display = 'inline-block';
+    } else if (discountPill) {
+      discountPill.style.display = 'none';
+    }
+
   } else {
     if (modalTitle) modalTitle.textContent = 'Nueva Prenda';
     document.getElementById('product-form').reset();
     document.getElementById('prod-id').value = '';
-    document.getElementById('prod-weight').value = '0.35';
     document.getElementById('prod-category').value = 'ropa';
 
     document.querySelectorAll('.admin-cat-pill').forEach(pill => {
@@ -558,10 +605,11 @@ function openProductModal(productId = null) {
     if (hasSizesToggle) hasSizesToggle.checked = true;
     if (sizesWrapper) sizesWrapper.style.display = 'block';
     if (singleStockWrapper) singleStockWrapper.style.display = 'none';
-    if (singleVal) singleVal.textContent = '10';
+    if (singleInput) singleInput.value = 10;
 
-    currentSelectedColor = null;
-    if (selectedColorLabel) selectedColorLabel.textContent = 'Sin color específico';
+    currentSelectedColors = [];
+    if (selectedColorLabel) selectedColorLabel.textContent = 'Sin color';
+    if (discountPill) discountPill.style.display = 'none';
 
     currentModalImages = [];
     currentModalVariants = [
@@ -581,7 +629,7 @@ function openProductModal(productId = null) {
 }
 
 /**
- * Manejo de subida de fotos con compresión automática obligatoria a .WebP
+ * Manejo de subida y compresión instantánea a WebP con Canvas (<1100px, 0.82)
  */
 async function handleImageUpload(e) {
   const files = Array.from(e.target.files || []);
@@ -589,17 +637,11 @@ async function handleImageUpload(e) {
 
   for (const file of files) {
     try {
-      const origSizeKB = Math.round(file.size / 1024);
-      const webpDataUrl = await compressImageToWebP(file, 1000, 0.78);
-      const compSizeKB = Math.round((webpDataUrl.length * 3) / 4 / 1024);
-
-      currentModalImages.push({
-        url: webpDataUrl,
-        savings: `${origSizeKB} KB → ${compSizeKB} KB WebP`
-      });
+      const webpDataUrl = await compressImageToWebP(file, 1100, 0.82);
+      currentModalImages.push(webpDataUrl);
     } catch (err) {
       console.error("[Compresor WebP] Error procesando imagen:", err);
-      showToast('Error al comprimir una de las imágenes.');
+      showToast('Error al comprimir imagen.');
     }
   }
 
@@ -608,9 +650,9 @@ async function handleImageUpload(e) {
 }
 
 /**
- * Comprime un archivo de imagen en cliente redimensionándolo y exportándolo a WebP
+ * Función canvas para compresión WebP en cliente
  */
-function compressImageToWebP(file, maxHeight = 1000, quality = 0.78) {
+function compressImageToWebP(file, maxHeight = 1100, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (readerEvent) => {
@@ -643,26 +685,32 @@ function compressImageToWebP(file, maxHeight = 1000, quality = 0.78) {
 }
 
 /**
- * Renderiza la galería horizontal estilo Instagram / Vinted dentro del modal
+ * Renderiza la tira horizontal de fotos con flechas < > y botón borrar ×
  */
 function renderModalImages() {
   const gallery = document.getElementById('modal-images-gallery');
   if (!gallery) return;
 
-  gallery.innerHTML = currentModalImages.map((imgObj, idx) => `
-    <div class="admin-insta-card">
-      <img src="${imgObj.url}" alt="Foto ${idx + 1}" />
+  gallery.innerHTML = currentModalImages.map((imgUrl, idx) => `
+    <div class="admin-insta-card" data-index="${idx}">
+      <img src="${imgUrl}" alt="Foto ${idx + 1}" />
       <span class="admin-insta-badge">${idx === 0 ? 'Portada' : `Foto ${idx + 1}`}</span>
-      ${imgObj.savings ? `<span class="admin-insta-savings">${imgObj.savings}</span>` : ''}
-      <button type="button" class="admin-insta-del js-del-img" data-index="${idx}" title="Eliminar foto" aria-label="Eliminar foto">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+
+      <button type="button" class="admin-insta-del js-del-img" data-index="${idx}" title="Eliminar foto" aria-label="Eliminar">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
+
+      <div class="admin-insta-actions">
+        <button type="button" class="admin-insta-btn js-move-left" data-index="${idx}" title="Mover a la izquierda" ${idx === 0 ? 'disabled style="opacity:0.25;"' : ''}>&lt;</button>
+        <button type="button" class="admin-insta-btn js-move-right" data-index="${idx}" title="Mover a la derecha" ${idx === currentModalImages.length - 1 ? 'disabled style="opacity:0.25;"' : ''}>&gt;</button>
+      </div>
     </div>
   `).join('');
 
+  // Borrar
   gallery.querySelectorAll('.js-del-img').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -671,49 +719,72 @@ function renderModalImages() {
       renderModalImages();
     });
   });
+
+  // Reordenar hacia la izquierda
+  gallery.querySelectorAll('.js-move-left').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.index);
+      if (idx > 0) {
+        const item = currentModalImages.splice(idx, 1)[0];
+        currentModalImages.splice(idx - 1, 0, item);
+        renderModalImages();
+      }
+    });
+  });
+
+  // Reordenar hacia la derecha
+  gallery.querySelectorAll('.js-move-right').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.index);
+      if (idx < currentModalImages.length - 1) {
+        const item = currentModalImages.splice(idx, 1)[0];
+        currentModalImages.splice(idx + 1, 0, item);
+        renderModalImages();
+      }
+    });
+  });
 }
 
 /**
- * Renderiza la matriz de tallas y stock en el modal
+ * Renderiza la rejilla de tallas y controles de stock
  */
 function renderVariantsInModal() {
   const container = document.getElementById('variants-container');
   if (!container) return;
 
-  container.innerHTML = currentModalVariants.map((v, idx) => `
-    <div class="variant-row" data-index="${idx}">
-      <input 
-        type="text" 
-        class="form-input js-var-size" 
-        value="${escapeHtml(v.size)}" 
-        placeholder="Talla" 
-        style="height: 38px; text-transform: uppercase;" 
-        required 
-      />
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <input 
-          type="number" 
-          min="0" 
-          class="form-input js-var-stock" 
-          value="${v.stock}" 
-          style="height: 38px; width: 80px;" 
-          required 
-        />
-        <button type="button" class="btn-admin-subtle js-var-plus" style="padding: 4px 8px;">+1</button>
-        <button type="button" class="btn-admin-subtle js-var-minus" style="padding: 4px 8px;">-1</button>
-        <button type="button" class="btn-admin-subtle js-var-zero" style="color: #b91c1c; padding: 4px 8px;">0</button>
-      </div>
-      <button type="button" class="admin-btn-icon is-danger js-var-del" title="Quitar talla" aria-label="Quitar talla">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-  `).join('');
+  container.innerHTML = currentModalVariants.map((v, idx) => {
+    const isStandardSize = ['XS', 'S', 'M', 'L', 'XL'].includes(v.size);
+    return `
+      <div class="admin-size-row" data-index="${idx}">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          ${isStandardSize ? `
+            <div class="admin-size-badge-circle">${escapeHtml(v.size)}</div>
+          ` : `
+            <input type="text" class="admin-size-input-custom js-var-size" value="${escapeHtml(v.size)}" placeholder="Talla" />
+          `}
+        </div>
 
-  // Sincronización de eventos en las filas
-  container.querySelectorAll('.variant-row').forEach(row => {
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="admin-size-stepper">
+            <button type="button" class="js-var-minus">&minus;</button>
+            <input type="number" min="0" class="js-var-stock" value="${v.stock}" />
+            <button type="button" class="js-var-plus">&plus;</button>
+          </div>
+          <button type="button" class="admin-btn-agotar js-var-zero">Agotar</button>
+          <button type="button" class="admin-btn-icon is-danger js-var-del" title="Quitar talla" aria-label="Quitar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.admin-size-row').forEach(row => {
     const idx = Number(row.dataset.index);
     const sizeInput = row.querySelector('.js-var-size');
     const stockInput = row.querySelector('.js-var-stock');
@@ -748,34 +819,29 @@ function renderVariantsInModal() {
   });
 }
 
-/**
- * Normaliza valores decimales con coma o punto
- */
 function parsePrice(val) {
   if (!val) return 0;
   return parseFloat(String(val).replace(',', '.')) || 0;
 }
 
 /**
- * Guarda o actualiza la prenda con normalización estricta
+ * Guarda o publica la prenda en Firestore + Storage
  */
 async function handleSaveProductSubmit(e) {
   e.preventDefault();
 
   const title = document.getElementById('prod-title').value.trim();
   const category = document.getElementById('prod-category').value || 'ropa';
-  const subCategory = document.getElementById('prod-subcategory').value || 'chaquetas';
+  const collection = document.getElementById('prod-collection').value || 'novedades';
   const active = document.getElementById('prod-active').value === 'true';
   const description = document.getElementById('prod-desc').value.trim();
   const price = parsePrice(document.getElementById('prod-price').value);
   const compareAtPrice = parsePrice(document.getElementById('prod-compare-price').value) || null;
-  const weightKg = parsePrice(document.getElementById('prod-weight').value) || 0.35;
 
   const hasSizesToggle = document.getElementById('prod-has-sizes-toggle');
   const hasSizes = hasSizesToggle ? hasSizesToggle.checked : true;
 
-  const images = currentModalImages.map(img => img.url);
-  if (images.length === 0) {
+  if (currentModalImages.length === 0) {
     showToast('Añade al menos una foto para la prenda.');
     return;
   }
@@ -783,7 +849,7 @@ async function handleSaveProductSubmit(e) {
   let variantsToSave = [];
   if (hasSizes) {
     if (currentModalVariants.length === 0) {
-      showToast('Añade al menos una talla.');
+      showToast('Añade al menos una talla a la prenda.');
       return;
     }
     variantsToSave = currentModalVariants.map(v => ({
@@ -792,48 +858,54 @@ async function handleSaveProductSubmit(e) {
       sku: v.sku || ''
     }));
   } else {
-    const singleStock = parseInt(document.getElementById('admin-stock-val')?.textContent, 10) || 10;
-    variantsToSave = [
-      { size: 'ÚNICA', stock: singleStock, sku: '' }
-    ];
+    const singleStock = parseInt(document.getElementById('admin-stock-val')?.value, 10) || 10;
+    variantsToSave = [{ size: 'ÚNICA', stock: singleStock, sku: '' }];
   }
 
-  const colorsToSave = currentSelectedColor ? [currentSelectedColor] : [];
+  const submitBtn = document.getElementById('btn-save-product-submit');
+  const btnText = document.getElementById('btn-save-text');
+  const btnSpinner = document.getElementById('btn-save-spinner');
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (btnText) btnText.style.display = 'none';
+  if (btnSpinner) btnSpinner.style.display = 'flex';
 
   const productData = {
     id: editingProductId || undefined,
     title,
     category,
-    subCategory,
+    subCategory: collection,
+    collectionTags: [category, collection],
     active,
     hasSizes,
-    colors: colorsToSave,
-    description: description || '<p>Prenda de alta calidad diseñada con silueta sofisticada y confección cuidada.</p>',
-    composition: '95% Poliéster, 5% Elastano. Lavar a máquina máx. 30ºC.',
+    colors: currentSelectedColors,
+    description,
     price,
     compareAtPrice,
-    weightKg,
-    collectionTags: [category, subCategory],
-    images,
+    weightKg: category === 'cabello' ? 0.8 : 0.35,
+    images: currentModalImages,
     variants: variantsToSave
   };
 
   try {
     await saveProduct(productData);
 
-    currentProducts = await getProducts();
+    currentProducts = await getProducts({ forceRefresh: true });
     renderKPIs();
     renderProductsList();
 
-    // Cerrar modal
     const modal = document.getElementById('product-modal');
     if (modal) modal.classList.remove('is-open');
     document.body.style.overflow = '';
 
-    showToast(editingProductId ? 'Prenda actualizada con éxito' : 'Nueva prenda creada con éxito');
+    showToast(editingProductId ? 'Prenda actualizada con éxito' : 'Nueva prenda guardada y publicada');
   } catch (err) {
     console.error("[Admin] Error guardando producto:", err);
     showToast('Error al guardar la prenda.');
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (btnText) btnText.style.display = 'inline';
+    if (btnSpinner) btnSpinner.style.display = 'none';
   }
 }
 
@@ -850,7 +922,7 @@ async function handleDeleteProduct(productId) {
 
   try {
     await deleteProduct(productId);
-    currentProducts = await getProducts();
+    currentProducts = await getProducts({ forceRefresh: true });
     renderKPIs();
     renderProductsList();
     showToast('Prenda eliminada correctamente.');
@@ -1109,7 +1181,7 @@ function openPacklinkJsonModal(orderNumber) {
 }
 
 /* ==========================================================================
-   6. PESTAÑA 3: AJUSTES TIENDA Y CONECTOR FIREBASE CLOUD
+   6. PESTAÑA 3: AJUSTES TIENDA Y RESTAURACIÓN DE FÁBRICA
    ========================================================================== */
 function populateSettingsForm() {
   if (!currentSettings) return;
@@ -1168,117 +1240,15 @@ function setupSettingsEvents() {
     });
   }
 
-  // Restaurar datos de fábrica
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {
       if (!confirm('¿Deseas restaurar el catálogo completo de 12 prendas y ajustes de fábrica?')) {
         return;
       }
 
-      resetDatabaseToFactory();
+      await resetDatabaseToFactory();
       await loadAdminData();
       showToast('Base de datos restaurada a valores de fábrica.');
-    });
-  }
-}
-
-/**
- * Conector en la nube con Firebase Firestore
- */
-function setupCloudEvents() {
-  const configTextarea = document.getElementById('firebase-config-input');
-  const saveCloudBtn = document.getElementById('btn-save-cloud-config');
-  const syncCloudBtn = document.getElementById('btn-sync-to-cloud');
-  const disconnectCloudBtn = document.getElementById('btn-disconnect-cloud');
-
-  const updateCloudUI = () => {
-    const badge = document.getElementById('cloud-status-badge');
-    const dot = document.getElementById('cloud-status-dot');
-    const text = document.getElementById('cloud-status-text');
-    const active = isFirebaseActive();
-
-    if (active) {
-      if (badge) badge.className = 'cloud-status-badge is-cloud';
-      if (dot) dot.style.backgroundColor = '#108043';
-      if (text) text.textContent = 'Conectado a Firestore (Modo Nube)';
-      if (disconnectCloudBtn) disconnectCloudBtn.style.display = 'inline-block';
-    } else {
-      if (badge) badge.className = 'cloud-status-badge is-local';
-      if (dot) dot.style.backgroundColor = '#888888';
-      if (text) text.textContent = 'Modo Local (localStorage)';
-      if (disconnectCloudBtn) disconnectCloudBtn.style.display = 'none';
-    }
-
-    const currentConfig = getFirebaseConfig();
-    if (configTextarea && currentConfig && !configTextarea.value) {
-      configTextarea.value = JSON.stringify(currentConfig, null, 2);
-    }
-  };
-
-  updateCloudUI();
-
-  if (saveCloudBtn) {
-    saveCloudBtn.addEventListener('click', async () => {
-      const raw = configTextarea?.value.trim();
-      if (!raw) {
-        showToast('Pega un JSON válido de configuración de Firebase.');
-        return;
-      }
-
-      try {
-        let parsed;
-        if (raw.startsWith('{')) {
-          parsed = JSON.parse(raw);
-        } else {
-          // Si pegan líneas clave-valor
-          parsed = {};
-          raw.split('\n').forEach(line => {
-            const [k, v] = line.split(':');
-            if (k && v) parsed[k.trim().replace(/['"]/g, '')] = v.trim().replace(/[,'"]/g, '');
-          });
-        }
-
-        const success = await saveFirebaseCredentials(parsed);
-        if (success) {
-          updateCloudUI();
-          showToast('Credenciales guardadas y conectadas a Firebase Firestore.');
-        } else {
-          showToast('Credenciales guardadas en modo espera.');
-        }
-      } catch (err) {
-        console.error("[FirebaseCloud] Error analizando configuración:", err);
-        showToast('Formato JSON no válido.');
-      }
-    });
-  }
-
-  if (syncCloudBtn) {
-    syncCloudBtn.addEventListener('click', async () => {
-      if (!isFirebaseActive()) {
-        showToast('Conecta primero tus credenciales de Firebase para sincronizar.');
-        return;
-      }
-
-      try {
-        syncCloudBtn.disabled = true;
-        syncCloudBtn.textContent = 'Sincronizando...';
-        await syncLocalCatalogToFirestore();
-        showToast('Catálogo sincronizado exitosamente con Firebase Firestore.');
-      } catch (err) {
-        console.error("[FirebaseCloud] Error en sincronización:", err);
-        showToast('Error sincronizando con Firestore.');
-      } finally {
-        syncCloudBtn.disabled = false;
-        syncCloudBtn.textContent = 'Subir Catálogo a Firestore';
-      }
-    });
-  }
-
-  if (disconnectCloudBtn) {
-    disconnectCloudBtn.addEventListener('click', () => {
-      disconnectFirebase();
-      updateCloudUI();
-      showToast('Desconectado de Firebase. Operando en modo local.');
     });
   }
 }

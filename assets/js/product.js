@@ -17,7 +17,8 @@ import {
   getProductByIdOrSlug,
   getProducts,
   getRelatedProducts,
-  getStoreSettings
+  getStoreSettings,
+  onStoreDataChanged
 } from './store-service.js';
 import {
   addToCart
@@ -230,7 +231,6 @@ function renderDetails(product) {
   const priceEl = document.getElementById('pdp-product-price');
   const comparePriceEl = document.getElementById('pdp-compare-price');
   const descEl = document.getElementById('accordion-desc');
-  const compositionEl = document.getElementById('accordion-composition');
 
   if (titleEl) titleEl.textContent = product.title;
   if (priceEl) priceEl.textContent = formatPrice(product.price);
@@ -245,11 +245,14 @@ function renderDetails(product) {
   }
 
   if (descEl) {
-    descEl.innerHTML = product.description || '<p>Prenda exclusiva confeccionada con materiales seleccionados para una silueta elegante y confortable.</p>';
-  }
-
-  if (compositionEl && product.composition) {
-    compositionEl.textContent = product.composition;
+    const descDetails = descEl.closest('.accordion-item');
+    if (product.description && product.description.trim().length > 0) {
+      descEl.innerHTML = `<p>${escapeHtml(product.description)}</p>`;
+      if (descDetails) descDetails.style.display = 'block';
+    } else {
+      descEl.innerHTML = '';
+      if (descDetails) descDetails.style.display = 'none';
+    }
   }
 }
 
@@ -586,9 +589,7 @@ async function loadRelatedProducts(product) {
  * vía BroadcastChannel y Storage Event para actualizar la vista sin recargar
  */
 function setupLiveSync() {
-  const syncChannel = new BroadcastChannel('yoana_store_sync');
-  
-  const handleLiveUpdate = async (event) => {
+  onStoreDataChanged(async () => {
     if (!currentProduct) return;
     try {
       const refreshed = await getProductByIdOrSlug(currentProduct.id);
@@ -598,13 +599,6 @@ function setupLiveSync() {
       }
     } catch (e) {
       console.warn("[ProductPage] Error actualizando producto en vivo:", e);
-    }
-  };
-
-  syncChannel.onmessage = handleLiveUpdate;
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'store_db_products_v2') {
-      handleLiveUpdate();
     }
   });
 }
