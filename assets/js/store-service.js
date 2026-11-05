@@ -1,8 +1,8 @@
 /**
- * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP (FASE 3.8 DEFINITIVA)
+ * STORE SERVICE - YOANA ZAFIRO / RONEOSHOP
  * Motor central de datos conectado a Firebase Firestore + Firebase Storage
- * con URLs y nombres limpios (products/{id}/1.webp, 2.webp...), borrado de archivos obsoletos,
- * código de pedido español diario DD-MM-YYYY-NNN y sincronización multi-pestaña.
+ * con URLs y nombres limpios (products/{id}/1.webp, 2.webp...), URLs oficiales getDownloadURL,
+ * protección estricta Anti-CORS en localhost y código de pedido diario DD-MM-YYYY-NNN.
  */
 
 import {
@@ -26,7 +26,7 @@ import {
   sanitizeForFirestore
 } from './firebase-config.js';
 
-// Claves actualizadas de almacenamiento local y caché (V3 / V7)
+// Claves de almacenamiento local y caché
 const CACHE_KEY = 'store_products_cache_v7';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos para proteger la cuota gratuita de Firebase Spark
 const FIRESTORE_VERIFIED_KEY = 'firestore_verified_v2';
@@ -34,7 +34,7 @@ const DB_PRODUCTS_KEY = 'store_db_products_v3';
 const DB_SETTINGS_KEY = 'store_db_settings_v3';
 const ORDERS_STORAGE_KEY = 'store_orders_v2';
 
-// Limpieza de claves obsoletas de versiones anteriores
+// Limpieza de claves obsoletas
 try {
   if (typeof localStorage !== 'undefined') {
     ['store_db_products_v1', 'store_db_products_v2', 'store_products_cache_v4', 'store_products_cache_v5', 'store_products_cache_v6'].forEach(k => localStorage.removeItem(k));
@@ -50,9 +50,7 @@ const syncChannel = (typeof BroadcastChannel !== 'undefined')
   : null;
 
 /**
- * Generador de URL limpia y determinista de Firebase Storage
- * @param {string} filePath Ruta relativa en el bucket (ej. "products/abrigo-pandora/1.webp")
- * @param {string} version Opcional para forzar invalidación de caché en navegador
+ * Generador de URL limpia de Firebase Storage
  */
 export function buildCleanStorageUrl(filePath, version = '') {
   const bucket = firebaseConfig.storageBucket || "roneoshop-es.firebasestorage.app";
@@ -656,11 +654,21 @@ export const INITIAL_SAMPLE_ORDERS = [
 // ============================================================================
 
 /**
- * Convierte cualquier origen de imagen (File, Blob, DataURL o URL externa)
- * en un Blob WebP optimizado con calidad 0.84 y altura máxima 1100px
+ * Convierte cualquier origen de imagen en Blob WebP
+ * Cumple estrictamente las reglas anti-CORS en localhost
  */
 export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 0.84) {
   if (!source) throw new Error("Origen de imagen vacío");
+
+  // Si ya es un Blob WebP, devolverlo directamente
+  if (source instanceof Blob && source.type === 'image/webp') {
+    return source;
+  }
+
+  // Si ya es una URL de Firebase Storage, no re-procesar en canvas
+  if (typeof source === 'string' && source.includes('firebasestorage.googleapis.com')) {
+    return source;
+  }
 
   if (typeof document === 'undefined' || typeof window === 'undefined') {
     return new Blob([], { type: 'image/webp' });
@@ -670,45 +678,41 @@ export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 
 
   try {
     const imgElement = new Image();
-    imgElement.crossOrigin = "anonymous";
 
     if (source instanceof File || source instanceof Blob) {
+      // Para archivos locales o blobs: NUNCA usar crossOrigin = "anonymous"
       objectUrl = URL.createObjectURL(source);
       await new Promise((res, rej) => {
         imgElement.onload = () => res(imgElement);
-        imgElement.onerror = rej;
+        imgElement.onerror = (e) => rej(e);
         imgElement.src = objectUrl;
       });
     } else if (typeof source === 'string') {
       if (source.startsWith('data:image')) {
+        // Para DataURLs locales: NUNCA usar crossOrigin = "anonymous"
         await new Promise((res, rej) => {
           imgElement.onload = () => res(imgElement);
-          imgElement.onerror = rej;
+          imgElement.onerror = (e) => rej(e);
           imgElement.src = source;
         });
       } else {
-        // Para URLs externas de Shopify o Unsplash con CORS restringido, usar wsrv.nl proxy
-        const safeUrl = (source.includes('cdn.shopify.com') || source.includes('unsplash.com'))
-          ? `https://wsrv.nl/?url=${encodeURIComponent(source)}&h=${maxHeight}&output=webp&q=84`
-          : source;
+        // Para URLs externas (Shopify / Unsplash): descargar mediante proxy CORS wsrv.nl
+        const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(source)}&h=${maxHeight}&output=webp&q=84`;
 
         try {
-          const resp = await fetch(safeUrl, { mode: 'cors' });
-          if (!resp.ok) throw new Error(`Fetch falló con status ${resp.status}`);
+          const resp = await fetch(proxyUrl, { mode: 'cors' });
+          if (!resp.ok) throw new Error(`Fetch wsrv falló con status ${resp.status}`);
           const blob = await resp.blob();
           objectUrl = URL.createObjectURL(blob);
           await new Promise((res, rej) => {
             imgElement.onload = () => res(imgElement);
-            imgElement.onerror = rej;
+            imgElement.onerror = (e) => rej(e);
             imgElement.src = objectUrl;
           });
         } catch (fetchErr) {
-          // Fallback directo sobre imgElement
-          await new Promise((res, rej) => {
-            imgElement.onload = () => res(imgElement);
-            imgElement.onerror = rej;
-            imgElement.src = source;
-          });
+          console.warn("[StoreService] Fallback descarga imagen externa:", fetchErr);
+          // Si el proxy fallara, devolver el string original sin bloquear el flujo
+          return source;
         }
       }
     }
@@ -728,13 +732,16 @@ export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgElement, 0, 0, width, height);
 
-    return await new Promise((resolve, reject) => {
+    return await new Promise((resolve) => {
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);
-        else reject(new Error("Canvas toBlob retornó null"));
+        else resolve(source); // Fallback seguro
       }, 'image/webp', quality);
     });
 
+  } catch (err) {
+    console.warn("[StoreService] Error procesando imagen en canvas, devolviendo origen:", err);
+    return source;
   } finally {
     if (objectUrl) {
       try { URL.revokeObjectURL(objectUrl); } catch (e) {}
@@ -743,38 +750,44 @@ export async function imageSourceToWebpBlob(source, maxHeight = 1100, quality = 
 }
 
 /**
- * Sube una imagen individual a Firebase Storage bajo la ruta limpia:
- * products/${productId}/${index + 1}.webp
+ * LEY 1 ANTI-CORS:
+ * Si imageSource ya es de firebasestorage.googleapis.com, se devuelve inmediatamente.
+ * Si es una imagen nueva, se sube a Storage y se devuelve su getDownloadURL oficial.
  */
 export async function uploadProductImage(imageSource, productId, index = 0, forceReupload = false) {
-  const cleanFileName = `${index + 1}.webp`;
-  const filePath = `products/${productId}/${cleanFileName}`;
-
-  // Si ya es una URL limpia de nuestro Firebase Storage y no forzamos resubida, conservarla
+  // 1. Si ya es una URL alojada en Firebase Storage, DEVUÉLVELA TAL CUAL AL INSTANTE.
   if (
     !forceReupload &&
     typeof imageSource === 'string' &&
-    imageSource.includes('firebasestorage.googleapis.com') &&
-    !imageSource.includes('foto_') &&
-    !imageSource.includes('img_')
+    imageSource.includes('firebasestorage.googleapis.com')
   ) {
     return imageSource;
   }
 
-  const webpBlob = await imageSourceToWebpBlob(imageSource);
+  // 2. Comprimir imagen nueva (File, Blob, dataUrl o URL externa)
+  const processed = await imageSourceToWebpBlob(imageSource, 1100, 0.84);
+
+  // Si procesado devolvió un string directo (fallback), devolverlo
+  if (typeof processed === 'string' && processed.startsWith('http')) {
+    return processed;
+  }
+
+  // 3. Subir archivo físico a Firebase Storage: products/{productId}/{index + 1}.webp
+  const filePath = `products/${productId}/${index + 1}.webp`;
   const storageRef = ref(storage, filePath);
-  
-  await uploadBytes(storageRef, webpBlob, {
+
+  await uploadBytes(storageRef, processed, {
     contentType: 'image/webp',
     cacheControl: 'public,max-age=31536000'
   });
 
-  return buildCleanStorageUrl(filePath, Date.now().toString().slice(-4));
+  // 4. Obtener SIEMPRE la URL oficial de descarga getDownloadURL
+  const officialDownloadUrl = await getDownloadURL(storageRef);
+  return officialDownloadUrl;
 }
 
 /**
- * Migra todas las imágenes externas y nombres antiguos a Firebase Storage con nombres 1.webp, 2.webp...
- * y elimina los archivos viejos foto_ del bucket
+ * Migra imágenes externas pendientes a Firebase Storage con getDownloadURL oficial
  */
 export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
   try {
@@ -794,19 +807,6 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
       const newCleanUrls = [];
       let productModified = false;
 
-      // Intentar limpiar archivos huérfanos con nombres foto_...webp
-      try {
-        const folderRef = ref(storage, `products/${product.id}`);
-        const existingFiles = await listAll(folderRef);
-        for (const itemRef of existingFiles.items) {
-          if (itemRef.name.startsWith('foto_') || itemRef.name.startsWith('img_')) {
-            await deleteObject(itemRef).catch(() => {});
-          }
-        }
-      } catch (listErr) {
-        // Carpeta aún no existe en Storage
-      }
-
       for (let i = 0; i < originalSources.length; i++) {
         const sourceUrl = originalSources[i];
         processedCount++;
@@ -821,17 +821,17 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
         }
 
         try {
-          const cleanUploadedUrl = await uploadProductImage(sourceUrl, product.id, i, true);
-          newCleanUrls.push(cleanUploadedUrl);
+          const officialUrl = await uploadProductImage(sourceUrl, product.id, i, false);
+          newCleanUrls.push(officialUrl);
           productModified = true;
           migratedCount++;
         } catch (uploadErr) {
-          console.error(`[Migrate] Error subiendo imagen ${i} de "${product.title}":`, uploadErr);
-          newCleanUrls.push(buildCleanStorageUrl(`products/${product.id}/${i + 1}.webp`));
+          console.warn(`[Migrate] Aviso subiendo foto ${i} de "${product.title}":`, uploadErr);
+          newCleanUrls.push(sourceUrl);
         }
       }
 
-      if (productModified || newCleanUrls.length > 0) {
+      if (productModified && newCleanUrls.length > 0) {
         product.images = newCleanUrls;
         product.updatedAt = Date.now();
         await setDoc(doc(db, "products", product.id), sanitizeForFirestore(product), { merge: true });
@@ -843,7 +843,7 @@ export async function migrateAllImagesToFirebaseStorage(onProgressCallback) {
 
   } catch (err) {
     console.error("[StoreService] Error migrando catálogo a Storage:", err);
-    throw err;
+    return { ok: false, migratedCount: 0 };
   }
 }
 
@@ -867,7 +867,7 @@ export async function cleanLegacyOrdersInFirestore() {
 
     if (countDeleted > 0) {
       await batch.commit();
-      console.log(`[StoreService] Eliminados ${countDeleted} pedidos antiguos de Firestore`);
+      console.log(`[StoreService] Eliminados ${countDeleted} pedidos con código obsoleto`);
     }
 
     // Asegurar que los dos pedidos oficiales existen
@@ -879,7 +879,7 @@ export async function cleanLegacyOrdersInFirestore() {
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_ORDERS));
     }
   } catch (err) {
-    console.warn("[StoreService] Error limpiando pedidos legacy:", err);
+    console.warn("[StoreService] Aviso limpiando pedidos legacy:", err);
   }
 }
 
@@ -1104,6 +1104,11 @@ export async function getRelatedProducts(currentProductId, categoryOrLimit = 4, 
     .slice(0, limit);
 }
 
+/**
+ * LEY 3: GUARDADO A PRUEBA DE FALLOS EN FIRESTORE
+ * Sube únicamente fotos nuevas con uploadProductImage en try/catch independiente.
+ * Si alguna foto falla, conserva su original y escribe SIEMPRE en Firestore.
+ */
 export async function saveProduct(productData, onProgressCallback = null) {
   if (!productData || !productData.title) {
     throw new Error("El título de la prenda es obligatorio.");
@@ -1126,15 +1131,22 @@ export async function saveProduct(productData, onProgressCallback = null) {
     id = `${slugBase}-${Date.now().toString().slice(-4)}`;
   }
 
-  // Subir imágenes con nombres limpios (1.webp, 2.webp...)
+  // Recorrer imágenes protegiendo cada una en su propio bloque try/catch
   const finalImages = [];
   const rawImages = productData.images || [];
+
   for (let i = 0; i < rawImages.length; i++) {
     if (typeof onProgressCallback === 'function') {
       onProgressCallback(i + 1, rawImages.length, 'upload');
     }
-    const cleanUrl = await uploadProductImage(rawImages[i], id, i);
-    finalImages.push(cleanUrl);
+
+    try {
+      const url = await uploadProductImage(rawImages[i], id, i, false);
+      finalImages.push(url);
+    } catch (uploadErr) {
+      console.warn(`[StoreService] Error subiendo imagen ${i} de "${id}", conservando original:`, uploadErr);
+      finalImages.push(rawImages[i]);
+    }
   }
 
   if (typeof onProgressCallback === 'function') {
@@ -1158,6 +1170,7 @@ export async function saveProduct(productData, onProgressCallback = null) {
     updatedAt: Date.now()
   });
 
+  // Guardar SIEMPRE en Cloud Firestore
   await setDoc(doc(db, "products", cleanProduct.id), cleanProduct);
 
   try {

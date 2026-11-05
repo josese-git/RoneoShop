@@ -5,6 +5,13 @@
  * compresión WebP en cliente y sincronización con Firestore y Storage.
  */
 
+// Desregistrar cualquier Service Worker previo que pueda interceptar o corromper peticiones a Firebase
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  }).catch(() => {});
+}
+
 import {
   auth,
   signInWithEmailAndPassword,
@@ -497,45 +504,63 @@ function renderProductsList() {
     const discountPct = hasDiscount ? Math.round(((prod.compareAtPrice - prod.price) / prod.compareAtPrice) * 100) : 0;
     const mainImg = (prod.images && prod.images[0]) || buildCleanStorageUrl(`products/${prod.id}/1.webp`);
 
-    const sizesSummary = prod.hasSizes === false 
-      ? `Única: ${totalUnits} ud(s)`
-      : (prod.variants || []).map(v => `${v.size}: ${v.stock}`).join(' · ');
+    // Burbujas miniatura de colores
+    const colorsHtml = (Array.isArray(prod.colors) && prod.colors.length > 0)
+      ? `<div class="admin-row-colors">
+          ${prod.colors.map(c => `<span class="admin-color-dot" style="background-color: ${escapeHtml(c.hex || '#cccccc')};" title="${escapeHtml(c.name || 'Color')}"></span>`).join('')}
+         </div>`
+      : '';
+
+    // Desglose de tallas con estilo de píldoras Shopify
+    let sizesHtml = '';
+    if (prod.hasSizes === false) {
+      sizesHtml = `<div class="admin-row-sizes"><span class="admin-size-pill ${totalUnits === 0 ? 'is-zero' : ''}">Talla única: ${totalUnits}</span></div>`;
+    } else if (Array.isArray(prod.variants) && prod.variants.length > 0) {
+      sizesHtml = `<div class="admin-row-sizes">
+        ${prod.variants.map(v => {
+          const qty = Number(v.stock) || 0;
+          return `<span class="admin-size-pill ${qty === 0 ? 'is-zero' : ''}">${escapeHtml(v.size)}: ${qty}</span>`;
+        }).join('')}
+      </div>`;
+    } else {
+      sizesHtml = `<div class="admin-row-sizes"><span class="admin-size-pill is-zero">Sin tallas</span></div>`;
+    }
 
     return `
       <article class="admin-product-row" data-id="${prod.id}">
-        <div class="admin-prod-thumb">
+        <!-- Col 1: Miniatura fija 64x84px -->
+        <div class="admin-row-thumb">
           <img src="${mainImg}" alt="${escapeHtml(prod.title)}" loading="lazy" />
           ${hasDiscount ? `<span class="thumb-badge">-${discountPct}%</span>` : ''}
         </div>
 
-        <div class="admin-prod-details">
-          <div class="admin-prod-header">
-            <h3 class="admin-prod-title">${escapeHtml(prod.title)}</h3>
-            <span class="admin-badge ${isSoldOut ? 'badge-red' : 'badge-green'}">
-              ${isSoldOut ? 'Agotado' : `${totalUnits} uds`}
+        <!-- Col 2: Información de prenda -->
+        <div class="admin-row-info">
+          <h3 class="admin-row-title">${escapeHtml(prod.title)}</h3>
+
+          <div class="admin-row-meta">
+            <span class="admin-row-badge">${escapeHtml((prod.category || 'ropa').toUpperCase())}</span>
+            <span class="stock-pill ${isSoldOut ? 'is-out' : 'is-in-stock'}">
+              ${isSoldOut ? 'AGOTADO (0)' : `STOCK: ${totalUnits}`}
             </span>
+            <span class="admin-row-price">${formatPrice(prod.price)}</span>
+            ${hasDiscount ? `<span class="admin-row-old-price">${formatPrice(prod.compareAtPrice)}</span>` : ''}
           </div>
 
-          <div class="admin-prod-meta">
-            <span class="admin-prod-cat">${(prod.category || 'ropa').toUpperCase()}</span>
-            <span class="admin-prod-price">${formatPrice(prod.price)}</span>
-            ${hasDiscount ? `<span class="admin-prod-old-price">${formatPrice(prod.compareAtPrice)}</span>` : ''}
-          </div>
-
-          <div class="admin-prod-stock-breakdown">
-            ${sizesSummary || 'Sin stock configurado'}
-          </div>
+          ${colorsHtml}
+          ${sizesHtml}
         </div>
 
-        <div class="admin-prod-actions">
-          <button type="button" class="admin-btn-action js-edit-product" data-id="${prod.id}" title="Editar prenda">
+        <!-- Col 3: Acciones rápidas -->
+        <div class="admin-row-actions">
+          <button type="button" class="btn-admin-edit js-edit-product" data-id="${prod.id}" title="Editar prenda y stock">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
-            Editar
+            Editar / Stock
           </button>
-          <button type="button" class="admin-btn-icon is-danger js-delete-product" data-id="${prod.id}" title="Eliminar prenda">
+          <button type="button" class="btn-admin-delete js-delete-product" data-id="${prod.id}" title="Eliminar prenda" aria-label="Eliminar prenda">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
