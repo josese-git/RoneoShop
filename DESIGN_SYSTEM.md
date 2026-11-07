@@ -1,6 +1,6 @@
-# SISTEMA DE DISEÑO: CLON EXACTO YOANA ZAFIRO (DESIGN_SYSTEM.md)
+# SISTEMA DE DISEÑO: IDENTIDAD OFICIAL RONEO SHOP (DESIGN_SYSTEM.md)
 
-Este documento define la especificación visual y de interacción **100% Mobile-First** basada en la interfaz real de `yoanazafiro.com`.
+Este documento define la especificación visual y de interacción **100% Mobile-First** de `roneoshop.com`.
 
 ## 1. PRINCIPIOS DE DISEÑO Y "REDONDISMO"
 * **Bordes Redondeados Universales:**
@@ -17,15 +17,15 @@ Este documento define la especificación visual y de interacción **100% Mobile-
   - Pestañas de categorías y logo de marca: `'Cormorant Garamond'`, serif elegante, mayúsculas, tamaño 24px-28px.
   - Textos, interfaz, títulos de producto y precios: `'DM Sans'`, sans-serif contemporánea.
 * **Formato de Precio Oficial:**
-  - Símbolo del euro PEGADO DELANTE y coma decimal: **`€24,95`** (estilo Yoana Zafiro).
+  - Símbolo del euro PEGADO DELANTE y coma decimal: **`€24,95`** (estilo oficial Roneo Shop).
 
 ---
 
 ## 2. COMPONENTES CLAVE DE LA INTERFAZ MÓVIL
 
 ### A) Header y Announcement Bar
-* **Announcement Bar:** Franja negra (`#121212`) con texto en mayúsculas (`11px`, `letter-spacing: 0.06em`), ajuste de texto flexible sin desbordamiento horizontal (`word-wrap: break-word`).
-* **Header Fijo (62px):** Distribución simétrica en 3 zonas (menú hamburguesa a la izquierda, logo `ZAFIRO` en serif al centro, lupa de búsqueda y bolsa de compra con badge numérico circular a la derecha).
+* **Announcement Bar:** Franja terracota/burdeos (`#4d2525`) con texto serif luminoso (`#feede9`), mayúsculas y loop continuo horizontal Marquee Ticker.
+* **Header Fijo:** Distribución simétrica en 3 zonas (menú hamburguesa a la izquierda, logotipo oficial `RONEO SHOP` en imagen al centro, lupa de búsqueda y bolsa de compra con badge numérico circular a la derecha).
 
 ### B) Buscador Desplegable (`.search-bar-drawer`)
 * Se despliega con animación fluida bajo el header al pulsar la lupa o la pestaña *Buscar* de la barra inferior.

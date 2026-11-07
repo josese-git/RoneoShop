@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="Yoana Zafiro - Tienda online oficial. Moda femenina, vaqueros faja, abrigos, cosmética coreana y tratamientos capilares.">
-  <title>Yoana Zafiro | Tienda Oficial</title>
+  <meta name="description" content="Roneo Shop - Tienda online oficial. Moda femenina, vaqueros faja, abrigos estructurados, calzado en piel vacuna y novedades de temporada.">
+  <title>Roneo Shop | Tienda Oficial</title>
+
+  <!-- Favicon Oficial Roneo Shop -->
+  <link rel="icon" type="image/png" href="assets/img/favicon-roneo.png">
+  <link rel="shortcut icon" type="image/png" href="favicon roneo.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-roneo.png">
+  <meta name="theme-color" content="#feede9">
 
   <!-- Google Fonts: Cormorant Garamond y DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 
   <!-- Estilos del Sistema de Diseño 100% Mobile-First -->
   <link rel="stylesheet" href="assets/css/tokens.css">
@@ -19,10 +25,29 @@
 <body>
 
   <!-- ======================================================================
-       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR
+       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR MARQUEE TICKER
        ====================================================================== -->
   <aside class="announcement-bar" role="region" aria-label="Aviso promocional">
-    <span id="announcement-text">NUEVA COLECCIÓN 2026 OTOÑO & INVIERNO</span>
+    <div class="announcement-bar__viewport">
+      <div class="announcement-bar__track">
+        <div class="announcement-bar__group">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+        <div class="announcement-bar__group" aria-hidden="true">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- ======================================================================
@@ -41,9 +66,18 @@
         </button>
       </div>
 
-      <!-- Centro: Logotipo tipográfico Yoana Zafiro -->
-      <a href="index.html" class="header-logo" aria-label="Portada de Yoana Zafiro">
-        <span class="header-logo__symbol">✧</span> Yoana Zafiro
+      <!-- Centro: Logotipo Oficial Roneo Shop -->
+      <a href="index.html" class="header-logo" aria-label="Roneo Shop - Inicio">
+        <img 
+          src="assets/img/logo-roneo.png" 
+          alt="Roneo Shop" 
+          class="header-logo__img"
+          onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}"
+        >
+        <span class="header-logo__fallback" style="display:none;">
+          <span class="logo-line-top">RONEO</span>
+          <span class="logo-line-bottom">SHOP</span>
+        </span>
       </a>
 
       <!-- Derecha: Lupa y Cesta de compra -->
@@ -74,7 +108,7 @@
         type="search" 
         id="search-input" 
         class="search-bar-input" 
-        placeholder="Buscar vestido, vaquero, abrigo, champú..." 
+        placeholder="Buscar vestido, vaquero, abrigo, botines..." 
         autocomplete="off" 
       />
       <button type="button" id="search-close-btn" class="search-bar-close" aria-label="Cerrar buscador">
@@ -90,19 +124,19 @@
     <!-- ====================================================================
          SECCIÓN 3: HERO EDITORIAL DE PRESENTACIÓN
          ==================================================================== -->
-    <section class="editorial-hero" aria-label="Presentación de Yoana Zafiro">
+    <section class="editorial-hero" aria-label="Presentación de Roneo Shop">
       <div class="editorial-hero__media">
         <img 
-          src="https://yoanazafiro.com/cdn/shop/files/portada.jpg?v=1737318983&width=1200" 
-          alt="Yoana Zafiro Colección" 
+          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=85" 
+          alt="Roneo Shop Colección" 
           class="editorial-hero__img" 
           loading="eager"
         />
       </div>
       <div class="editorial-hero__content">
-        <h1 class="editorial-hero__title">Yoana Zafiro</h1>
+        <h1 class="editorial-hero__title">Roneo Shop</h1>
         <p class="editorial-hero__subtitle">
-          Crea momentos inolvidables con nuestros artículos de ropa, zapatos, complementos y cuidados para la mujer.
+          Crea momentos inolvidables con nuestros artículos de ropa, zapatos, complementos y novedades de temporada.
         </p>
       </div>
     </section>
@@ -113,60 +147,68 @@
     <section class="collections-section" aria-label="Colecciones destacadas">
       <h2 class="collections-title">Colecciones</h2>
       
-      <div class="collections-carousel">
+      <div class="collections-carousel" id="collections-carousel">
         <!-- Colección 1: OTOÑO INVIERNO -->
         <a href="collection.html?cat=otono-invierno" class="collection-card js-collection-filter" data-category="otono-invierno" aria-label="Colección Otoño Invierno">
           <div class="collection-card__media">
-            <img src="https://yoanazafiro.com/cdn/shop/files/fotos_web_6fdf6e8e-5305-44db-9bb0-20a024538e26.jpg?v=1763408265&width=600" alt="Otoño Invierno" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=82" alt="Otoño Invierno" loading="lazy" />
           </div>
           <div class="collection-card__footer">
             <div>
               <div class="collection-card__title">OTOÑO INVIERNO</div>
               <div class="collection-card__count">168 artículos</div>
             </div>
-            <div class="collection-card__arrow">↗</div>
+            <div class="collection-card__arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
           </div>
         </a>
 
         <!-- Colección 2: PRIMAVERA & VERANO -->
         <a href="collection.html?cat=primavera-verano" class="collection-card js-collection-filter" data-category="primavera-verano" aria-label="Colección Primavera y Verano">
           <div class="collection-card__media">
-            <img src="https://yoanazafiro.com/cdn/shop/files/IMG_5434.jpg?v=1747413284&width=600" alt="Primavera y Verano" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=82" alt="Primavera y Verano" loading="lazy" />
           </div>
           <div class="collection-card__footer">
             <div>
               <div class="collection-card__title">PRIMAVERA & VERANO</div>
               <div class="collection-card__count">179 artículos</div>
             </div>
-            <div class="collection-card__arrow">↗</div>
+            <div class="collection-card__arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
           </div>
         </a>
 
-        <!-- Colección 3: CABELLO -->
-        <a href="collection.html?cat=cabello" class="collection-card js-collection-filter" data-category="cabello" aria-label="Colección Cabello">
+        <!-- Colección 3: CALZADO -->
+        <a href="collection.html?cat=calzado" class="collection-card js-collection-filter" data-category="calzado" aria-label="Colección Calzado">
           <div class="collection-card__media">
-            <img src="https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=600" alt="Cuidado Capilar" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=600&q=80" alt="Colección Calzado en Piel" loading="lazy" />
           </div>
           <div class="collection-card__footer">
             <div>
-              <div class="collection-card__title">CABELLO</div>
-              <div class="collection-card__count">32 artículos</div>
+              <div class="collection-card__title">CALZADO</div>
+              <div class="collection-card__count">Colección piel</div>
             </div>
-            <div class="collection-card__arrow">↗</div>
+            <div class="collection-card__arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
           </div>
         </a>
 
-        <!-- Colección 4: COSMÉTICA -->
-        <a href="collection.html?cat=cosmetica" class="collection-card js-collection-filter" data-category="cosmetica" aria-label="Colección Cosmética Coreana">
+        <!-- Colección 4: NOVEDADES & REBAJAS -->
+        <a href="collection.html?cat=rebajas" class="collection-card js-collection-filter" data-category="rebajas" aria-label="Colección Novedades y Rebajas">
           <div class="collection-card__media">
-            <img src="https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=600" alt="Cosmética Coreana" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80" alt="Novedades y Rebajas" loading="lazy" />
           </div>
           <div class="collection-card__footer">
             <div>
-              <div class="collection-card__title">COSMÉTICA</div>
-              <div class="collection-card__count">24 artículos</div>
+              <div class="collection-card__title">NOVEDADES & REBAJAS</div>
+              <div class="collection-card__count">Descuentos de temporada</div>
             </div>
-            <div class="collection-card__arrow">↗</div>
+            <div class="collection-card__arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
           </div>
         </a>
       </div>
@@ -176,7 +218,7 @@
          SECCIÓN 5: PESTAÑAS SERIF + CARRUSEL DE PRODUCTOS + VER TODO
          ==================================================================== -->
     <nav id="category-tabs" class="category-tabs" aria-label="Categorías de prendas">
-      <!-- Inyectado dinámicamente con ui.js: ROPA, CABELLO, COSMÉTICA, etc. -->
+      <!-- Inyectado dinámicamente con ui.js: ROPA, CALZADO, etc. -->
     </nav>
 
     <section id="products-section" class="products-wrapper" aria-label="Galería de productos">
@@ -195,7 +237,7 @@
     <section class="feature-banner" aria-label="Campaña Otoño e Invierno">
       <div class="feature-banner__media" style="aspect-ratio: 4 / 5;">
         <img 
-          src="https://yoanazafiro.com/cdn/shop/files/fotos_web_6fdf6e8e-5305-44db-9bb0-20a024538e26.jpg?v=1763408265&width=1000" 
+          src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=82" 
           alt="Campaña Otoño Invierno" 
           loading="lazy" 
         />
@@ -216,7 +258,7 @@
     <section class="feature-banner" aria-label="Campaña Primavera y Verano">
       <div class="feature-banner__media" style="aspect-ratio: 3 / 4.2;">
         <img 
-          src="https://yoanazafiro.com/cdn/shop/files/IMG_5434.jpg?v=1747413284&width=1000" 
+          src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1000&q=82" 
           alt="Colección Primavera y Verano" 
           loading="lazy" 
         />
@@ -231,29 +273,29 @@
     </section>
 
     <!-- ====================================================================
-         SECCIÓN 8: BLOQUE DESTACADO "COSMETICA COREANA" (FONDO TIERRA)
+         SECCIÓN 8: BLOQUE DESTACADO "CALZADO EN PIEL VACUNA"
          ==================================================================== -->
-    <section class="promo-color-box" aria-label="Especial Cosmética Coreana">
+    <section class="promo-color-box" aria-label="Especial Calzado en Piel">
       <div class="promo-color-box__inner">
         <div class="promo-color-box__media">
           <img 
-            src="https://yoanazafiro.com/cdn/shop/files/IMG_0336_15f50c3f-3300-46f6-aed0-a59d5b53c1ae.png?v=1742232271&width=1000" 
-            alt="Cosmética Coreana" 
+            src="https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=1000&q=80" 
+            alt="Nueva Colección de Calzado en Piel" 
             loading="lazy" 
           />
         </div>
-        <h2 class="promo-color-box__title">COSMETICA<br>COREANA</h2>
-        <button type="button" id="btn-buy-korean" class="btn-light">COMPRAR</button>
+        <h2 class="promo-color-box__title">NUEVA LÍNEA<br>DE CALZADO</h2>
+        <button type="button" id="btn-explore-footwear" class="btn-light">EXPLORAR CALZADO</button>
       </div>
     </section>
 
     <!-- ====================================================================
          SECCIÓN 9: MULTIMEDIA VÍDEO + 2 PRODUCTOS DESTACADOS
          ==================================================================== -->
-    <section class="video-showcase-section" aria-label="Cuidado Capilar Profesional">
+    <section class="video-showcase-section" aria-label="Moda y Confort en Movimiento">
       <!-- Reproductor interactivo de vídeo redondeado -->
       <div class="video-showcase">
-        <video id="showcase-video" poster="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80" playsinline preload="none">
+        <video id="showcase-video" poster="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80" playsinline preload="none">
           <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
           Tu navegador no soporta el reproductor de vídeo.
         </video>
@@ -266,55 +308,55 @@
         </div>
       </div>
 
-      <!-- Grid de 2 productos de cabello -->
+      <!-- Grid de 2 productos destacados -->
       <div id="duo-products-container" class="duo-products-grid">
-        <!-- Inyectado dinámicamente: Champú nutritivo 1000ml (Agotado) y Secador Profesional -->
+        <!-- Inyectado dinámicamente con ui.js: Botín Chelsea en Piel y Abrigo Pandora -->
       </div>
 
       <div class="video-showcase-btn-wrapper">
-        <button type="button" id="btn-see-hair-products" class="btn-editorial">VER PRODUCTOS</button>
+        <button type="button" id="btn-see-highlight-products" class="btn-editorial">VER PRENDAS DESTACADAS</button>
       </div>
     </section>
 
     <!-- ====================================================================
-         SECCIÓN 10: TARJETA EDITORIAL "TRATAMIENTO CAPILAR"
+         SECCIÓN 10: TARJETA EDITORIAL "PATRONAJE & CONFORT"
          ==================================================================== -->
-    <section class="treatment-card-section" aria-label="Tratamiento Capilar Intensivo">
+    <section class="treatment-card-section" aria-label="Patronaje y Confección Premium">
       <div class="treatment-card">
         <div class="treatment-card__media">
           <img 
-            src="https://yoanazafiro.com/cdn/shop/files/ee3a1c45-86e1-4770-99e2-187ed2170cb1.jpg?v=1737629409&width=1000" 
-            alt="Tratamiento Capilar Combo" 
+            src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80" 
+            alt="Patronaje y Confección Femenina" 
             loading="lazy" 
           />
         </div>
         <div class="treatment-card__content">
-          <h2 class="treatment-card__title">Tratamiento capilar</h2>
+          <h2 class="treatment-card__title">Patronaje & Confort</h2>
           <p class="treatment-card__desc">
-            Nuestros productos han ayudado a mucha gente que los ha avalado con sus experiencias resolviendo problemas capilares que otros productos no consiguieron resolver.
+            Prendas diseñadas para adaptarse con soltura a tu silueta. Tejidos elásticos de máxima recuperación, tiro alto favorecedor y costuras reforzadas para tu ritmo diario.
           </p>
-          <button type="button" id="btn-buy-hair-treatment" class="btn-editorial">COMPRAR</button>
+          <a href="collection.html?cat=ropa" class="btn-editorial" style="display: inline-block; text-align: center; text-decoration: none;">DESCUBRIR ROPA</a>
         </div>
       </div>
     </section>
 
     <!-- ====================================================================
-         SECCIÓN 11: BLOQUE EDITORIAL 3 — "PEIKAS" MODA INFANTIL
+         SECCIÓN 11: BLOQUE EDITORIAL 3 — "BÁSICOS ESENCIALES"
          ==================================================================== -->
-    <section class="feature-banner" aria-label="Peikas Moda Infantil">
+    <section class="feature-banner" aria-label="Básicos Esenciales">
       <div class="feature-banner__media" style="aspect-ratio: 3 / 4;">
         <img 
-          src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=1000&q=80" 
-          alt="Colección Peikas Niños y Niñas" 
+          src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1000&q=80" 
+          alt="Básicos Esenciales Roneo Shop" 
           loading="lazy" 
         />
       </div>
       <div class="feature-banner__content">
-        <h2 class="feature-banner__title">PEIKAS</h2>
+        <h2 class="feature-banner__title">BÁSICOS ESENCIALES</h2>
         <p class="feature-banner__desc" style="font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;">
-          VISITA LA PÁGINA DE PEIKAS COMPRAR ARTÍCULOS PARA NIÑOS Y NIÑAS
+          PRENDAS VERSÁTILES DE ALTA COMBINABILIDAD PARA ELEVAR TU FONDO DE ARMARIO CON ELEGANCIA DIARIA
         </p>
-        <button type="button" id="btn-peikas" class="btn-editorial">COMPRAR</button>
+        <a href="collection.html?cat=ropa" class="btn-editorial" style="display: inline-block; text-align: center; text-decoration: none;">VER COLECCIÓN</a>
       </div>
     </section>
 
@@ -334,9 +376,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </div>
-          <h3 class="testimonial-author">PACIENTE DE QUIMIOTERAPIA</h3>
+          <h3 class="testimonial-author">VESTIDO DE FIESTA Y BLAZER</h3>
           <p class="testimonial-text">
-            "Tras pasar por una difícil operación que le causó una menopausia prematura, su pelo empezó a resecarse, probando infinidad de productos que no lograron resolver el problema. Finalmente encontró nuestros productos y pudo zanjar su problema."
+            "Tenía una boda y no encontraba nada que me convenciera. El vestido queda espectacular, la tela tiene mucho cuerpo y no marca nada. Sin duda repetiré para el próximo evento."
           </p>
         </article>
 
@@ -349,9 +391,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </div>
-          <h3 class="testimonial-author">CLIENTA SATISFECHA</h3>
+          <h3 class="testimonial-author">BOTÍN CHELSEA EN PIEL</h3>
           <p class="testimonial-text">
-            "Nos comunican su alegría con nuestros productos redactando el siguiente comentario: 'Me he lavado el pelo con tus productos y estoy maravillada con los resultados, desde el primer día que lo he usado el pelo me ha quedado brillante y sedoso. Me ha encantado la calidad y el precio.'"
+            "Buscaba unos botines cómodos para diario y estos son un acierto total. La piel es súper suave, no rozan nada desde el primer día y la plataforma estiliza muchísimo."
           </p>
         </article>
 
@@ -364,9 +406,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#121212" stroke="#121212"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </div>
-          <h3 class="testimonial-author">ENVÍO RÁPIDO Y CALIDAD TOP</h3>
+          <h3 class="testimonial-author">ENVÍO RÁPIDO Y VAQUEROS FAJA</h3>
           <p class="testimonial-text">
-            "Pedí el vaquero faja y un vestido un martes por la tarde y el jueves por la mañana ya lo tenía en casa. Sienta como un guante, tallaje perfecto y atención de diez."
+            "Pedí el vaquero faja y un jersey un martes por la tarde y el jueves por la mañana ya lo tenía en casa. Sienta como un guante, tallaje perfecto y atención de diez."
           </p>
         </article>
       </div>
@@ -429,7 +471,7 @@
 
     <!-- Copyright -->
     <p class="footer-copyright">
-      &copy; 2026 YOANA ZAFIRO &middot; Pagos seguros con Tarjeta y Bizum
+      &copy; 2026 RONEO SHOP &middot; Pagos seguros con Tarjeta y Bizum
     </p>
   </footer>
 
@@ -463,15 +505,15 @@
       <span>Carro</span>
     </button>
 
-    <button type="button" id="bottom-tab-productos" class="bottom-tab-item" aria-label="Ver catálogo completo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7"></rect>
-        <rect x="14" y="3" width="7" height="7"></rect>
-        <rect x="14" y="14" width="7" height="7"></rect>
-        <rect x="3" y="14" width="7" height="7"></rect>
+    <a href="collection.html?cat=todos" class="bottom-tab-item" id="bottom-tab-productos" data-tab="products" data-nav="products" aria-label="Ver catálogo completo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
       </svg>
       <span>Productos</span>
-    </button>
+    </a>
 
     <button type="button" id="bottom-tab-info" class="bottom-tab-item" aria-label="Información y envíos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -603,12 +645,10 @@
     <nav class="hamburger-drawer__nav" aria-label="Categorías del menú lateral">
       <span id="hamburger-title" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;">Categorías</span>
       <a href="collection.html?cat=ropa" class="hamburger-drawer__link" data-category="ropa">ROPA</a>
-      <a href="collection.html?cat=cabello" class="hamburger-drawer__link" data-category="cabello">CABELLO</a>
-      <a href="collection.html?cat=cosmetica" class="hamburger-drawer__link" data-category="cosmetica">COSMÉTICA</a>
+      <a href="collection.html?cat=calzado" class="hamburger-drawer__link" data-category="calzado">CALZADO</a>
       <a href="collection.html?cat=novedades" class="hamburger-drawer__link" data-category="novedades">NOVEDADES</a>
-      <a href="collection.html?cat=vestidos" class="hamburger-drawer__link" data-category="vestidos">VESTIDOS</a>
-      <a href="collection.html?cat=abrigos" class="hamburger-drawer__link" data-category="abrigos">ABRIGOS</a>
-      <a href="collection.html?cat=vaqueros" class="hamburger-drawer__link" data-category="vaqueros">VAQUEROS</a>
+      <a href="collection.html?cat=otono-invierno" class="hamburger-drawer__link" data-category="otono-invierno">OTOÑO &amp; INVIERNO</a>
+      <a href="collection.html?cat=primavera-verano" class="hamburger-drawer__link" data-category="primavera-verano">PRIMAVERA &amp; VERANO</a>
       <a href="collection.html?cat=rebajas" class="hamburger-drawer__link" data-category="rebajas" style="color: #b91c1c;">REBAJAS %</a>
     </nav>
 

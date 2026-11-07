@@ -1,5 +1,5 @@
 /**
- * SERVICE WORKER BYPASS - YOANA ZAFIRO / RONEOSHOP
+ * SERVICE WORKER BYPASS - RONEO SHOP (FASE 5.1 DEFINITIVA)
  * Garantiza que ninguna petición a Firebase Storage, Firestore o APIs de Google
  * sea interceptada ni corrompida con respuestas opacas sin CORS.
  */

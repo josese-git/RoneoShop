@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="Finalizar Compra Segura - Yoana Zafiro. Pasarela Bancaria Oficial Redsys & Bizum con Envíos Exprés Packlink PRO.">
-  <title>Finalizar Compra Segura | Yoana Zafiro</title>
+  <meta name="description" content="Finalizar Compra Segura - Roneo Shop. Pasarela Bancaria Oficial Redsys & Bizum con Envíos Exprés Packlink PRO.">
+  <title>Finalizar Compra Segura | Roneo Shop</title>
+
+  <!-- Favicon Oficial Roneo Shop -->
+  <link rel="icon" type="image/png" href="assets/img/favicon-roneo.png">
+  <link rel="shortcut icon" type="image/png" href="favicon roneo.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-roneo.png">
+  <meta name="theme-color" content="#feede9">
 
   <!-- Google Fonts: Cormorant Garamond y DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 
   <!-- Estilos del Sistema de Diseño 100% Mobile-First -->
   <link rel="stylesheet" href="assets/css/tokens.css">
@@ -18,10 +24,45 @@
 </head>
 <body style="padding-bottom: 0;">
 
-  <!-- Cabecera Minimalista de Checkout -->
+  <!-- ======================================================================
+       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR MARQUEE TICKER
+       ====================================================================== -->
+  <aside class="announcement-bar" role="region" aria-label="Aviso promocional">
+    <div class="announcement-bar__viewport">
+      <div class="announcement-bar__track">
+        <div class="announcement-bar__group">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+        <div class="announcement-bar__group" aria-hidden="true">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Cabecera Minimalista de Checkout Fija -->
   <header class="checkout-header">
-    <a href="index.html" class="header-logo" aria-label="Volver a la tienda">
-      <span class="header-logo__symbol">✧</span> Yoana Zafiro
+    <a href="index.html" class="header-logo" aria-label="Roneo Shop - Volver a la tienda">
+      <img 
+        src="assets/img/logo-roneo.png" 
+        alt="Roneo Shop" 
+        class="header-logo__img"
+        onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}"
+      >
+      <span class="header-logo__fallback" style="display:none;">
+        <span class="logo-line-top">RONEO</span>
+        <span class="logo-line-bottom">SHOP</span>
+      </span>
     </a>
     <a href="index.html" class="checkout-header__back" aria-label="Seguir comprando">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

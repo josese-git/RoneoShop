@@ -1,12 +1,12 @@
 /**
- * CHECKOUT CONTROLLER - YOANA ZAFIRO (FASE 2)
+ * CHECKOUT CONTROLLER - RONEO SHOP (FASE 5.1 DEFINITIVA)
  * Experiencia de pago rápido y seguro estilo Shopify adaptada a España:
  * TPV Virtual Redsys, Bizum, validación Packlink PRO Plus y persistencia ARCHITECTURE.md.
  */
 
 import { getCart, getCartTotals, clearCart } from './cart.js';
 import { getProducts, getStoreSettings, updateProductStockAfterOrder, createOrder, generateNextOrderNumber } from './store-service.js';
-import { formatPrice } from './ui.js';
+import { formatPrice, renderAnnouncementMarquee } from './ui.js';
 
 // Clave de pedidos locales para el panel de administración
 export const ORDERS_STORAGE_KEY = 'store_orders_v1';
@@ -21,8 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       getProducts()
     ]);
     currentProductsCatalog = products;
+    renderAnnouncementMarquee(settings?.announcementText);
 
-    const threshold = settings?.freeShippingThreshold || 60.00;
+    const threshold = settings?.freeShippingThreshold || 50.00;
     const shippingPrice = settings?.shippingStandardPrice || 4.90;
     currentTotals = getCartTotals(threshold, shippingPrice);
 
@@ -76,7 +77,12 @@ function renderCheckoutSummary(totals) {
         </div>
         <div class="checkout-item-details">
           <div class="checkout-item-title">${item.title}</div>
-          <div class="checkout-item-size">Talla: ${item.size}</div>
+          <div class="checkout-item-size" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${item.colorHex || '#121212'}; border: 1px solid rgba(0,0,0,0.2);"></span>
+            <span>Color: <strong>${item.color || 'Único'}</strong></span>
+            <span>&middot;</span>
+            <span>Talla: <strong>${item.size}</strong></span>
+          </div>
         </div>
         <div class="checkout-item-price">${formatPrice(item.price * item.quantity)}</div>
       </div>
@@ -309,6 +315,8 @@ function setupFormSubmission() {
         productId: item.productId,
         title: item.title,
         size: item.size,
+        color: item.color || 'Único',
+        colorHex: item.colorHex || '#121212',
         price: item.price,
         quantity: item.quantity,
         image: item.image
@@ -415,7 +423,7 @@ function renderOrderConfirmation(order) {
           <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Artículos comprados:</h4>
           ${order.items.map(item => `
             <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px;">
-              <span>${item.quantity}x ${item.title} (Talla ${item.size})</span>
+              <span>${item.quantity}x ${item.title} (${item.color ? item.color + ' · ' : ''}Talla ${item.size})</span>
               <strong>${formatPrice(item.price * item.quantity)}</strong>
             </div>
           `).join('')}

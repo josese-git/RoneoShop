@@ -1,13 +1,16 @@
 /**
- * COLLECTION PAGE CONTROLLER - YOANA ZAFIRO (FASE 2)
+ * COLLECTION PAGE CONTROLLER - RONEO SHOP (FASE 5.1 DEFINITIVA)
  * Controla el filtrado dinámico de colecciones, ordenación,
  * modal de filtros Bottom-Sheet, cuadrícula responsiva y Quick-Add.
+ * Sincronización en tiempo real (< 100ms) mediante onSnapshot (subscribeToProducts).
+ * Zero Emojis · 100% Iconos SVG.
  */
 
 import {
   getProductsByFilter,
   getStoreSettings,
-  onStoreDataChanged
+  subscribeToProducts,
+  subscribeToSettings
 } from './store-service.js';
 import {
   renderProductCardMarkup,
@@ -15,7 +18,8 @@ import {
   setupCommonUI,
   renderCartDrawer,
   updateCartBadges,
-  setupAnnouncement
+  setupAnnouncement,
+  applySettingsToDOM
 } from './ui.js';
 
 // Estado de la página de colección
@@ -27,86 +31,70 @@ let selectedFilterSize = null;
 let minPrice = null;
 let maxPrice = null;
 let currentProducts = [];
+let unsubscribeProducts = null;
+let unsubscribeSettings = null;
 
 const CATEGORY_METADATA = {
   'todos': {
-    title: 'Toda la Colección',
-    desc: 'Explora prendas seleccionadas, fórmulas capilares profesionales y cosmética coreana con envíos rápidos 24/48h.',
-    pageTitle: 'Toda la Colección | Yoana Zafiro'
+    title: 'Todos los Productos',
+    desc: 'Explora nuestra selección completa de prendas, calzado y novedades con envíos rápidos 24/48h.',
+    pageTitle: 'Todos los Productos | Roneo Shop'
   },
   'ropa': {
     title: 'Moda Femenina',
     desc: 'Vaqueros faja moldeadores, vestidos elegantes de fiesta, conjuntos de punto fino y pantalones de corte sastre.',
-    pageTitle: 'Moda Femenina | Yoana Zafiro'
+    pageTitle: 'Moda Femenina | Roneo Shop'
+  },
+  'calzado': {
+    title: 'Calzado Femenino',
+    desc: 'Botines chelsea en piel vacuna, botas altas estructuradas y sneakers de plataforma confeccionadas para tu día a día.',
+    pageTitle: 'Calzado Femenino | Roneo Shop'
   },
   'otono-invierno': {
     title: 'Otoño & Invierno',
     desc: 'Prendas cálidas y elegantes para los días fríos: abrigos estructurados de paño, punto canalé y denim reforzado.',
-    pageTitle: 'Colección Otoño Invierno | Yoana Zafiro'
+    pageTitle: 'Colección Otoño Invierno | Roneo Shop'
   },
   'primavera-verano': {
     title: 'Primavera & Verano',
     desc: 'Telas ligeras y fluidas: vestidos midi, satenes brillantes, bodies reductor escote espalda y pantalones palazzo.',
-    pageTitle: 'Colección Primavera Verano | Yoana Zafiro'
-  },
-  'cabello': {
-    title: 'Cuidado Capilar Profesional',
-    desc: 'Fórmulas de salón para recuperar cabellos deshidratados: champús nutritivos, mascarillas de biotina y secadores iónicos.',
-    pageTitle: 'Cuidado Capilar | Yoana Zafiro'
-  },
-  'tratamiento-capilar': {
-    title: 'Tratamiento Capilar',
-    desc: 'Rutinas intensivas para devolver brillo, densidad y elasticidad al cabello dañado por tratamientos químicos o calor.',
-    pageTitle: 'Tratamientos Capilares | Yoana Zafiro'
-  },
-  'cosmetica': {
-    title: 'Cosmética Coreana',
-    desc: 'Rutinas faciales multiactivas importadas de Corea del Sur: ácido hialurónico 8D, centella asiática y efecto Glass Skin.',
-    pageTitle: 'Cosmética Coreana | Yoana Zafiro'
-  },
-  'peikas': {
-    title: 'Peikas Infantil',
-    desc: 'Colección especial de moda infantil confeccionada en algodón pima suave y respetuoso con la piel de los más pequeños.',
-    pageTitle: 'Peikas Moda Infantil | Yoana Zafiro'
+    pageTitle: 'Colección Primavera Verano | Roneo Shop'
   },
   'rebajas': {
     title: 'Rebajas Especiales',
     desc: 'Aprovecha descuentos exclusivos de temporada en prendas seleccionadas con unidades y tallas limitadas.',
-    pageTitle: 'Rebajas % | Yoana Zafiro'
+    pageTitle: 'Rebajas % | Roneo Shop'
   },
   'novedades': {
     title: 'Novedades 2026',
-    desc: 'Las últimas incorporaciones a nuestro catálogo: cortes favorecedores, colores tendencia y cosmética de vanguardia.',
-    pageTitle: 'Novedades | Yoana Zafiro'
+    desc: 'Las últimas incorporaciones a nuestro catálogo: cortes favorecedores, colores tendencia y confección de vanguardia.',
+    pageTitle: 'Novedades | Roneo Shop'
   },
   'vestidos': {
     title: 'Vestidos de Fiesta y Diarios',
     desc: 'Diseños que realzan la figura femenina con caídas espectaculares para eventos especiales o tu día a día.',
-    pageTitle: 'Vestidos | Yoana Zafiro'
+    pageTitle: 'Vestidos | Roneo Shop'
   },
   'abrigos': {
     title: 'Abrigos y Chaquetas',
     desc: 'Abrigos midi de paño estructurado y prendas de abrigo con acabados premium y forro de satén.',
-    pageTitle: 'Abrigos | Yoana Zafiro'
+    pageTitle: 'Abrigos | Roneo Shop'
   },
   'vaqueros': {
     title: 'Vaqueros Efecto Faja',
     desc: 'Nuestros famosos vaqueros moldeadores con tiro extra alto y confort elástico garantizado.',
-    pageTitle: 'Vaqueros Faja | Yoana Zafiro'
+    pageTitle: 'Vaqueros Faja | Roneo Shop'
   }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const settings = await getStoreSettings();
-    setupAnnouncement(settings.announcementText);
-
     // 1. Leer parámetros de URL
     const params = new URLSearchParams(window.location.search);
     activeCategory = (params.get('cat') || 'todos').toLowerCase();
     searchQuery = params.get('q') || '';
 
-    // 2. Configurar elementos interactivos
+    // 2. Configurar elementos interactivos comunes
     setupQuickPills();
     setupSortSelect();
     setupFilterModal();
@@ -117,13 +105,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. Renderizar catálogo inicial
     await applyAndRender();
 
-    // 4. Sincronización en vivo con /admin y otras pestañas
-    onStoreDataChanged(async () => {
-      await applyAndRender();
+    // 4. Suscripción en vivo al catálogo de productos con onSnapshot (< 100ms)
+    unsubscribeProducts = subscribeToProducts(() => {
+      applyAndRender();
     });
+
+    // 5. Suscripción en vivo a los ajustes con onSnapshot (< 100ms)
+    unsubscribeSettings = subscribeToSettings((settings) => {
+      applySettingsToDOM(settings);
+    });
+
   } catch (err) {
     console.error("[CollectionPage] Error durante la inicialización:", err);
   }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (typeof unsubscribeProducts === 'function') unsubscribeProducts();
+  if (typeof unsubscribeSettings === 'function') unsubscribeSettings();
 });
 
 /**
@@ -157,7 +156,7 @@ function updateHeroMetadata() {
   if (searchQuery.trim() !== '') {
     if (titleEl) titleEl.textContent = `Búsqueda: "${searchQuery}"`;
     if (descEl) descEl.textContent = `Mostrando resultados que coinciden con tu búsqueda.`;
-    if (pageTitle) pageTitle.textContent = `Resultados para "${searchQuery}" | Yoana Zafiro`;
+    if (pageTitle) pageTitle.textContent = `Resultados para "${searchQuery}" | Roneo Shop`;
     return;
   }
 
@@ -166,7 +165,6 @@ function updateHeroMetadata() {
   if (descEl) descEl.textContent = meta.desc;
   if (pageTitle) pageTitle.textContent = meta.pageTitle;
 
-  // Sincronizar estado visual de las píldoras
   document.querySelectorAll('.quick-pill').forEach(pill => {
     if (pill.dataset.category === activeCategory) {
       pill.classList.add('is-active');
@@ -174,10 +172,19 @@ function updateHeroMetadata() {
       pill.classList.remove('is-active');
     }
   });
+
+  // Marcar la pestaña Productos de la barra inferior como activa
+  document.querySelectorAll('.bottom-tab-bar .bottom-tab-item').forEach(item => {
+    if (item.getAttribute('data-tab') === 'products' || item.getAttribute('data-nav') === 'products' || item.id === 'bottom-tab-productos') {
+      item.classList.add('is-active');
+    } else {
+      item.classList.remove('is-active');
+    }
+  });
 }
 
 /**
- * Renderiza la cuadrícula de productos con soporte para 2 cols en móvil y 4 en desktop
+ * Renderiza la cuadrícula de productos
  */
 function renderGrid(products) {
   const gridEl = document.getElementById('collection-grid');
@@ -226,9 +233,6 @@ function renderGrid(products) {
   bindProductCardEvents(gridEl, currentProducts);
 }
 
-/**
- * Configuración de las píldoras de navegación rápida de categoría
- */
 function setupQuickPills() {
   document.querySelectorAll('.quick-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -240,9 +244,6 @@ function setupQuickPills() {
   });
 }
 
-/**
- * Configuración del selector de ordenación
- */
 function setupSortSelect() {
   const sortSelect = document.getElementById('collection-sort-select');
   if (sortSelect) {
@@ -253,9 +254,6 @@ function setupSortSelect() {
   }
 }
 
-/**
- * Configuración del Modal de Filtros Bottom-Sheet
- */
 function setupFilterModal() {
   const openBtn = document.getElementById('open-filter-btn');
   const sheet = document.getElementById('filter-sheet');
@@ -280,7 +278,6 @@ function setupFilterModal() {
 
   if (closeBtn) closeBtn.addEventListener('click', closeSheet);
 
-  // Píldoras de talla en el filtro
   const sizePillsContainer = document.getElementById('filter-size-pills');
   if (sizePillsContainer) {
     sizePillsContainer.querySelectorAll('.size-pill').forEach(pill => {
@@ -298,7 +295,6 @@ function setupFilterModal() {
     });
   }
 
-  // Botón Aplicar
   if (applyBtn) {
     applyBtn.addEventListener('click', () => {
       const stockCheckbox = document.getElementById('filter-only-stock');
@@ -315,7 +311,6 @@ function setupFilterModal() {
     });
   }
 
-  // Botón Limpiar
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       onlyInStock = false;
@@ -342,4 +337,3 @@ function resetFilterFormInputs() {
   const sizePills = document.querySelectorAll('#filter-size-pills .size-pill');
   sizePills.forEach(p => p.classList.remove('is-selected'));
 }
-

@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="Colecciones y Catálogo Oficial Yoana Zafiro. Moda femenina, vestidos, vaqueros, cosmética coreana y cuidado capilar.">
-  <title id="collection-page-title">Catálogo Completo | Yoana Zafiro</title>
+  <meta name="description" content="Colecciones y Catálogo Oficial Roneo Shop. Moda femenina, vestidos, vaqueros faja, abrigos y calzado en piel vacuna.">
+  <title id="collection-page-title">Catálogo Completo | Roneo Shop</title>
+
+  <!-- Favicon Oficial Roneo Shop -->
+  <link rel="icon" type="image/png" href="assets/img/favicon-roneo.png">
+  <link rel="shortcut icon" type="image/png" href="favicon roneo.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-roneo.png">
+  <meta name="theme-color" content="#feede9">
 
   <!-- Google Fonts: Cormorant Garamond y DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 
   <!-- Estilos del Sistema de Diseño 100% Mobile-First -->
   <link rel="stylesheet" href="assets/css/tokens.css">
@@ -19,10 +25,29 @@
 <body>
 
   <!-- ======================================================================
-       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR
+       SECCIÓN 1: BARRA DE ANUNCIO SUPERIOR MARQUEE TICKER
        ====================================================================== -->
   <aside class="announcement-bar" role="region" aria-label="Aviso promocional">
-    <span id="announcement-text">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍOS GRATIS A PARTIR DE 50€</span>
+    <div class="announcement-bar__viewport">
+      <div class="announcement-bar__track">
+        <div class="announcement-bar__group">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+        <div class="announcement-bar__group" aria-hidden="true">
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR DE 50€</span>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- ======================================================================
@@ -41,9 +66,18 @@
         </button>
       </div>
 
-      <!-- Centro: Logotipo tipográfico Yoana Zafiro -->
-      <a href="index.html" class="header-logo" aria-label="Portada de Yoana Zafiro">
-        <span class="header-logo__symbol">✧</span> Yoana Zafiro
+      <!-- Centro: Logotipo Oficial Roneo Shop -->
+      <a href="index.html" class="header-logo" aria-label="Roneo Shop - Inicio">
+        <img 
+          src="assets/img/logo-roneo.png" 
+          alt="Roneo Shop" 
+          class="header-logo__img"
+          onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}"
+        >
+        <span class="header-logo__fallback" style="display:none;">
+          <span class="logo-line-top">RONEO</span>
+          <span class="logo-line-bottom">SHOP</span>
+        </span>
       </a>
 
       <!-- Derecha: Lupa y Cesta de compra -->
@@ -74,7 +108,7 @@
         type="search" 
         id="search-input" 
         class="search-bar-input" 
-        placeholder="Buscar vestido, vaquero, abrigo, champú..." 
+        placeholder="Buscar vestido, vaquero, abrigo, botines..." 
         autocomplete="off" 
       />
       <button type="button" id="search-close-btn" class="search-bar-close" aria-label="Cerrar buscador">
@@ -98,11 +132,9 @@
       <div class="collection-quick-pills" id="collection-quick-pills">
         <button type="button" class="quick-pill" data-category="todos">Todo</button>
         <button type="button" class="quick-pill" data-category="ropa">Ropa</button>
+        <button type="button" class="quick-pill" data-category="calzado">Calzado</button>
         <button type="button" class="quick-pill" data-category="otono-invierno">Otoño/Invierno</button>
         <button type="button" class="quick-pill" data-category="primavera-verano">Primavera/Verano</button>
-        <button type="button" class="quick-pill" data-category="cabello">Cabello</button>
-        <button type="button" class="quick-pill" data-category="cosmetica">Cosmética</button>
-        <button type="button" class="quick-pill" data-category="peikas">Peikas</button>
         <button type="button" class="quick-pill is-sale" data-category="rebajas">Rebajas %</button>
       </div>
     </section>
@@ -194,7 +226,7 @@
     </div>
 
     <p class="footer-copyright">
-      &copy; 2026 YOANA ZAFIRO &middot; Pagos seguros con Tarjeta y Bizum
+      &copy; 2026 RONEO SHOP &middot; Pagos seguros con Tarjeta y Bizum
     </p>
   </footer>
 
@@ -228,15 +260,15 @@
       <span>Carro</span>
     </button>
 
-    <button type="button" id="bottom-tab-productos" class="bottom-tab-item is-active" aria-label="Ver catálogo completo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7"></rect>
-        <rect x="14" y="3" width="7" height="7"></rect>
-        <rect x="14" y="14" width="7" height="7"></rect>
-        <rect x="3" y="14" width="7" height="7"></rect>
+    <a href="collection.html?cat=todos" class="bottom-tab-item is-active" id="bottom-tab-productos" data-tab="products" data-nav="products" aria-label="Ver catálogo completo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
       </svg>
       <span>Productos</span>
-    </button>
+    </a>
 
     <button type="button" id="bottom-tab-info" class="bottom-tab-item" aria-label="Información y envíos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -423,12 +455,10 @@
     <nav class="hamburger-drawer__nav" aria-label="Categorías del menú lateral">
       <span id="hamburger-title" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;">Categorías</span>
       <a href="collection.html?cat=ropa" class="hamburger-drawer__link" data-category="ropa">ROPA</a>
-      <a href="collection.html?cat=cabello" class="hamburger-drawer__link" data-category="cabello">CABELLO</a>
-      <a href="collection.html?cat=cosmetica" class="hamburger-drawer__link" data-category="cosmetica">COSMÉTICA</a>
+      <a href="collection.html?cat=calzado" class="hamburger-drawer__link" data-category="calzado">CALZADO</a>
       <a href="collection.html?cat=novedades" class="hamburger-drawer__link" data-category="novedades">NOVEDADES</a>
-      <a href="collection.html?cat=vestidos" class="hamburger-drawer__link" data-category="vestidos">VESTIDOS</a>
-      <a href="collection.html?cat=abrigos" class="hamburger-drawer__link" data-category="abrigos">ABRIGOS</a>
-      <a href="collection.html?cat=vaqueros" class="hamburger-drawer__link" data-category="vaqueros">VAQUEROS</a>
+      <a href="collection.html?cat=otono-invierno" class="hamburger-drawer__link" data-category="otono-invierno">OTOÑO &amp; INVIERNO</a>
+      <a href="collection.html?cat=primavera-verano" class="hamburger-drawer__link" data-category="primavera-verano">PRIMAVERA &amp; VERANO</a>
       <a href="collection.html?cat=rebajas" class="hamburger-drawer__link" data-category="rebajas" style="color: #b91c1c;">REBAJAS %</a>
     </nav>
 

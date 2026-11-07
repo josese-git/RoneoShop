@@ -3,13 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="Panel Privado de Administración - Yoana Zafiro. Gestión de catálogo, stock por tallas y envíos Packlink PRO.">
-  <title>Yoana Zafiro · Panel de Gestión</title>
+  <meta name="description" content="Panel Privado de Administración - Roneo Shop. Gestión de catálogo, stock clasificado por color y tallas, y envíos Packlink PRO.">
+  <title>Roneo Shop · Panel de Gestión</title>
+
+  <!-- Favicon Oficial Roneo Shop -->
+  <link rel="icon" type="image/png" href="../assets/img/favicon-roneo.png">
+  <link rel="shortcut icon" type="image/png" href="../favicon roneo.png">
+  <link rel="apple-touch-icon" href="../assets/img/favicon-roneo.png">
+  <meta name="theme-color" content="#feede9">
 
   <!-- Google Fonts: Cormorant Garamond y DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+  <!-- Cropper.js v1.6.1 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
   <!-- Estilos del Panel Admin -->
   <link rel="stylesheet" href="admin.css">
@@ -17,17 +27,22 @@
 <body>
 
   <!-- ======================================================================
-       PANTALLA DE ACCESO SEGURO (FIREBASE AUTH LOGIN / DEMO UNLOCK GATE)
+       PANTALLA DE LOGIN Y ACCESO SEGURO (FIREBASE AUTH / MODO DIRECTO)
        ====================================================================== -->
   <div id="admin-login-gate" class="login-overlay">
     <div class="login-card">
       <div class="login-brand">
-        <span class="login-symbol">✧</span>
-        <h1>Yoana Zafiro</h1>
+        <img 
+          src="../assets/img/logo-roneo.png" 
+          alt="Roneo Shop" 
+          style="height: 38px; width: auto; max-width: 160px; object-fit: contain; margin: 0 auto 10px; display: block;"
+          onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='../logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='block';}"
+        />
+        <h1 style="display: none; font-family: var(--font-serif); font-size: 26px; color: #4d2525;">Roneo Shop</h1>
         <p>Panel Privado de Administración</p>
       </div>
 
-      <form id="admin-login-form" class="login-form">
+      <form id="admin-login-form" class="login-form" onsubmit="return false;">
         <div class="form-group">
           <label for="admin-login-email">Correo Electrónico (Firebase Auth)</label>
           <input 
@@ -45,28 +60,38 @@
           <input 
             type="password" 
             id="admin-login-password" 
-            placeholder="Introduce tu contraseña o usa Modo Demo" 
+            placeholder="Introduce tu contraseña o entra directo" 
             autocomplete="current-password"
           />
         </div>
 
-        <button type="submit" id="admin-login-submit-btn" class="admin-btn-primary" style="width: 100%; height: 46px; margin-top: 8px; justify-content: center;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div id="admin-login-error" class="login-error-msg" hidden></div>
+
+        <button 
+          type="submit" 
+          id="btn-firebase-login" 
+          class="btn-login-primary" 
+          onclick="window.handleAdminLogin && window.handleAdminLogin(event)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
           <span id="btn-login-text">Iniciar Sesión</span>
         </button>
 
-        <button type="button" id="admin-demo-login-btn" onclick="window.forceUnlockAdmin && window.forceUnlockAdmin()" class="btn-admin-subtle" style="width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button 
+          type="button" 
+          id="btn-demo-login" 
+          class="btn-login-secondary" 
+          onclick="window.handleDemoLogin && window.handleDemoLogin(event)"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polygon points="10 8 16 12 10 16 10 8"></polygon>
           </svg>
-          Modo Demo Local (Sin Conexión)
+          Entrar directo al Panel (Acceso Rápido)
         </button>
-
-        <div id="admin-login-error" class="admin-error-box" style="display: none; margin-top: 12px;"></div>
       </form>
     </div>
   </div>
@@ -74,26 +99,33 @@
   <!-- ======================================================================
        APLICACIÓN PRINCIPAL DE ADMINISTRACIÓN
        ====================================================================== -->
-  <div id="admin-app-shell" class="admin-app" style="display: none;">
+  <div id="admin-app-shell" class="admin-app" hidden>
     <!-- Cabecera Superior Fija -->
     <header class="admin-header">
       <div class="admin-header__inner">
         <div class="admin-header__brand">
-          <span class="admin-header__symbol">✧</span>
-          <span class="admin-header__title">Yoana Zafiro</span>
+          <a href="../index.html" target="_blank" style="display:inline-flex; align-items:center; text-decoration:none;" title="Ver tienda pública Roneo Shop">
+            <img 
+              src="../assets/img/logo-roneo.png" 
+              alt="Roneo Shop" 
+              style="height: 28px; width: auto; max-width: 140px; object-fit: contain;" 
+              onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='../logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline';}"
+            />
+            <span class="admin-header__title" style="display:none; font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: #4d2525;">Roneo Shop</span>
+          </a>
           <span class="admin-header__tag">ADMIN</span>
           
           <!-- Indicador de conexión en la nube y estado de Firestore -->
           <div id="header-cloud-status" class="admin-cloud-indicator is-connected" title="Estado de Cloud Firestore">
             <span class="cloud-dot"></span>
-            <span id="cloud-status-text" class="hide-mobile">Firestore Conectando...</span>
+            <span id="cloud-status-text" class="hide-mobile">Firestore Conectado (En vivo)</span>
           </div>
         </div>
 
         <div class="admin-header__actions">
           <!-- Botón Forzar Sincronización writeBatch a Firestore -->
-          <button type="button" id="btn-sync-cloud" class="admin-btn-sync" title="Subir todo el catálogo local a Firebase Firestore">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" id="btn-sync-cloud" class="admin-btn-sync" title="Sincronizar base de datos con Firestore">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="16 16 12 12 8 16"></polyline>
               <line x1="12" y1="12" x2="12" y2="21"></line>
               <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
@@ -101,18 +133,8 @@
             <span class="hide-mobile">Sincronizar Nube</span>
           </button>
 
-          <!-- Botón Iniciar Sesión Cloud si está en Modo Demo -->
-          <button type="button" id="btn-header-login-real" class="admin-btn-warning" style="display: none;" title="Iniciar sesión con 1roneoshop@gmail.com">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-              <polyline points="10 17 15 12 10 7"></polyline>
-              <line x1="15" y1="12" x2="3" y2="12"></line>
-            </svg>
-            <span class="hide-mobile">Login Cloud</span>
-          </button>
-
           <a href="../index.html" target="_blank" rel="noopener" class="admin-btn-outline" title="Abrir tienda pública">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
@@ -120,7 +142,7 @@
           </a>
 
           <button type="button" id="btn-header-new-product" class="admin-btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
@@ -128,7 +150,7 @@
           </button>
 
           <button type="button" id="btn-logout" class="admin-btn-logout" title="Cerrar sesión" aria-label="Cerrar sesión">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -140,7 +162,7 @@
       <!-- Barra de pestañas en Desktop -->
       <nav class="admin-nav-tabs hide-mobile" aria-label="Navegación del panel">
         <button type="button" class="admin-tab-btn is-active" data-tab="tab-products">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
             <line x1="7" y1="7" x2="7.01" y2="7"></line>
           </svg>
@@ -148,7 +170,7 @@
         </button>
 
         <button type="button" class="admin-tab-btn" data-tab="tab-orders">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <rect x="1" y="3" width="15" height="13" rx="1"></rect>
             <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
             <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -158,7 +180,7 @@
         </button>
 
         <button type="button" class="admin-tab-btn" data-tab="tab-settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <line x1="4" y1="21" x2="4" y2="14"></line>
             <line x1="4" y1="10" x2="4" y2="3"></line>
             <line x1="12" y1="21" x2="12" y2="12"></line>
@@ -174,37 +196,26 @@
       </nav>
     </header>
 
-    <!-- Banner de Alerta de Reglas de Seguridad de Firestore si falla la conexión -->
-    <div id="firestore-rules-alert" class="firestore-rules-alert" style="display: none;">
-      <div class="rules-alert-inner">
-        <div class="rules-alert-header">
-          <h4>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            Alerta Firestore: Acceso bloqueado por reglas de seguridad (<span id="firestore-error-code">permission-denied</span>)
-          </h4>
-          <button type="button" id="close-rules-alert" aria-label="Cerrar aviso">&times;</button>
-        </div>
-        <p>Para activar lecturas y escrituras en tu base de datos, abre la consola de Firebase &gt; Firestore Database &gt; pestaña <strong>Reglas</strong> y publica:</p>
-        <pre><code>rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}</code></pre>
+    <!-- PUNTO 5: BARRA DE NOTIFICACIÓN / MODO ORDENACIÓN (OCULTA POR DEFECTO) -->
+    <div id="sort-mode-banner" class="admin-sort-banner sort-mode-banner" hidden>
+      <div class="sort-banner-content">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="7 15 12 20 17 15"></polyline>
+          <polyline points="7 9 12 4 17 9"></polyline>
+          <line x1="12" y1="4" x2="12" y2="20"></line>
+        </svg>
+        <span>Modo Ordenación Activo: Arrastra las prendas para elegir en qué posición salen en la portada</span>
       </div>
+      <button type="button" id="btn-save-sort-order" class="admin-btn-primary" style="height: 36px; padding: 0 16px;">
+        Guardar Orden
+      </button>
     </div>
 
     <!-- Barra de Progreso de Migración a Firebase Storage -->
     <div id="storage-migration-progress" class="admin-progress-banner" style="display: none;">
       <div class="progress-banner-inner">
         <div class="progress-banner-text">
-          <svg class="admin-spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg class="admin-spinner-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
             <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
           </svg>
@@ -241,30 +252,45 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- Barra de Búsqueda y Filtros Rápidos -->
+        <!-- Barra de Búsqueda y Botones de Acción (⇵ Ordenar y + Nueva Prenda) -->
         <div class="admin-toolbar">
           <div class="admin-search-wrap">
             <input 
               type="search" 
               id="admin-search-products" 
               class="admin-search-input" 
-              placeholder="Buscar por nombre o referencia..." 
+              placeholder="Buscar por nombre o categoría..." 
             />
           </div>
           <div class="admin-filter-wrap">
             <select id="admin-category-filter" class="admin-select" aria-label="Filtrar por categoría">
               <option value="all">Todas las categorías</option>
               <option value="ropa">Ropa</option>
-              <option value="cabello">Cabello</option>
-              <option value="cosmetica">Cosmética</option>
-              <option value="peikas">Peikas</option>
+              <option value="calzado">Calzado</option>
               <option value="sale">Solo en Rebajas</option>
               <option value="soldout">Solo Agotados</option>
             </select>
           </div>
+          <div class="admin-toolbar-actions">
+            <button type="button" id="btn-toggle-sort" class="admin-btn-secondary" title="Reordenar posición en portada">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="7 15 12 20 17 15"></polyline>
+                <polyline points="7 9 12 4 17 9"></polyline>
+                <line x1="12" y1="4" x2="12" y2="20"></line>
+              </svg>
+              <span>Ordenar</span>
+            </button>
+            <button type="button" id="btn-open-create-product" class="admin-btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Nueva Prenda</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Listado de Prendas -->
+        <!-- Listado de Prendas con Resumen de Stock por Color y Talla -->
         <div id="admin-products-list" class="admin-products-list">
           <!-- Tarjetas inyectadas dinámicamente -->
         </div>
@@ -290,129 +316,240 @@ service cloud.firestore {
         </div>
 
         <div id="admin-orders-list" class="admin-orders-list">
-          <!-- Pedidos inyectados dinámicamente -->
+          <!-- Pedidos inyectados dinámicamente con desglose de Color y Talla -->
         </div>
       </section>
 
       <!-- ==================================================================
-           PESTAÑA 3: AJUSTES TIENDA
+           PESTAÑA 3: AJUSTES TIENDA Y GESTOR DE CATEGORÍAS
            ================================================================== -->
       <section id="tab-settings" class="admin-tab-view" aria-label="Configuración de tienda">
-        <form id="admin-settings-form" class="settings-form-layout">
-          <!-- Textos y Envíos -->
-          <div class="admin-card">
+        <div class="settings-form-layout">
+          <!-- PUNTO 4: GESTOR DEDICADO DE CATEGORÍAS DE LA TIENDA -->
+          <div class="admin-card" id="card-manage-categories">
             <h2 class="admin-card__title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
               </svg>
-              Textos y Envíos de la Tienda
-            </h2>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="set-store-name">Nombre de la Tienda</label>
-                <input type="text" id="set-store-name" required />
-              </div>
-              <div class="form-group">
-                <label for="set-announcement">Texto de Barra Superior</label>
-                <input type="text" id="set-announcement" required />
-              </div>
-              <div class="form-group">
-                <label for="set-shipping-price">Coste de Envío Estándar (€)</label>
-                <input type="text" id="set-shipping-price" required />
-              </div>
-              <div class="form-group">
-                <label for="set-free-threshold">Umbral para Envío GRATIS (€)</label>
-                <input type="text" id="set-free-threshold" required />
-              </div>
-            </div>
-          </div>
-
-          <!-- Dirección Remitente Packlink -->
-          <div class="admin-card">
-            <h2 class="admin-card__title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              Dirección de Recogida / Remitente (Packlink PRO Plus)
+              Gestión de Categorías de la Tienda
             </h2>
             <p class="admin-card__hint">
-              Dirección de origen obligatoria para la generación de envíos y recogidas oficiales.
+              Crea nuevas categorías, renómbralas o reordena la posición en la que aparecen las pestañas en la portada y el catálogo.
             </p>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="set-sender-name">Nombre de Contacto</label>
-                <input type="text" id="set-sender-name" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-company">Empresa / Razón Social</label>
-                <input type="text" id="set-sender-company" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-street">Calle, Número y Piso</label>
-                <input type="text" id="set-sender-street" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-zip">Código Postal</label>
-                <input type="text" id="set-sender-zip" required maxlength="5" />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-city">Ciudad / Localidad</label>
-                <input type="text" id="set-sender-city" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-province">Provincia</label>
-                <input type="text" id="set-sender-province" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-phone">Teléfono de Recogida</label>
-                <input type="tel" id="set-sender-phone" required />
-              </div>
-              <div class="form-group">
-                <label for="set-sender-email">Email de Avisos</label>
-                <input type="email" id="set-sender-email" required />
-              </div>
+
+            <div id="admin-categories-manager-list" class="categories-manager-list">
+              <!-- Categorías inyectadas dinámicamente -->
             </div>
 
-            <div style="margin-top: 18px;">
-              <button type="submit" class="admin-btn-primary" style="height: 44px; padding: 0 24px;">
-                Guardar Ajustes
+            <div class="add-cat-form-row">
+              <input type="text" id="admin-new-category-name" placeholder="Nueva categoría (ej. Bolsos, Accesorios, Denim...)" />
+              <button type="button" id="btn-admin-add-category" class="admin-btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Añadir Categoría
               </button>
             </div>
           </div>
 
-          <!-- Zona de Mantenimiento -->
-          <div class="admin-card" style="border-color: #fca5a5;">
-            <h2 class="admin-card__title" style="color: #b91c1c;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-              Zona de Mantenimiento
-            </h2>
+          <!-- GESTOR DEDICADO DE COLECCIONES DE LA TIENDA -->
+          <div class="admin-card" id="card-manage-collections">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <h2 class="admin-card__title" style="margin: 0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                Gestión de Colecciones (Carrusel de Portada)
+              </h2>
+              <button type="button" id="btn-new-collection" class="admin-btn-secondary" style="font-size: 12px; height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                + Nueva Colección
+              </button>
+            </div>
             <p class="admin-card__hint">
-              Restaura el catálogo original de 12 prendas y datos de muestra en Firestore y Local.
+              Tarjetas visuales con fotografía editorial para destacar campañas (ej. OTOÑO &amp; INVIERNO, CALZADO, REBAJAS).
             </p>
-            <button type="button" id="btn-reset-factory" class="btn-admin-danger">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              Restaurar Catálogo de Fábrica
-            </button>
+
+            <!-- Listado de Colecciones -->
+            <div id="admin-collections-list" class="admin-collections-list">
+              <!-- Renderizado dinámico desde settings.collections -->
+            </div>
+            <div id="admin-collections-manager-list" style="display: none;"></div>
           </div>
-        </form>
+
+          <!-- Textos y Envíos -->
+          <form id="admin-settings-form" onsubmit="return false;">
+            <div class="admin-card">
+              <h2 class="admin-card__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                Textos, Portada y Envíos de la Tienda
+              </h2>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="set-store-name">Nombre de la Tienda</label>
+                  <input type="text" id="set-store-name" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-announcement">Texto de Barra Superior</label>
+                  <input type="text" id="set-announcement" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-shipping-price">Coste de Envío Estándar (€)</label>
+                  <input type="text" id="set-shipping-price" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-free-threshold">Umbral para Envío GRATIS (€)</label>
+                  <input type="text" id="set-free-threshold" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-hero-title">Título Hero Portada</label>
+                  <input type="text" id="set-hero-title" placeholder="Roneo Shop" />
+                </div>
+                <div class="form-group">
+                  <label for="set-hero-subtitle">Subtítulo Hero Portada</label>
+                  <input type="text" id="set-hero-subtitle" placeholder="Crea momentos inolvidables..." />
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="set-hero-image">Foto Principal de Portada (URL o Subir)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="set-hero-image" placeholder="https://..." style="flex: 1;" />
+                    <label class="admin-btn-secondary" style="height: 40px; padding: 0 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      Subir
+                      <input type="file" id="set-hero-file" accept="image/*" style="display: none;" />
+                    </label>
+                    <button type="button" id="btn-hero-crop" class="admin-btn-secondary" style="height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;" title="Recortar imagen de portada">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="6" r="3"></circle>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                        <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                        <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                      </svg>
+                      Recortar
+                    </button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="set-contact-phone">Teléfono / WhatsApp</label>
+                  <input type="tel" id="set-contact-phone" placeholder="600000000" />
+                </div>
+                <div class="form-group">
+                  <label for="set-contact-email">Email de Contacto</label>
+                  <input type="email" id="set-contact-email" placeholder="info@roneoshop.com" />
+                </div>
+                <div class="form-group">
+                  <label for="set-instagram-url">Instagram URL</label>
+                  <input type="url" id="set-instagram-url" placeholder="https://instagram.com/..." />
+                </div>
+                <div class="form-group">
+                  <label for="set-store-schedule">Horario de Atención</label>
+                  <input type="text" id="set-store-schedule" placeholder="Lunes a Viernes de 10:00 a 20:00" />
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="set-return-policy">Política de Cambios y Devoluciones</label>
+                  <input type="text" id="set-return-policy" placeholder="Dispones de 14 días naturales..." />
+                </div>
+              </div>
+            </div>
+
+            <!-- Dirección Remitente Packlink -->
+            <div class="admin-card">
+              <h2 class="admin-card__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                Dirección de Recogida / Remitente (Packlink PRO Plus)
+              </h2>
+              <p class="admin-card__hint">
+                Dirección de origen obligatoria para la generación de envíos y recogidas oficiales.
+              </p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="set-sender-name">Nombre de Contacto</label>
+                  <input type="text" id="set-sender-name" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-company">Empresa / Razón Social</label>
+                  <input type="text" id="set-sender-company" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-street">Calle, Número y Piso</label>
+                  <input type="text" id="set-sender-street" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-zip">Código Postal</label>
+                  <input type="text" id="set-sender-zip" required maxlength="5" />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-city">Ciudad / Localidad</label>
+                  <input type="text" id="set-sender-city" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-province">Provincia</label>
+                  <input type="text" id="set-sender-province" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-phone">Teléfono de Recogida</label>
+                  <input type="tel" id="set-sender-phone" required />
+                </div>
+                <div class="form-group">
+                  <label for="set-sender-email">Email de Avisos</label>
+                  <input type="email" id="set-sender-email" required />
+                </div>
+              </div>
+
+              <div style="margin-top: 18px;">
+                <button type="submit" id="btn-save-settings" class="admin-btn-primary" style="height: 44px; padding: 0 24px;">
+                  Guardar Ajustes
+                </button>
+              </div>
+            </div>
+
+            <!-- Zona de Mantenimiento -->
+            <div class="admin-card" style="border-color: #fca5a5;">
+              <h2 class="admin-card__title" style="color: #b91c1c;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Zona de Mantenimiento
+              </h2>
+              <p class="admin-card__hint">
+                Restaura el catálogo de fábrica con sus prendas y calzado oficial en Firestore y LocalStorage.
+              </p>
+              <button type="button" id="btn-reset-factory" class="btn-admin-danger">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Restaurar Catálogo de Fábrica
+              </button>
+            </div>
+          </form>
+        </div>
       </section>
     </main>
 
     <!-- Barra Móvil Fija Inferior (3 Botones con Iconos SVG) -->
     <nav class="admin-mobile-tab-bar hide-desktop" aria-label="Navegación móvil del panel">
       <button type="button" class="admin-mobile-tab is-active" data-tab="tab-products">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
           <line x1="7" y1="7" x2="7.01" y2="7"></line>
         </svg>
@@ -420,9 +557,9 @@ service cloud.firestore {
       </button>
 
       <button type="button" class="admin-mobile-tab" data-tab="tab-orders">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
           <rect x="1" y="3" width="15" height="13" rx="1"></rect>
-          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
           <circle cx="5.5" cy="18.5" r="2.5"></circle>
           <circle cx="18.5" cy="18.5" r="2.5"></circle>
         </svg>
@@ -430,7 +567,7 @@ service cloud.firestore {
       </button>
 
       <button type="button" class="admin-mobile-tab" data-tab="tab-settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
           <line x1="4" y1="21" x2="4" y2="14"></line>
           <line x1="4" y1="10" x2="4" y2="3"></line>
           <line x1="12" y1="21" x2="12" y2="12"></line>
@@ -447,7 +584,7 @@ service cloud.firestore {
   </div>
 
   <!-- ======================================================================
-       MODAL: CREADOR / EDITOR DE PRENDA ESTILO INSTAGRAM / VINTED
+       MODAL: CREADOR / EDITOR DE PRENDA CON STOCK INDEPENDIENTE POR COLOR
        ====================================================================== -->
   <div id="product-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
     <div class="admin-modal__overlay"></div>
@@ -455,41 +592,37 @@ service cloud.firestore {
       <div class="admin-modal__header">
         <h2 id="product-modal-title" class="admin-modal__title">Nueva Prenda</h2>
         <button type="button" id="product-modal-close" class="admin-modal__close" aria-label="Cerrar modal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
 
-      <form id="product-form" class="admin-modal__body">
+      <form id="product-form" class="admin-modal__body" onsubmit="return false;">
         <input type="hidden" id="prod-id" />
 
-        <!-- 1. TIRA SUPERIOR DE FOTOS (CARRUSEL ESTILO INSTAGRAM) -->
+        <!-- BLOQUE 1: GALERÍA DE FOTOS CON FILEREADER INSTANTÁNEO + CROPPER.JS -->
         <div class="form-group">
           <label style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 700;">1. Fotos de la Prenda</span>
             <span style="font-size: 11px; color: var(--admin-text-muted);">Compresión automática .WebP</span>
           </label>
 
-          <!-- Input File Oculto (FUERA de la tira dinámica para que NUNCA se destruya) -->
           <input type="file" id="admin-photo-file-input" accept="image/*" multiple hidden />
 
           <div class="admin-insta-gallery" id="admin-insta-gallery">
-            <!-- Botón interactivo de subida / Drop Target (primer hueco fijo) -->
-            <div class="admin-insta-upload-card" id="admin-photo-trigger" role="button" tabindex="0" title="Haz clic o arrastra fotos aquí">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <div class="admin-insta-upload-card" id="btn-trigger-file-input" role="button" tabindex="0" title="Haz clic o arrastra fotos aquí">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <circle cx="12" cy="13" r="4"></circle>
               </svg>
               <span>Subir<br>foto</span>
             </div>
 
-            <!-- Miniaturas inyectadas dinámicamente con flechas y borrado -->
-            <div id="admin-photo-strip" class="admin-photo-strip" style="display: flex; gap: 10px;"></div>
+            <div id="modal-photos-strip" class="admin-photo-strip" style="display: flex; gap: 10px;"></div>
           </div>
 
-          <!-- Enlace desplegable para URL externa -->
           <div style="margin-top: 6px;">
             <button type="button" id="btn-toggle-url-input" class="admin-link-btn">
               + Añadir foto mediante URL externa
@@ -501,48 +634,54 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- 2. TÍTULO, PRECIO Y CATEGORÍA -->
+        <!-- BLOQUE 2: TÍTULO, PRECIO, CATEGORÍA Y COLECCIÓN -->
         <div class="form-group">
           <label for="prod-title" style="font-weight: 700;">2. Título de la Prenda *</label>
-          <input type="text" id="prod-title" required placeholder="Ej. Vestido Midi Zafiro, Abrigo Pandora..." class="admin-input-hero" />
+          <input type="text" id="prod-title" required placeholder="Ej. Vestido Midi Roneo, Botín Chelsea..." class="admin-input-hero" />
         </div>
 
-        <!-- Fila de 2 columnas para Precios -->
         <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
-            <label for="prod-price" style="font-weight: 700;">Precio (€) *</label>
+            <label for="prod-price" style="font-weight: 700;">Precio de Venta (€) *</label>
             <input type="text" id="prod-price" required inputmode="decimal" placeholder="24,95" />
           </div>
 
           <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <label for="prod-compare-price" style="font-weight: 700;">Precio sin rebaja (€)</label>
+              <label for="prod-compare-price" style="font-weight: 700;">Precio anterior sin rebaja (€)</label>
               <span id="discount-pill-preview" class="admin-discount-pill" style="display: none;">Rebaja</span>
             </div>
             <input type="text" id="prod-compare-price" inputmode="decimal" placeholder="Opcional (Ej. 34,95)" />
           </div>
         </div>
 
-        <!-- Selector de Categoría mediante Píldoras -->
+        <!-- Selector Dinámico de Categoría + Botón "+ Nueva Categoría" -->
         <div class="form-group">
-          <label style="font-weight: 700;">Categoría Principal:</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-weight: 700; margin-bottom: 0;">Categoría Principal:</label>
+            <button type="button" id="btn-modal-add-category" class="admin-link-btn" style="font-size: 12px;">+ Nueva Categoría</button>
+          </div>
           <div class="admin-cat-pills" id="admin-cat-pills">
-            <button type="button" class="admin-cat-pill is-active" data-cat="ropa">Ropa</button>
-            <button type="button" class="admin-cat-pill" data-cat="cabello">Cabello</button>
-            <button type="button" class="admin-cat-pill" data-cat="cosmetica">Cosmética</button>
-            <button type="button" class="admin-cat-pill" data-cat="peikas">Peikas</button>
+            <!-- Píldoras inyectadas dinámicamente -->
           </div>
           <input type="hidden" id="prod-category" value="ropa" />
+
+          <!-- Input inline para crear categoría al instante -->
+          <div id="modal-new-cat-row" style="display: none; margin-top: 8px; gap: 8px; align-items: center;">
+            <input type="text" id="modal-new-cat-name" placeholder="Nombre (ej. Bolsos, Accesorios...)" style="flex: 1; height: 38px;" />
+            <button type="button" id="btn-modal-confirm-cat" class="admin-btn-primary" style="height: 38px; padding: 0 16px;">Crear</button>
+            <button type="button" id="btn-modal-cancel-cat" class="btn-admin-subtle" style="height: 38px; padding: 0 14px;">Cancelar</button>
+          </div>
         </div>
 
         <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
-            <label for="prod-collection">Colección:</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label for="prod-collection">Colección:</label>
+              <button type="button" id="btn-quick-new-col-modal" style="background:none; border:none; color: #121212; font-size: 11px; text-decoration: underline; cursor: pointer; padding: 0;">+ Nueva Colección</button>
+            </div>
             <select id="prod-collection">
-              <option value="otono-invierno">Otoño &amp; Invierno</option>
-              <option value="primavera-verano">Primavera &amp; Verano</option>
-              <option value="novedades">Novedades</option>
-              <option value="rebajas">Rebajas %</option>
+              <!-- Rellenado dinámicamente con getCollections() -->
             </select>
           </div>
 
@@ -555,12 +694,15 @@ service cloud.firestore {
           </div>
         </div>
 
-        <!-- 3. SELECTOR VISUAL DE COLOR (BURBUJAS DE COLOR) -->
+        <!-- BLOQUE 3: SELECCIÓN DE COLORES DISPONIBLES DE ESTE MODELO -->
         <div class="form-group">
-          <label style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 700;">3. Colores de la Prenda</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-weight: 700; margin-bottom: 0;">3. Colores disponibles de este modelo</label>
             <span id="admin-color-selected-name" style="font-size: 12px; color: var(--admin-text-muted);">Sin color</span>
-          </label>
+          </div>
+          <p style="font-size: 11.5px; color: var(--admin-text-muted); margin-bottom: 8px;">
+            Haz clic en las burbujas para activar colores. Cada color seleccionado tendrá su propio stock abajo:
+          </p>
           <div class="admin-color-palette" id="admin-color-palette">
             <button type="button" class="admin-color-bubble" data-color-name="Beige" data-hex="#e8dfc8" style="background-color: #e8dfc8;" title="Beige"></button>
             <button type="button" class="admin-color-bubble" data-color-name="Negro" data-hex="#121212" style="background-color: #121212;" title="Negro"></button>
@@ -574,61 +716,93 @@ service cloud.firestore {
             <button type="button" class="admin-color-bubble" data-color-name="Verde" data-hex="#2e6f40" style="background-color: #2e6f40;" title="Verde"></button>
 
             <!-- Selector personalizado -->
-            <label class="admin-color-bubble-custom" title="Elegir otro tono">
+            <label class="admin-color-bubble-custom" title="Añadir otro color personalizado">
               <span>+</span>
               <input type="color" id="admin-custom-color" value="#708090" />
             </label>
           </div>
+
+          <!-- Chips de colores activos -->
+          <div id="admin-active-colors-chips" class="admin-active-colors-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
         </div>
 
-        <!-- 4. TALLAS Y STOCK (CON INTERRUPTOR TOGGLE IOS) -->
-        <div class="form-group">
+        <!-- BLOQUE 4: GESTOR DE STOCK Y TALLAS CLASIFICADOS POR CADA COLOR -->
+        <div class="form-group admin-stock-manager-group">
           <label class="ios-toggle-label">
             <span class="ios-toggle-title" style="font-weight: 700;">4. Prenda con tallas</span>
             <div class="ios-switch-wrap">
-              <input type="checkbox" id="prod-has-sizes-toggle" checked />
+              <input type="checkbox" id="toggle-has-sizes" checked />
               <span class="ios-slider"></span>
             </div>
           </label>
 
-          <!-- Si el interruptor está ACTIVADO: Rejilla de Tallas -->
+          <!-- Barra de Sub-Pestañas de Color -->
+          <div class="color-stock-tabs-container">
+            <div class="color-stock-tabs-topbar">
+              <span class="color-stock-tabs-label">Elige un color para ver y editar su stock:</span>
+              <div class="color-stock-actions">
+                <button type="button" id="btn-copy-color-stock" class="btn-color-quick-action" title="Copiar las tallas del color activo a todos los demás colores">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  Copiar a los demás colores
+                </button>
+                <button type="button" id="btn-zero-active-color" class="btn-color-quick-action text-danger" title="Poner en 0 todas las unidades de este color">
+                  Agotar color
+                </button>
+              </div>
+            </div>
+
+            <!-- Fila de píldoras por color: [ ● Gris · 5 uds ] [ ● Azul Denim · 9 uds ] -->
+            <div id="color-stock-tabs-bar" class="color-stock-tabs-track"></div>
+          </div>
+
+          <!-- Si hasSizes = true: Rejilla de Tallas del Color Activo -->
           <div id="admin-sizes-wrapper">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 12px; color: var(--admin-text-muted);">Gestiona el stock por talla:</span>
-              <button type="button" id="btn-add-custom-size" class="btn-admin-subtle" style="font-size: 11.5px; padding: 4px 10px;">
+            <!-- Botones de ayuda rápida según tipo de producto -->
+            <div id="quick-sizes-helper" style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+              <button type="button" id="btn-apply-shoe-sizes" class="btn-admin-subtle" style="font-size: 11.5px; padding: 4px 10px;">
+                Usar tallas de Calzado (36 a 41)
+              </button>
+              <button type="button" id="btn-apply-clothing-sizes" class="btn-admin-subtle" style="font-size: 11.5px; padding: 4px 10px;">
+                Usar tallas de Ropa (XS a XL)
+              </button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 8px;">
+              <span style="font-size: 12px; color: var(--admin-text-muted);" id="admin-sizes-hint-label">
+                Unidades por talla para el color activo:
+              </span>
+              <button type="button" id="btn-add-size-row" class="btn-admin-subtle" style="font-size: 11.5px; padding: 4px 10px;">
                 + Añadir Talla
               </button>
             </div>
             <div id="variants-container" class="variants-container">
-              <!-- Filas dinámicas de tallas -->
+              <!-- Filas dinámicas de tallas inyectadas para el color activo -->
             </div>
           </div>
 
-          <!-- Si el interruptor está DESACTIVADO (hasSizes = false): Control Central Único -->
+          <!-- Si hasSizes = false: Control Único por Color -->
           <div id="admin-single-stock-wrapper" style="display: none;">
-            <div class="admin-single-stock-card">
-              <div style="font-size: 13.5px; font-weight: 700;">Stock disponible (Unidades)</div>
-              <div class="admin-stock-stepper-large">
-                <button type="button" id="admin-stock-minus" aria-label="Restar una unidad">&minus;</button>
-                <input type="number" id="admin-stock-val" value="10" min="0" />
-                <button type="button" id="admin-stock-plus" aria-label="Añadir una unidad">&plus;</button>
-              </div>
+            <div id="admin-single-stock-list" class="admin-single-stock-list">
+              <!-- Filas inyectadas de unidades por cada color -->
             </div>
           </div>
         </div>
 
-        <!-- 5. DESCRIPCIÓN (OPCIONAL) -->
+        <!-- BLOQUE 5: DESCRIPCIÓN (OPCIONAL) -->
         <div class="form-group">
           <label for="prod-desc" style="font-weight: 700;">5. Descripción (Opcional)</label>
           <textarea id="prod-desc" rows="2" placeholder="Escribe una descripción solo si quieres añadir detalles extra..."></textarea>
         </div>
 
-        <!-- 6. BOTÓN DE PUBLICACIÓN FIJO -->
+        <!-- BOTÓN DE PUBLICACIÓN FIJO -->
         <div class="modal-footer-sticky">
           <button type="submit" id="btn-save-product-submit" class="admin-btn-primary" style="width: 100%; height: 50px; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; justify-content: center;">
             <span id="btn-save-text">Guardar y Publicar</span>
             <div id="btn-save-spinner" style="display: none; align-items: center; gap: 8px;">
-              <svg class="admin-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <svg class="admin-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
                 <path d="M12 2a10 10 0 0 1 10 10"></path>
               </svg>
@@ -641,6 +815,165 @@ service cloud.firestore {
   </div>
 
   <!-- ======================================================================
+       SUB-MODAL: RECORTADOR DE FOTOS CON CROPPER.JS (TIJERAS SVG)
+       ====================================================================== -->
+  <div id="cropper-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="cropper-modal-title" hidden>
+    <div class="admin-modal__overlay"></div>
+    <div class="admin-modal__container" style="max-width: 600px;">
+      <div class="admin-modal__header">
+        <h2 id="cropper-modal-title" class="admin-modal__title">Recortar Foto de Prenda</h2>
+        <button type="button" id="cropper-modal-close" class="admin-modal__close" aria-label="Cerrar recorte">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal__body" style="padding: 16px;">
+        <div class="cropper-stage">
+          <img id="cropper-image-target" src="" alt="Foto a recortar" />
+        </div>
+
+        <!-- Controles de proporción y giro -->
+        <div class="cropper-toolbar" style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+          <button type="button" class="btn-crop-ratio is-active" data-ratio="0.75">3:4 (Portada Vertical)</button>
+          <button type="button" class="btn-crop-ratio" data-ratio="1">1:1 (Cuadrado)</button>
+          <button type="button" class="btn-crop-ratio" data-ratio="0">Libre</button>
+          <button type="button" id="btn-crop-rotate" class="btn-admin-subtle" title="Girar 90 grados">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Girar 90°
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap;">
+          <div>
+            <input type="file" id="cropper-fallback-file-input" accept="image/*" style="display: none;" />
+            <button type="button" id="btn-cropper-fallback-upload" class="btn-admin-subtle" style="display: none; align-items: center; gap: 6px; font-size: 12px;" title="Cargar foto local">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Cargar archivo de tu equipo
+            </button>
+          </div>
+          <div style="display: flex; gap: 10px; margin-left: auto;">
+            <button type="button" id="btn-cancel-crop" class="btn-admin-subtle">Cancelar</button>
+            <button type="button" id="btn-apply-crop" class="admin-btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Aplicar Recorte
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: EDITOR DE COLECCIÓN (CARRUSEL DE PORTADA)
+       ====================================================================== -->
+  <div id="collection-editor-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="collection-modal-title" style="display: none;">
+    <div class="admin-modal__overlay" id="collection-modal-backdrop"></div>
+    <div class="admin-modal__container" style="max-width: 620px; width: 95%;">
+      <div class="admin-modal__header">
+        <h2 id="collection-modal-title" class="admin-modal__title">Nueva Colección</h2>
+        <button type="button" id="btn-close-collection-modal" class="admin-modal__close" aria-label="Cerrar modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal__body" style="padding: 20px; max-height: calc(85vh - 120px); overflow-y: auto;">
+        <input type="hidden" id="col-edit-id" value="" />
+        
+        <!-- 1. Foto de Portada (Vertical 3:4) -->
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 8px;">Foto de Portada de la Colección (Vertical 3:4) *</label>
+          <div style="display: flex; gap: 16px; align-items: flex-start;">
+            <div id="col-modal-preview-wrapper" style="width: 100px; height: 133px; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 1px solid #dcdcdc; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <img id="col-modal-preview-img" src="" alt="Vista previa" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+              <div id="col-modal-preview-placeholder" style="color: #999; font-size: 11px; text-align: center; padding: 6px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="margin: 0 auto 4px; display: block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span>Sin foto</span>
+              </div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" id="btn-col-upload-file" class="admin-btn-secondary" style="height: 34px; padding: 0 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  Subir foto desde dispositivo
+                </button>
+                <input type="file" id="collection-file-input" accept="image/*" style="display: none;" />
+                
+                <button type="button" id="btn-col-crop-img" class="admin-btn-secondary" style="height: 34px; padding: 0 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;" title="Recortar proporción 3:4 con Cropper.js">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="6" cy="6" r="3"></circle>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                    <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                    <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                  </svg>
+                  Recortar 3:4
+                </button>
+              </div>
+              <div>
+                <label for="col-modal-img-url" style="font-size: 11px; color: #666; margin-bottom: 2px; display: block;">O pega URL externa:</label>
+                <input type="url" id="col-modal-img-url" class="admin-input" placeholder="https://..." style="height: 32px; font-size: 12px;" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Título de la Colección -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="col-modal-title-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Título de la Colección *</label>
+          <input type="text" id="col-modal-title-input" class="admin-input" placeholder="Ej. OTOÑO &amp; INVIERNO, ESPECIAL FIESTA, DENIM" required />
+        </div>
+
+        <!-- 3. Subtítulo / Descripción Corta -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="col-modal-subtitle-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Subtítulo / Descripción corta</label>
+          <input type="text" id="col-modal-subtitle-input" class="admin-input" placeholder="Ej. Colección de temporada, Descuentos exclusivos" />
+        </div>
+
+        <!-- 4. Slug / Identificador de Enlace -->
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label for="col-modal-slug-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Slug / Identificador de enlace</label>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 12px; color: #888;">collection.html?cat=</span>
+            <input type="text" id="col-modal-slug-input" class="admin-input" placeholder="otono-invierno" style="flex: 1;" />
+          </div>
+        </div>
+
+        <!-- 5. Selector Rápido de Prendas Incluidas -->
+        <div class="form-group" style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <label style="font-weight: 600;">Selector Rápido de Prendas Incluidas en esta Colección</label>
+            <span id="col-products-count-badge" style="font-size: 11.5px; color: #666; font-weight: 600;">0 prendas vinculadas</span>
+          </div>
+          <p style="font-size: 11.5px; color: #777; margin: 0 0 10px 0;">Marca o desmarca los artículos que deben pertenecer a esta colección. Se actualizarán automáticamente en Firestore.</p>
+          <div id="collection-products-checklist" style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e2e2; border-radius: 8px; padding: 8px; background: #fafafa; display: flex; flex-direction: column; gap: 6px;">
+            <!-- Inyectado dinámicamente -->
+          </div>
+        </div>
+      </div>
+      <div class="admin-modal__footer" style="padding: 14px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" id="btn-cancel-collection-modal" class="admin-btn-secondary" style="height: 38px; padding: 0 16px;">Cancelar</button>
+        <button type="button" id="btn-save-collection" class="admin-btn-primary" style="height: 38px; padding: 0 20px; display: inline-flex; align-items: center; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          Guardar Colección
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
        MODAL: VISOR DE PAYLOAD JSON PACKLINK PRO
        ====================================================================== -->
   <div id="packlink-json-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="packlink-modal-title">
@@ -649,7 +982,7 @@ service cloud.firestore {
       <div class="admin-modal__header">
         <h2 id="packlink-modal-title" class="admin-modal__title">Payload JSON Oficial Packlink PRO</h2>
         <button type="button" id="packlink-modal-close" class="admin-modal__close" aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -662,7 +995,7 @@ service cloud.firestore {
         <pre id="packlink-json-code" class="json-pre-viewer"></pre>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
           <button type="button" id="btn-copy-packlink-json" class="admin-btn-primary">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>

@@ -1,7 +1,7 @@
 /**
  * CART STATE MACHINE - MÁQUINA DE ESTADOS DEL CARRITO
  * Gestiona el carrito en localStorage bajo la clave 'store_cart_v1'
- * siguiendo fielmente ARCHITECTURE.md Sección 3.
+ * con soporte para matriz independiente de Color y Talla (cartItemId compuesto).
  */
 
 export const CART_STORAGE_KEY = 'store_cart_v1';
@@ -21,7 +21,7 @@ export function getCart() {
 }
 
 /**
- * Guarda los artículos en localStorage y opcionalmente dispara evento
+ * Guarda los artículos en localStorage y dispara evento reactivo
  * @param {Array} items
  * @param {boolean} openDrawer
  */
@@ -40,48 +40,76 @@ function saveCart(items, openDrawer = false) {
 }
 
 /**
- * Añade un producto y talla al carrito respetando el stock máximo
- * @param {Object} product Objeto de producto completo según ARCHITECTURE.md
+ * Añade un producto con talla y color específicos al carrito respetando el stock disponible
+ * @param {Object} product Objeto de producto normalizado
  * @param {string} size Talla seleccionada (ej. "M")
- * @param {number} quantity Cantidad a añadir (por defecto 1)
+ * @param {number} quantity Cantidad a añadir
+ * @param {string|null} color Nombre del color (ej. "Gris")
+ * @param {string|null} colorHex Código hexadecimal del color (ej. "#808080")
  * @returns {boolean} True si se añadió exitosamente
  */
-export function addToCart(product, size, quantity = 1) {
+export function addToCart(product, size, quantity = 1, color = null, colorHex = null) {
   if (!product || !size || quantity <= 0) return false;
 
-  const variant = product.variants ? product.variants.find(v => v.size === size) : null;
-  const maxStock = variant ? variant.stock : 0;
+  const cleanSize = String(size || 'ÚNICA').toUpperCase().trim();
+  const resolvedColorName = color || (product.colors?.[0]?.name || 'Color Único');
+  const resolvedColorHex = colorHex || (product.colors?.[0]?.hex || '#121212');
+  const cleanColorSlug = resolvedColorName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  // Identificador compuesto id_color_talla
+  const cartItemId = `${product.id}_${cleanColorSlug}_${cleanSize}`;
+
+  // Calcular el stock máximo para esta combinación exacta de color y talla
+  let maxStock = 0;
+  if (Array.isArray(product.colors) && product.colors.length > 0) {
+    const colorObj = product.colors.find(c => (c.name || '').toLowerCase() === resolvedColorName.toLowerCase()) || product.colors[0];
+    if (colorObj && Array.isArray(colorObj.sizes)) {
+      const sizeObj = colorObj.sizes.find(s => s.size === cleanSize);
+      maxStock = sizeObj ? (Number(sizeObj.stock) || 0) : 0;
+    }
+  }
+
+  // Fallback si no encontró en colorObj: revisar variants agregadas
+  if (maxStock <= 0 && Array.isArray(product.variants)) {
+    const variant = product.variants.find(v => v.size === cleanSize);
+    if (variant) maxStock = Number(variant.stock) || 0;
+  }
 
   if (maxStock <= 0) {
-    console.warn(`[Cart] Talla ${size} sin stock disponible`);
+    console.warn(`[Cart] Combinación ${product.title} en color "${resolvedColorName}" y talla "${cleanSize}" sin stock disponible`);
     return false;
   }
 
   const cart = getCart();
-  const cartItemId = `${product.id}_${size}`;
   const existingIndex = cart.findIndex(item => item.cartItemId === cartItemId);
 
-  const mainImage = (product.images && product.images.length > 0)
-    ? product.images[0]
-    : '';
+  // Seleccionar la foto adecuada para el color si tiene imageIndex
+  let mainImage = (product.images && product.images.length > 0) ? product.images[0] : '';
+  if (Array.isArray(product.colors)) {
+    const matchingColor = product.colors.find(c => (c.name || '').toLowerCase() === resolvedColorName.toLowerCase());
+    if (matchingColor && typeof matchingColor.imageIndex === 'number' && product.images?.[matchingColor.imageIndex]) {
+      mainImage = product.images[matchingColor.imageIndex];
+    }
+  }
 
   if (existingIndex > -1) {
     const currentQty = cart[existingIndex].quantity;
     const allowedAdd = Math.min(quantity, maxStock - currentQty);
     if (allowedAdd <= 0) {
-      // Ya se alcanzó el stock máximo en cesta
       saveCart(cart, true);
       return false;
     }
     cart[existingIndex].quantity = currentQty + allowedAdd;
-    cart[existingIndex].maxStock = maxStock; // Actualizar stock más reciente
+    cart[existingIndex].maxStock = maxStock;
   } else {
     const finalQty = Math.min(quantity, maxStock);
     const newItem = {
       cartItemId,
       productId: product.id,
       title: product.title,
-      size,
+      size: cleanSize,
+      color: resolvedColorName,
+      colorHex: resolvedColorHex,
       price: product.price,
       compareAtPrice: product.compareAtPrice || null,
       image: mainImage,
@@ -97,7 +125,7 @@ export function addToCart(product, size, quantity = 1) {
 
 /**
  * Actualiza la cantidad de un ítem existente
- * @param {string} cartItemId Identificador compuesto id_talla
+ * @param {string} cartItemId Identificador compuesto id_color_talla
  * @param {number} newQuantity Nueva cantidad deseada
  */
 export function updateCartItemQuantity(cartItemId, newQuantity) {
@@ -118,7 +146,7 @@ export function updateCartItemQuantity(cartItemId, newQuantity) {
 
 /**
  * Elimina por completo un artículo del carrito
- * @param {string} cartItemId Identificador compuesto id_talla
+ * @param {string} cartItemId Identificador compuesto id_color_talla
  */
 export function removeFromCart(cartItemId) {
   const cart = getCart();
@@ -135,21 +163,21 @@ export function clearCart() {
 
 /**
  * Calcula todos los totales, gastos de envío y barra de envío gratis
- * @param {number} freeShippingThreshold Umbral para envío gratis (60.00 € por defecto)
- * @param {number} shippingStandardPrice Coste de envío estándar (4.90 € por defecto)
+ * @param {number} freeShippingThreshold Umbral para envío gratis (€50.00 por defecto)
+ * @param {number} shippingStandardPrice Coste de envío estándar (€4.90 por defecto)
  */
-export function getCartTotals(freeShippingThreshold = 60.00, shippingStandardPrice = 4.90) {
+export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPrice = 4.90) {
   const cart = getCart();
 
   let totalItems = 0;
   let subtotal = 0;
 
   for (const item of cart) {
-    totalItems += item.quantity;
-    subtotal += item.price * item.quantity;
+    const qty = parseInt(item.quantity, 10) || 1;
+    totalItems += qty;
+    subtotal += Number(item.price) * qty;
   }
 
-  // Redondear a dos decimales para evitar artefactos de coma flotante
   subtotal = Math.round(subtotal * 100) / 100;
 
   const hasFreeShipping = subtotal >= freeShippingThreshold;
@@ -175,4 +203,3 @@ export function getCartTotals(freeShippingThreshold = 60.00, shippingStandardPri
     hasFreeShipping
   };
 }
-

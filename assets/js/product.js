@@ -1,16 +1,8 @@
 /**
- * PRODUCT PAGE CONTROLLER - YOANA ZAFIRO (FASE 3.5)
- * Clon exacto de ficha de producto estilo Yoana Zafiro (PDF Abrigo Pandora):
- * - Galería 3:4.2 con botón lupa circular y paginador minimalista < 1 / 2 >
- * - Lightbox modal de zoom
- * - Selector circular de color (con tachado si agotado)
- * - Botones circulares de tallas 44x44px (con tachado diagonal 45° si agotado)
- * - Soporte para hasSizes: false (oculta tallas y muestra stock global)
- * - Fila de acción unificada (stepper 112px + botón añadir a la cesta)
- * - Botón de compra exprés #5a31f4 ("Comprar ahora con Bizum / Tarjeta")
- * - Banner de envío gratis 50€ con icono SVG
- * - Enlaces útiles: Compartir (Web Share / Portapapeles) y Pregunta WhatsApp
- * - Sincronización en vivo multi-pestaña mediante BroadcastChannel('yoana_store_sync')
+ * PRODUCT PAGE CONTROLLER - RONEO SHOP (FASE 5.1 DEFINITIVA)
+ * Control dinámico de ficha de producto con matriz de stock por color y talla.
+ * Sincronización en tiempo real (< 100ms) mediante onSnapshot (subscribeToProductById).
+ * Zero Emojis · 100% Iconos SVG.
  */
 
 import {
@@ -18,7 +10,8 @@ import {
   getProducts,
   getRelatedProducts,
   getStoreSettings,
-  onStoreDataChanged
+  subscribeToProductById,
+  subscribeToSettings
 } from './store-service.js';
 import {
   addToCart
@@ -31,7 +24,8 @@ import {
   renderCartDrawer,
   updateCartBadges,
   openCartDrawer,
-  setupAnnouncement
+  setupAnnouncement,
+  applySettingsToDOM
 } from './ui.js';
 
 // Estado de la ficha de producto
@@ -41,17 +35,15 @@ let selectedColor = null;
 let currentQuantity = 1;
 let currentPhotoIndex = 0;
 let productImages = [];
+let unsubscribeProduct = null;
+let unsubscribeSettings = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const settings = await getStoreSettings();
-    setupAnnouncement(settings.announcementText || 'NUEVA COLECCIÓN 2026 OTOÑO & INVIERNO · ENVÍOS GRATIS A PARTIR DE 50€');
-
-    // 1. Obtener ID o slug de los parámetros de la URL
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('id');
 
-    // 2. Cargar producto
+    // 1. Carga inicial del producto
     let product = await getProductByIdOrSlug(productId);
     if (!product) {
       const all = await getProducts();
@@ -66,44 +58,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentProduct = product;
     initProductPage(product);
 
-    // Configurar componentes globales de interfaz
+    // Componentes de interfaz comunes
     setupCommonUI();
     renderCartDrawer();
     updateCartBadges();
 
-    // 3. Escuchar sincronización en tiempo real desde el admin u otras pestañas
-    setupLiveSync();
+    // 2. Suscripción en vivo al documento del producto con onSnapshot (< 100ms)
+    unsubscribeProduct = subscribeToProductById(product.id, (updatedProd) => {
+      if (updatedProd) {
+        currentProduct = updatedProd;
+        // Preservar color y talla seleccionados si aún existen
+        const prevColorName = selectedColor?.name;
+        const prevSize = selectedSize;
+
+        initProductPage(updatedProd, prevColorName, prevSize);
+      }
+    });
+
+    // 3. Suscripción en vivo a los ajustes
+    unsubscribeSettings = subscribeToSettings((settings) => {
+      applySettingsToDOM(settings);
+    });
 
   } catch (err) {
     console.error("[ProductPage] Error al inicializar ficha de producto:", err);
   }
 });
 
+window.addEventListener('beforeunload', () => {
+  if (typeof unsubscribeProduct === 'function') unsubscribeProduct();
+  if (typeof unsubscribeSettings === 'function') unsubscribeSettings();
+});
+
 /**
- * Inicializa y renderiza todos los elementos de la ficha de producto
+ * Inicializa y renderiza los elementos de la ficha de producto
  */
-function initProductPage(product) {
-  productImages = (product.images && product.images.length > 0)
+function initProductPage(product, preserveColorName = null, preserveSize = null) {
+  productImages = (Array.isArray(product.images) && product.images.length > 0)
     ? product.images
     : ['assets/img/placeholder.webp'];
-  
-  currentPhotoIndex = 0;
-  currentQuantity = 1;
 
-  // Seleccionar color por defecto si tiene
-  if (product.colors && product.colors.length > 0) {
-    selectedColor = product.colors[0];
+  if (currentPhotoIndex >= productImages.length) {
+    currentPhotoIndex = 0;
+  }
+
+  // 1. Determinar color seleccionado
+  const colors = Array.isArray(product.colors) ? product.colors : [];
+  if (colors.length > 0) {
+    if (preserveColorName) {
+      selectedColor = colors.find(c => c.name.toLowerCase() === preserveColorName.toLowerCase()) || colors[0];
+    } else {
+      // Preferir primer color con unidades disponibles
+      const inStockColor = colors.find(c => (c.sizes || []).some(s => s.stock > 0));
+      selectedColor = inStockColor || colors[0];
+    }
   } else {
     selectedColor = null;
   }
 
-  // Seleccionar talla por defecto si tiene tallas
-  if (product.hasSizes !== false && product.variants && product.variants.length > 0) {
-    // Preferir primera talla con stock > 0
-    const inStockVariant = product.variants.find(v => v.stock > 0);
-    selectedSize = inStockVariant ? inStockVariant.size : product.variants[0].size;
+  // 2. Determinar talla seleccionada para el color actual
+  const colorSizes = selectedColor?.sizes || product.variants || [];
+  if (product.hasSizes !== false && colorSizes.length > 0) {
+    if (preserveSize && colorSizes.some(s => s.size === preserveSize && s.stock > 0)) {
+      selectedSize = preserveSize;
+    } else {
+      const inStockSize = colorSizes.find(s => s.stock > 0);
+      selectedSize = inStockSize ? inStockSize.size : colorSizes[0].size;
+    }
   } else {
-    selectedSize = (product.variants && product.variants[0]) ? product.variants[0].size : 'ÚNICA';
+    selectedSize = 'ÚNICA';
   }
 
   renderBreadcrumbs(product);
@@ -120,7 +143,7 @@ function initProductPage(product) {
 }
 
 /**
- * Renderiza las migas de pan centradas oficiales de Yoana Zafiro
+ * Renderiza migas de pan
  */
 function renderBreadcrumbs(product) {
   const catEl = document.getElementById('breadcrumb-category');
@@ -136,12 +159,12 @@ function renderBreadcrumbs(product) {
     titleEl.textContent = product.title;
   }
   if (pageTitle) {
-    pageTitle.textContent = `${product.title} | Yoana Zafiro`;
+    pageTitle.textContent = `${product.title} | Roneo Shop`;
   }
 }
 
 /**
- * Renderiza la imagen principal de la galería y actualiza el contador < 1 / 2 >
+ * Renderiza la imagen principal de la galería
  */
 function renderGallery() {
   const mainImg = document.getElementById('pdp-main-image');
@@ -167,9 +190,6 @@ function renderGallery() {
   }
 }
 
-/**
- * Configura los botones de la galería táctil y de ampliación (Lightbox)
- */
 function setupLightbox() {
   const prevBtn = document.getElementById('pdp-pager-prev');
   const nextBtn = document.getElementById('pdp-pager-next');
@@ -196,7 +216,6 @@ function setupLightbox() {
     };
   }
 
-  // Abrir Lightbox al pulsar botón de lupa
   if (zoomTrigger && lightbox && lightboxImg) {
     zoomTrigger.onclick = () => {
       lightboxImg.src = productImages[currentPhotoIndex] || productImages[0];
@@ -205,7 +224,6 @@ function setupLightbox() {
     };
   }
 
-  // Cerrar Lightbox
   if (lightboxClose && lightbox) {
     lightboxClose.onclick = () => {
       lightbox.classList.remove('is-open');
@@ -223,9 +241,6 @@ function setupLightbox() {
   }
 }
 
-/**
- * Renderiza título, precios y descripción
- */
 function renderDetails(product) {
   const titleEl = document.getElementById('pdp-product-title');
   const priceEl = document.getElementById('pdp-product-price');
@@ -266,7 +281,9 @@ function renderColors(product) {
 
   if (!colorsSection || !container) return;
 
-  if (!product.colors || product.colors.length === 0) {
+  const colors = Array.isArray(product.colors) ? product.colors : [];
+
+  if (colors.length === 0 || (colors.length === 1 && colors[0].name.toLowerCase() === 'color único')) {
     colorsSection.style.display = 'none';
     return;
   }
@@ -276,9 +293,10 @@ function renderColors(product) {
     colorNameLabel.textContent = selectedColor.name;
   }
 
-  container.innerHTML = product.colors.map(color => {
+  container.innerHTML = colors.map(color => {
     const isSelected = selectedColor && selectedColor.name === color.name;
-    const isOutOfStock = color.inStock === false;
+    const totalColorUnits = (color.sizes || []).reduce((acc, s) => acc + (s.stock || 0), 0);
+    const isOutOfStock = totalColorUnits <= 0;
     const selectedClass = isSelected ? 'is-selected' : '';
     const outClass = isOutOfStock ? 'is-out' : '';
 
@@ -288,37 +306,48 @@ function renderColors(product) {
         class="color-swatch-circle ${selectedClass} ${outClass}" 
         data-color-name="${escapeHtml(color.name)}" 
         style="background-color: ${color.hex};" 
-        title="${escapeHtml(color.name)}${isOutOfStock ? ' (Agotado)' : ''}" 
+        title="${escapeHtml(color.name)}${isOutOfStock ? ' (Agotado)' : ` (${totalColorUnits} uds)`}" 
         aria-label="Color ${escapeHtml(color.name)}"
       ></button>
     `;
   }).join('');
 
-  // Event listeners para selección de color
   container.querySelectorAll('.color-swatch-circle').forEach(btn => {
     btn.onclick = () => {
       const colorName = btn.dataset.colorName;
-      const found = product.colors.find(c => c.name === colorName);
-      if (found) {
-        selectedColor = found;
-        if (colorNameLabel) colorNameLabel.textContent = found.name;
-        container.querySelectorAll('.color-swatch-circle').forEach(b => b.classList.remove('is-selected'));
-        btn.classList.add('is-selected');
+      const found = colors.find(c => c.name === colorName);
+      if (!found) return;
 
-        // Si el color tiene una foto asociada, mover la galería a ella
-        if (found.imageIndex !== undefined && productImages[found.imageIndex]) {
-          currentPhotoIndex = found.imageIndex;
-          renderGallery();
-        }
+      selectedColor = found;
+      if (colorNameLabel) colorNameLabel.textContent = found.name;
 
-        updateStockAndBuyState();
+      container.querySelectorAll('.color-swatch-circle').forEach(b => b.classList.remove('is-selected'));
+      btn.classList.add('is-selected');
+
+      // Si el color tiene una foto asignada, mover suavemente la galería hacia esa foto
+      if (typeof found.imageIndex === 'number' && productImages[found.imageIndex]) {
+        currentPhotoIndex = found.imageIndex;
+        renderGallery();
       }
+
+      // Al cambiar de color, recalcular las tallas y comprobar disponibilidad en ese color
+      const colorSizes = found.sizes || [];
+      if (currentProduct.hasSizes !== false && colorSizes.length > 0) {
+        const currentSizeObj = colorSizes.find(s => s.size === selectedSize);
+        if (!currentSizeObj || currentSizeObj.stock <= 0) {
+          const firstAvailable = colorSizes.find(s => s.stock > 0);
+          selectedSize = firstAvailable ? firstAvailable.size : colorSizes[0].size;
+        }
+      }
+
+      renderSizes(currentProduct);
+      updateStockAndBuyState();
     };
   });
 }
 
 /**
- * Renderiza el selector circular de tallas (44x44px con tachado diagonal 45° si agotada)
+ * Renderiza el selector circular de tallas adaptado al color seleccionado
  */
 function renderSizes(product) {
   const sizesSection = document.getElementById('pdp-sizes-section');
@@ -327,7 +356,6 @@ function renderSizes(product) {
 
   if (!sizesSection || !container) return;
 
-  // Si la prenda no tiene tallas (hasSizes === false), ocultamos la sección
   if (product.hasSizes === false) {
     sizesSection.style.display = 'none';
     selectedSize = 'ÚNICA';
@@ -339,8 +367,10 @@ function renderSizes(product) {
     sizeNameLabel.textContent = selectedSize || '--';
   }
 
-  const variants = product.variants || [];
-  container.innerHTML = variants.map(v => {
+  // Tallas específicas del color actualmente activo
+  const activeSizes = selectedColor?.sizes || product.variants || [];
+
+  container.innerHTML = activeSizes.map(v => {
     const isSelected = v.size === selectedSize;
     const isOut = (v.stock <= 0);
     const selectedClass = isSelected ? 'is-selected' : '';
@@ -351,7 +381,7 @@ function renderSizes(product) {
         type="button" 
         class="size-circle-btn ${selectedClass} ${outClass}" 
         data-size="${escapeHtml(v.size)}" 
-        title="Talla ${escapeHtml(v.size)}${isOut ? ' (Agotada)' : ''}" 
+        title="Talla ${escapeHtml(v.size)}${isOut ? ' (Agotada en este color)' : ` (${v.stock} disponibles)`}" 
         aria-label="Talla ${escapeHtml(v.size)}"
       >
         ${escapeHtml(v.size)}
@@ -359,7 +389,6 @@ function renderSizes(product) {
     `;
   }).join('');
 
-  // Event listeners de selección de talla
   container.querySelectorAll('.size-circle-btn').forEach(btn => {
     btn.onclick = () => {
       const sizeVal = btn.dataset.size;
@@ -375,31 +404,32 @@ function renderSizes(product) {
 }
 
 /**
- * Determina el stock disponible para la talla y color actuales y actualiza el estado de compra
+ * Obtiene el stock disponible para la combinación exacta de color y talla seleccionados
  */
 function getSelectedStock() {
   if (!currentProduct) return 0;
 
-  // Si el color seleccionado está marcado como fuera de stock, stock es 0
-  if (selectedColor && selectedColor.inStock === false) {
-    return 0;
-  }
-
-  // Si la prenda no tiene tallas, calcular suma total de variantes
+  // Si la prenda no tiene tallas, leer el stock del color seleccionado
   if (currentProduct.hasSizes === false) {
-    if (currentProduct.variants && currentProduct.variants.length > 0) {
-      return currentProduct.variants.reduce((acc, v) => acc + (v.stock || 0), 0);
+    if (selectedColor && Array.isArray(selectedColor.sizes) && selectedColor.sizes.length > 0) {
+      return Number(selectedColor.sizes[0].stock) || 0;
     }
-    return 0;
+    return (currentProduct.variants && currentProduct.variants[0]) ? Number(currentProduct.variants[0].stock) : 0;
   }
 
-  // Si tiene tallas, buscar la variante seleccionada
+  // Si tiene tallas, buscar en las tallas del color seleccionado
+  if (selectedColor && Array.isArray(selectedColor.sizes)) {
+    const sizeObj = selectedColor.sizes.find(s => s.size === selectedSize);
+    if (sizeObj) return Number(sizeObj.stock) || 0;
+  }
+
+  // Fallback en variants agregadas
   const variant = (currentProduct.variants || []).find(v => v.size === selectedSize);
-  return variant ? variant.stock : 0;
+  return variant ? (Number(variant.stock) || 0) : 0;
 }
 
 /**
- * Actualiza los indicadores visuales de stock, botón de carrito y botón exprés Bizum
+ * Actualiza los indicadores visuales de stock, botón de carrito y botón de compra exprés
  */
 function updateStockAndBuyState() {
   const stock = getSelectedStock();
@@ -433,7 +463,7 @@ function updateStockAndBuyState() {
       stockDot.className = 'pdp-stock-dot is-out';
     }
     if (stockLabel) {
-      stockLabel.textContent = 'Agotado';
+      stockLabel.textContent = 'Agotado en esta combinación';
     }
     if (addCartBtn) {
       addCartBtn.disabled = true;
@@ -445,7 +475,6 @@ function updateStockAndBuyState() {
     }
   }
 
-  // Ajustar cantidad si excede el stock
   if (isAvailable && currentQuantity > stock) {
     currentQuantity = stock;
     const qtyVal = document.getElementById('pdp-qty-val');
@@ -453,9 +482,6 @@ function updateStockAndBuyState() {
   }
 }
 
-/**
- * Configura el stepper de cantidad (112px con [-] y [+])
- */
 function setupQuantityStepper() {
   const minusBtn = document.getElementById('pdp-qty-minus');
   const plusBtn = document.getElementById('pdp-qty-plus');
@@ -481,9 +507,6 @@ function setupQuantityStepper() {
   }
 }
 
-/**
- * Configura las acciones de compra: Añadir al carrito y Comprar con Bizum / Tarjeta
- */
 function setupActionButtons() {
   const addCartBtn = document.getElementById('btn-pdp-add-cart');
   const expressBtn = document.getElementById('btn-pdp-express');
@@ -495,9 +518,10 @@ function setupActionButtons() {
       if (stock <= 0) return;
 
       const sizeToAdd = (currentProduct.hasSizes === false) ? 'ÚNICA' : selectedSize;
-      const colorToAdd = selectedColor ? selectedColor.name : null;
+      const colorToAdd = selectedColor ? selectedColor.name : 'Color Único';
+      const colorHexToAdd = selectedColor ? selectedColor.hex : '#121212';
 
-      addToCart(currentProduct, sizeToAdd, currentQuantity, colorToAdd);
+      addToCart(currentProduct, sizeToAdd, currentQuantity, colorToAdd, colorHexToAdd);
       updateCartBadges();
       renderCartDrawer();
       openCartDrawer();
@@ -511,42 +535,35 @@ function setupActionButtons() {
       if (stock <= 0) return;
 
       const sizeToAdd = (currentProduct.hasSizes === false) ? 'ÚNICA' : selectedSize;
-      const colorToAdd = selectedColor ? selectedColor.name : null;
+      const colorToAdd = selectedColor ? selectedColor.name : 'Color Único';
+      const colorHexToAdd = selectedColor ? selectedColor.hex : '#121212';
 
-      addToCart(currentProduct, sizeToAdd, currentQuantity, colorToAdd);
+      addToCart(currentProduct, sizeToAdd, currentQuantity, colorToAdd, colorHexToAdd);
       updateCartBadges();
-
-      // Redirigir directamente al checkout
       window.location.href = 'checkout.html';
     };
   }
 }
 
-/**
- * Configura los botones de Compartir y Pregunta por WhatsApp
- */
 function setupUtilityLinks(product) {
   const shareBtn = document.getElementById('pdp-share-btn');
   if (shareBtn) {
     shareBtn.onclick = async () => {
       const shareData = {
-        title: `${product.title} | Yoana Zafiro`,
-        text: `Descubre esta prenda en Yoana Zafiro: ${product.title} - ${formatPrice(product.price)}`,
+        title: `${product.title} | Roneo Shop`,
+        text: `Descubre esta prenda en Roneo Shop: ${product.title} - ${formatPrice(product.price)}`,
         url: window.location.href
       };
 
       if (navigator.share) {
         try {
           await navigator.share(shareData);
-        } catch (err) {
-          // El usuario canceló la acción nativa
-        }
+        } catch (err) {}
       } else {
-        // Fallback al portapapeles
         try {
           await navigator.clipboard.writeText(window.location.href);
           const originalText = shareBtn.querySelector('span').textContent;
-          shareBtn.querySelector('span').textContent = '¡Enlace copiado!';
+          shareBtn.querySelector('span').textContent = 'Enlace copiado al portapapeles';
           setTimeout(() => {
             shareBtn.querySelector('span').textContent = originalText;
           }, 2200);
@@ -558,15 +575,12 @@ function setupUtilityLinks(product) {
   }
 }
 
-/**
- * Carga prendas recomendadas para el carrusel inferior
- */
 async function loadRelatedProducts(product) {
   const track = document.getElementById('related-track');
   if (!track) return;
 
   try {
-    const related = await getRelatedProducts(product.id, 4);
+    const related = await getRelatedProducts(product.id, product.category, 4);
     if (!related || related.length === 0) {
       const section = track.closest('.related-products-section');
       if (section) section.style.display = 'none';
@@ -574,33 +588,10 @@ async function loadRelatedProducts(product) {
     }
 
     track.innerHTML = related.map(item => renderProductCardMarkup(item)).join('');
-    bindProductCardEvents(track, (addedProduct) => {
-      renderCartDrawer();
-      updateCartBadges();
-      openCartDrawer();
-    });
+    bindProductCardEvents(track, related);
   } catch (err) {
     console.error("[ProductPage] Error al cargar productos relacionados:", err);
   }
-}
-
-/**
- * Escucha cambios en tiempo real del catálogo desde el panel de administración
- * vía BroadcastChannel y Storage Event para actualizar la vista sin recargar
- */
-function setupLiveSync() {
-  onStoreDataChanged(async () => {
-    if (!currentProduct) return;
-    try {
-      const refreshed = await getProductByIdOrSlug(currentProduct.id);
-      if (refreshed) {
-        currentProduct = refreshed;
-        initProductPage(refreshed);
-      }
-    } catch (e) {
-      console.warn("[ProductPage] Error actualizando producto en vivo:", e);
-    }
-  });
 }
 
 function escapeHtml(str) {

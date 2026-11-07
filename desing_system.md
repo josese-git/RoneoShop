@@ -1,6 +1,6 @@
-# SISTEMA DE DISEÑO: CLON YOANA ZAFIRO / SHOPIFY DAWN (DESIGN_SYSTEM.md)
+# SISTEMA DE DISEÑO: RONEO SHOP / SHOPIFY DAWN (DESIGN_SYSTEM.md)
 
-Toda la interfaz pública debe replicar con precisión milimétrica la estética minimalista del tema Dawn de Shopify usado en `yoanazafiro.com`.
+Toda la interfaz pública replica con precisión milimétrica la estética minimalista del tema Dawn de Shopify adaptada a la identidad oficial de Roneo Shop.
 
 ## 1. REGLAS VISUALES CLAVE
 * **Estética General:** Fondo blanco puro (`#FFFFFF`), textos en negro profundo con ligera transparencia para textos secundarios (`rgba(18, 18, 18, 0.75)`), bordes finos de `1px solid rgba(18, 18, 18, 0.12)` y esquinas rectas (`border-radius: 0px` en botones e inputs).
