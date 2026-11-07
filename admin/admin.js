@@ -51,8 +51,23 @@ import {
   DEFAULT_COLLECTIONS,
   updateProductsCollectionTags,
   saveImageBase64ToLocalCache,
-  getImageBase64FromLocalCache
+  getImageBase64FromLocalCache,
+  syncOrderWithPacklink,
+  createOrder,
+  generateDailyOrderNumber
 } from '../assets/js/store-service.js';
+
+import {
+  DEFAULT_PACKLINK_API_KEY,
+  FIXED_SENDER_ADDRESS,
+  resolvePacklinkPostalLocation,
+  getPacklinkRates,
+  createPacklinkShipment,
+  getPacklinkShipmentStatus,
+  getPacklinkShipmentLabels,
+  buildPacklinkShipmentPayload,
+  getActivePacklinkApiKey
+} from '../assets/js/packlink-service.js';
 
 // Estado global de la sesión y datos del panel
 let currentUser = null;
@@ -62,6 +77,7 @@ let currentSettings = null;
 let currentCategories = DEFAULT_CATEGORIES;
 let currentCollections = DEFAULT_COLLECTIONS;
 let currentFilter = 'all';
+let currentOrderFilter = 'all';
 let currentSearch = '';
 let isSortMode = false;
 let draggedCardIndex = null;
@@ -2096,96 +2112,515 @@ async function handleSaveProduct(e) {
  * ============================================================================
  */
 
+/**
+ * ============================================================================
+ * 8. PESTAÑA PEDIDOS Y PACKLINK PRO (FASE 6.0 OFICIAL)
+ * ============================================================================
+ */
+
+function setupOrderFilters() {
+  const filterBtns = document.querySelectorAll('[data-order-filter]');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      currentOrderFilter = btn.getAttribute('data-order-filter') || 'all';
+      renderOrdersList();
+    });
+  });
+}
+
+function updateOrderCountPills() {
+  const countAll = document.getElementById('count-orders-all');
+  const countPending = document.getElementById('count-orders-pending');
+  const countSynced = document.getElementById('count-orders-synced');
+  const countCancelled = document.getElementById('count-orders-cancelled');
+
+  const total = currentOrders.length;
+  const pending = currentOrders.filter(o => !o.packlink?.synced && o.status !== 'CANCELLED').length;
+  const synced = currentOrders.filter(o => Boolean(o.packlink?.synced)).length;
+  const cancelled = currentOrders.filter(o => o.status === 'CANCELLED').length;
+
+  if (countAll) countAll.textContent = total;
+  if (countPending) countPending.textContent = pending;
+  if (countSynced) countSynced.textContent = synced;
+  if (countCancelled) countCancelled.textContent = cancelled;
+}
+
 function renderOrdersList() {
   const container = document.getElementById('admin-orders-list');
   if (!container) return;
 
-  if (currentOrders.length === 0) {
+  updateOrderCountPills();
+
+  // Actualizar máscara de API Key en la barra de pedidos
+  const keyEl = document.getElementById('lbl-packlink-masked-key');
+  if (keyEl) {
+    const key = getActivePacklinkApiKey(currentSettings);
+    keyEl.textContent = key.length > 12 ? `${key.substring(0, 6)}...${key.slice(-5)}` : key;
+  }
+
+  // Filtrar pedidos según píldora activa
+  const filteredOrders = currentOrders.filter(order => {
+    if (currentOrderFilter === 'pending-packlink') {
+      return !order.packlink?.synced && order.status !== 'CANCELLED';
+    }
+    if (currentOrderFilter === 'synced-packlink') {
+      return Boolean(order.packlink?.synced);
+    }
+    if (currentOrderFilter === 'cancelled') {
+      return order.status === 'CANCELLED';
+    }
+    return true;
+  });
+
+  if (filteredOrders.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 14px; border: 1px solid var(--admin-border);">
-        <p style="color: var(--admin-text-muted); font-size: 14px;">No hay pedidos registrados en la tienda todavía.</p>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; color: var(--admin-text-muted); display: block;">
+          <rect x="1" y="3" width="15" height="13" rx="1"></rect>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+          <circle cx="5.5" cy="18.5" r="2.5"></circle>
+          <circle cx="18.5" cy="18.5" r="2.5"></circle>
+        </svg>
+        <p style="color: var(--admin-text-muted); font-size: 14px; margin: 0;">
+          No se encontraron pedidos en la sección seleccionada (${currentOrderFilter}).
+        </p>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = currentOrders.map(order => {
-    const itemsMarkup = (order.items || []).map(it => `
-      <div style="font-size: 12.5px; color: var(--admin-text-muted);">
-        <strong>${it.title || 'Prenda'}</strong> · Talla: ${it.size || 'U'} · Color: ${it.color || 'Estándar'} (${it.quantity || 1} uds)
+  container.innerHTML = filteredOrders.map(order => {
+    const isSynced = Boolean(order.packlink?.synced && order.packlink?.reference);
+    const plRef = order.packlink?.reference || '';
+    const cust = order.customer || {};
+    const cleanPhone = String(cust.phone || '').replace(/\D/g, '');
+    const waUrl = cleanPhone ? `https://wa.me/34${cleanPhone}?text=${encodeURIComponent(`Hola ${cust.firstName || ''}, te contactamos desde Roneo Shop con respecto a tu pedido #${order.orderNumber}.`)}` : '#';
+
+    const orderWeight = parseFloat(order.totalWeightKg || 0.5).toFixed(2);
+    const dateFormatted = new Date(order.createdAt || Date.now()).toLocaleDateString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const itemsMarkup = (order.items || []).map(item => `
+      <div class="order-item-row">
+        <img src="${item.image || '../assets/img/logo-roneo.png'}" alt="${item.title || 'Prenda'}" class="order-item-thumb" onerror="this.src='../assets/img/logo-roneo.png'" />
+        <div class="order-item-info">
+          <div class="order-item-name">${item.title || 'Prenda Roneo Shop'}</div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+            <span class="order-color-pill">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${item.colorHex || '#121212'}; display: inline-block; border: 1px solid rgba(0,0,0,0.2);"></span>
+              <span>Color: ${item.color || 'Único'}</span>
+            </span>
+            <span class="order-size-pill">Talla: ${item.size || 'U'}</span>
+            <span style="font-size: 12px; color: #666;">&times; ${item.quantity || 1} uds</span>
+            <strong style="margin-left: auto; font-size: 13px;">€${((item.price || 0) * (item.quantity || 1)).toFixed(2).replace('.', ',')}</strong>
+          </div>
+        </div>
       </div>
     `).join('');
 
     return `
-      <div class="admin-card" style="margin-bottom: 12px; padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <div class="admin-order-card" data-order-number="${order.orderNumber}">
+        <!-- Cabecera de la tarjeta de pedido -->
+        <div class="order-card-header">
           <div>
-            <strong style="font-size: 14.5px;">Pedido #${order.orderNumber}</strong>
-            <span style="font-size: 12px; color: var(--admin-text-muted); margin-left: 8px;">
-              ${new Date(order.createdAt || Date.now()).toLocaleDateString('es-ES')}
-            </span>
+            <div class="order-card-id-row">
+              <strong style="font-size: 15.5px; color: #121212;">Pedido #${order.orderNumber}</strong>
+              <span class="status-pill is-active" style="font-size: 11px;">${order.status || 'PAGADO'}</span>
+              <span style="font-size: 11.5px; color: var(--admin-text-muted); background: #f4f4f5; padding: 2px 8px; border-radius: 6px;">
+                ${order.paymentMethod === 'BIZUM' ? 'Bizum' : 'Tarjeta Redsys'}
+              </span>
+            </div>
+            <div style="font-size: 12px; color: var(--admin-text-muted); margin-top: 4px;">
+              Registrado el ${dateFormatted}
+            </div>
           </div>
-          <span class="status-pill is-active">${order.status || 'PAGADO'}</span>
+          <div style="text-align: right;">
+            <div style="font-size: 16px; font-weight: 700; color: #121212;">
+              Total: €${(order.total || 0).toFixed(2).replace('.', ',')}
+            </div>
+            <div style="font-size: 11.5px; color: var(--admin-text-muted);">
+              (Subtotal: €${(order.subtotal || 0).toFixed(2).replace('.', ',')} + Envío: €${(order.shippingCost || 0).toFixed(2).replace('.', ',')})
+            </div>
+          </div>
         </div>
-        <div style="margin-bottom: 10px;">
+
+        <!-- Desglose del Comprador y Dirección de Envío -->
+        <div class="order-customer-details">
+          <div class="order-customer-col">
+            <strong>Destinatario</strong>
+            <span>${cust.firstName || ''} ${cust.lastName || ''}</span>
+            <div style="color: #666; font-size: 11.5px; margin-top: 2px;">${cust.email || 'Sin email'}</div>
+          </div>
+          <div class="order-customer-col">
+            <strong>Dirección de Entrega</strong>
+            <span>${cust.street || 'Dirección no especificada'}</span>
+            <div style="color: #666; font-size: 11.5px; margin-top: 2px;">
+              C.P. ${cust.zipCode || '28001'} &middot; ${cust.city || 'Madrid'} (${cust.province || 'Madrid'}), ES
+            </div>
+          </div>
+          <div class="order-customer-col">
+            <strong>Contacto &middot; Avisos SMS</strong>
+            <span>${cust.phone || 'Sin teléfono'}</span>
+            ${cleanPhone ? `
+              <div>
+                <a href="${waUrl}" target="_blank" rel="noopener" class="order-whatsapp-btn" title="Contactar por WhatsApp">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                  </svg>
+                  <span>WhatsApp</span>
+                </a>
+              </div>
+            ` : ''}
+          </div>
+          <div class="order-customer-col">
+            <strong>Envío Elegido</strong>
+            <span style="font-weight: 600; color: #4d2525;">${order.shipping?.serviceName ? `${order.shipping.carrier} &middot; ${order.shipping.serviceName}` : (order.shipping?.carrier || 'Correos Express 24h')}</span>
+            <div style="color: #666; font-size: 11.5px; margin-top: 2px;">
+              Coste: €${(order.shipping?.costWithVat || order.shippingCost || 0).toFixed(2).replace('.', ',')} (IVA incl.)
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Prendas Compradas con Color y Talla destacados -->
+        <div class="order-items-grid">
           ${itemsMarkup}
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--admin-border); padding-top: 10px;">
-          <div style="font-size: 13.5px; font-weight: 700;">
-            Total: €${(order.total || 0).toFixed(2).replace('.', ',')}
+
+        <!-- CAJA INTERACTIVA OFICIAL PACKLINK PRO -->
+        <div class="packlink-interactive-box">
+          <div class="packlink-box-header">
+            <div class="packlink-box-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="3" width="15" height="13" rx="1"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+              <span>Gestión de Envío Packlink PRO</span>
+            </div>
+
+            <div>
+              ${isSynced ? `
+                <span class="packlink-status-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  Sincronizado en Packlink PRO &middot; Ref: ${plRef}
+                </span>
+              ` : `
+                <span style="display: inline-flex; align-items: center; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">
+                  Pendiente de envío a Packlink PRO
+                </span>
+              `}
+            </div>
           </div>
-          <button type="button" class="admin-btn-secondary js-view-packlink-payload" data-order="${order.orderNumber}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-              <rect x="1" y="3" width="15" height="13" rx="1"></rect>
-              <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
-            </svg>
-            Ver Packlink JSON
-          </button>
+
+          <!-- Dimensiones del bulto editables antes de enviar -->
+          <div class="packlink-box-inputs">
+            <div>
+              <label>Peso (kg)</label>
+              <input type="number" class="js-pl-weight" value="${orderWeight}" step="0.05" min="0.1" />
+            </div>
+            <div>
+              <label>Largo (cm)</label>
+              <input type="number" class="js-pl-length" value="30" min="5" />
+            </div>
+            <div>
+              <label>Ancho (cm)</label>
+              <input type="number" class="js-pl-width" value="25" min="5" />
+            </div>
+            <div>
+              <label>Alto (cm)</label>
+              <input type="number" class="js-pl-height" value="10" min="2" />
+            </div>
+          </div>
+
+          <!-- Botones de Acción Packlink PRO -->
+          <div class="packlink-box-actions">
+            <!-- Botón 1: Cotizar Transportistas en Vivo -->
+            <button type="button" class="admin-btn-secondary js-action-quote-packlink" data-order="${order.orderNumber}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>Cotizar Transportistas Reales (API En Vivo)</span>
+            </button>
+
+            <!-- Botón 2: Enviar Borrador Real a Packlink PRO -->
+            <button type="button" class="admin-btn-primary js-action-sync-packlink" data-order="${order.orderNumber}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span class="btn-sync-label">${isSynced ? 'Volver a Enviar Borrador' : 'Enviar Borrador Real a Packlink PRO'}</span>
+            </button>
+
+            ${isSynced ? `
+              <!-- Botón Directo a Packlink PRO -->
+              <a href="https://pro.packlink.es/private/shipments/${plRef}" target="_blank" rel="noopener" class="admin-btn-outline" style="text-decoration: none;" title="Abrir en el panel privado de Packlink PRO">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Abrir en Panel Packlink PRO</span>
+              </a>
+
+              <!-- Botón Consultar Estado Real -->
+              <button type="button" class="admin-btn-secondary js-action-track-packlink" data-order="${order.orderNumber}" data-ref="${plRef}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span>Consultar Estado / Tracking</span>
+              </button>
+            ` : ''}
+
+            <!-- Botón Ver Payload JSON -->
+            <button type="button" class="admin-btn-secondary js-action-view-json" data-order="${order.orderNumber}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              <span>Ver JSON API</span>
+            </button>
+          </div>
+
+          <!-- Contenedor desplegable para resultados de cotización en vivo -->
+          <div class="order-rates-container" id="rates-container-${order.orderNumber}" style="display: none; margin-top: 12px;"></div>
         </div>
       </div>
     `;
   }).join('');
 
-  container.querySelectorAll('.js-view-packlink-payload').forEach(btn => {
+  attachOrderActionListeners();
+}
+
+/**
+ * Escuchadores de eventos para los botones de las tarjetas de pedidos
+ */
+function attachOrderActionListeners() {
+  const container = document.getElementById('admin-orders-list');
+  if (!container) return;
+
+  // 1. Cotizar transportistas en vivo para un pedido
+  container.querySelectorAll('.js-action-quote-packlink').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const orderNum = btn.getAttribute('data-order');
+      const order = currentOrders.find(o => o.orderNumber === orderNum);
+      if (!order) return;
+
+      const card = btn.closest('.admin-order-card');
+      const ratesBox = card?.querySelector(`#rates-container-${orderNum}`);
+      if (!ratesBox) return;
+
+      const isOpen = ratesBox.style.display !== 'none';
+      if (isOpen) {
+        ratesBox.style.display = 'none';
+        return;
+      }
+
+      ratesBox.style.display = 'block';
+      ratesBox.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; padding: 10px 0;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+          </svg>
+          <span>Cotizando tarifas oficiales en Packlink PRO API...</span>
+        </div>
+      `;
+
+      const weightVal = parseFloat(card.querySelector('.js-pl-weight')?.value || order.totalWeightKg || 0.5);
+      const lengthVal = parseInt(card.querySelector('.js-pl-length')?.value || 30, 10);
+      const widthVal = parseInt(card.querySelector('.js-pl-width')?.value || 25, 10);
+      const heightVal = parseInt(card.querySelector('.js-pl-height')?.value || 10, 10);
+
+      const fromZip = currentSettings?.senderAddress?.zipCode || currentSettings?.senderZip || '23650';
+      const toZip = order.customer?.zipCode || '28001';
+
+      try {
+        const rates = await getPacklinkRates({
+          fromZip,
+          toZip,
+          weight: weightVal,
+          length: lengthVal,
+          width: widthVal,
+          height: heightVal,
+          apiKey: currentSettings?.packlinkApiKey
+        });
+
+        if (!rates.ok || !rates.services || rates.services.length === 0) {
+          ratesBox.innerHTML = `
+            <div class="pl-test-error-box">
+              ${rates.error || 'No se obtuvieron servicios para esta ruta y dimensiones.'}
+            </div>
+          `;
+          return;
+        }
+
+        ratesBox.innerHTML = `
+          <div style="font-size: 12px; font-weight: 700; color: #4d2525; margin-bottom: 6px;">
+            Transportistas disponibles oficiales (${fromZip} &rarr; ${toZip} &middot; ${rates.services.length} opciones):
+          </div>
+          <table class="pl-rates-table">
+            <thead>
+              <tr>
+                <th>Transportista</th>
+                <th>Servicio</th>
+                <th>Entrega Estimada</th>
+                <th>Tarifa Oficial</th>
+                <th>Seleccionar</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rates.services.map(s => `
+                <tr>
+                  <td><strong>${s.carrierName}</strong></td>
+                  <td>${s.serviceName}</td>
+                  <td>${s.transitHours} (${s.transitDays} días)</td>
+                  <td><strong style="color: #15803d;">€${s.price.toFixed(2).replace('.', ',')}</strong></td>
+                  <td>
+                    <button type="button" class="btn-admin-subtle js-select-service" data-service-id="${s.serviceId}" data-carrier="${s.carrierName}" style="font-size: 11px; padding: 3px 8px;">
+                      Elegir
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        ratesBox.querySelectorAll('.js-select-service').forEach(sBtn => {
+          sBtn.addEventListener('click', () => {
+            const sid = sBtn.getAttribute('data-service-id');
+            const carrier = sBtn.getAttribute('data-carrier');
+            card.setAttribute('data-selected-service-id', sid);
+            card.setAttribute('data-selected-carrier', carrier);
+            showToast(`Transportista "${carrier}" seleccionado para este envío`);
+          });
+        });
+      } catch (err) {
+        ratesBox.innerHTML = `
+          <div class="pl-test-error-box">
+            Error al consultar tarifas: ${err?.message || err}
+          </div>
+        `;
+      }
+    });
+  });
+
+  // 2. Enviar borrador a Packlink PRO
+  container.querySelectorAll('.js-action-sync-packlink').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const orderNum = btn.getAttribute('data-order');
+      const order = currentOrders.find(o => o.orderNumber === orderNum);
+      if (!order) return;
+
+      const card = btn.closest('.admin-order-card');
+      const weightVal = parseFloat(card?.querySelector('.js-pl-weight')?.value || order.totalWeightKg || 0.5);
+      const lengthVal = parseInt(card?.querySelector('.js-pl-length')?.value || 30, 10);
+      const widthVal = parseInt(card?.querySelector('.js-pl-width')?.value || 25, 10);
+      const heightVal = parseInt(card?.querySelector('.js-pl-height')?.value || 10, 10);
+      const selectedServiceId = card?.getAttribute('data-selected-service-id') || null;
+      const selectedCarrier = card?.getAttribute('data-selected-carrier') || null;
+
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+          <line x1="12" y1="2" x2="12" y2="6"></line>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+        </svg>
+        <span>Enviando a Packlink...</span>
+      `;
+
+      try {
+        const res = await syncOrderWithPacklink(orderNum, {
+          weight: weightVal,
+          length: lengthVal,
+          width: widthVal,
+          height: heightVal,
+          service_id: selectedServiceId,
+          carrierName: selectedCarrier
+        });
+
+        if (res.ok && res.reference) {
+          showToast(`¡Borrador creado en Packlink PRO! Ref: ${res.reference}`);
+        } else {
+          showToast(`Error de Packlink: ${res.error}`);
+        }
+      } catch (err) {
+        showToast(`Error al sincronizar: ${err?.message || err}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        renderOrdersList();
+      }
+    });
+  });
+
+  // 3. Consultar Estado / Tracking Real
+  container.querySelectorAll('.js-action-track-packlink').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ref = btn.getAttribute('data-ref');
+      if (!ref) return;
+
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span>Consultando...</span>`;
+
+      try {
+        const statusRes = await getPacklinkShipmentStatus(ref, currentSettings?.packlinkApiKey);
+        if (statusRes.ok) {
+          alert(`Estado Oficial Packlink PRO:\n\n- Referencia: ${statusRes.reference}\n- Estado: ${statusRes.state}\n- Transportista: ${statusRes.carrier}\n- Servicio: ${statusRes.serviceName}\n- Códigos de tracking: ${statusRes.trackingCodes.join(', ') || 'Pendiente de emisión'}\n\nPuedes consultar o imprimir la etiqueta directamente en: ${statusRes.trackUrl}`);
+        } else {
+          showToast(`Error al consultar estado: ${statusRes.error}`);
+        }
+      } catch (err) {
+        showToast(`Error: ${err?.message || err}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    });
+  });
+
+  // 4. Ver JSON API
+  container.querySelectorAll('.js-action-view-json').forEach(btn => {
     btn.addEventListener('click', () => {
-      const num = btn.getAttribute('data-order');
-      const found = currentOrders.find(o => o.orderNumber === num);
-      if (found) openPacklinkModal(found);
+      const orderNum = btn.getAttribute('data-order');
+      const order = currentOrders.find(o => o.orderNumber === orderNum);
+      if (order) openPacklinkModal(order);
     });
   });
 }
 
+/**
+ * Abre el modal del visor JSON de Packlink PRO
+ */
 function openPacklinkModal(order) {
   const modal = document.getElementById('packlink-json-modal');
   const codeEl = document.getElementById('packlink-json-code');
   if (!modal || !codeEl) return;
 
-  const payload = {
-    service_id: "packlink_pro_plus_standard",
-    collection_date: new Date().toISOString().split('T')[0],
-    sender: {
-      name: currentSettings?.senderName || "Roneo Shop",
-      company: currentSettings?.senderCompany || "Roneo Shop S.L.",
-      street: currentSettings?.senderStreet || "Calle Alcalá 120",
-      city: currentSettings?.senderCity || "Madrid",
-      postal_code: currentSettings?.senderZip || "28009",
-      country: "ES",
-      phone: currentSettings?.senderPhone || "+34600000000",
-      email: currentSettings?.senderEmail || "1roneoshop@gmail.com"
-    },
-    packages: [
-      {
-        weight: order.totalWeightKg || 0.5,
-        length: 30,
-        height: 10,
-        width: 20
-      }
-    ],
-    content: "Prendas de moda femenina Roneo Shop",
-    order_reference: order.orderNumber
+  const payload = buildPacklinkShipmentPayload(order, currentSettings);
+  const dataToDisplay = {
+    _info: "Payload oficial preparado para POST https://api.packlink.com/v1/shipments",
+    authorization_header: `${getActivePacklinkApiKey(currentSettings).substring(0, 8)}...[OK]`,
+    shipment_payload: payload,
+    last_known_packlink_status: order.packlink || null
   };
 
-  codeEl.textContent = JSON.stringify(payload, null, 2);
+  codeEl.textContent = JSON.stringify(dataToDisplay, null, 2);
   modal.classList.add('is-open');
 
   document.getElementById('packlink-modal-close')?.addEventListener('click', () => {
@@ -2193,8 +2628,319 @@ function openPacklinkModal(order) {
   });
 
   document.getElementById('btn-copy-packlink-json')?.addEventListener('click', () => {
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(dataToDisplay, null, 2));
     showToast("JSON copiado al portapapeles");
+  });
+}
+
+/**
+ * Inicialización de la barra superior de pedidos (Generar Pedido Prueba + Sincronizar Pendientes)
+ */
+function setupOrdersToolbar() {
+  // 1. Generar pedido de prueba realista y enviarlo a Packlink PRO en vivo
+  const btnCreateTest = document.getElementById('btn-create-test-order-packlink');
+  btnCreateTest?.addEventListener('click', async () => {
+    const originalText = btnCreateTest.innerHTML;
+    btnCreateTest.disabled = true;
+    btnCreateTest.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+        <line x1="12" y1="2" x2="12" y2="6"></line>
+        <line x1="12" y1="18" x2="12" y2="22"></line>
+        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+      </svg>
+      <span>Creando y conectando con Packlink PRO...</span>
+    `;
+
+    try {
+      const orderNumber = generateDailyOrderNumber();
+      const testOrder = {
+        orderNumber,
+        redsysOrderId: orderNumber.replace(/-/g, ''),
+        status: "PAID",
+        paymentMethod: "CARD",
+        subtotal: 49.95,
+        shippingCost: 0.00,
+        total: 49.95,
+        totalWeightKg: 0.95,
+        customer: {
+          firstName: "Laura",
+          lastName: "Gómez",
+          email: "laura.test@roneoshop.com",
+          phone: "600112233",
+          street: "Calle Larios 12, 3ºB",
+          city: "Málaga",
+          province: "Málaga",
+          zipCode: "29005",
+          country: "ES"
+        },
+        items: [
+          {
+            productId: "abrigo-pandora",
+            title: "Abrigo Pandora Camel",
+            size: "M",
+            color: "Camel",
+            colorHex: "#c19a6b",
+            price: 49.95,
+            quantity: 1,
+            image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1080&q=82"
+          }
+        ],
+        packlink: {
+          synced: false,
+          reference: "PENDIENTE-API",
+          trackingUrl: ""
+        },
+        createdAt: Date.now(),
+        paidAt: Date.now()
+      };
+
+      await createOrder(testOrder);
+      const res = await syncOrderWithPacklink(orderNumber);
+
+      if (res.ok && res.reference) {
+        showToast(`¡Pedido de prueba #${orderNumber} registrado con éxito en Packlink PRO! Ref: ${res.reference}`);
+      } else {
+        showToast(`Pedido #${orderNumber} creado en la tienda, pero Packlink respondió: ${res.error}`);
+      }
+    } catch (err) {
+      showToast(`Error al generar pedido de prueba: ${err?.message || err}`);
+    } finally {
+      btnCreateTest.disabled = false;
+      btnCreateTest.innerHTML = originalText;
+      renderOrdersList();
+    }
+  });
+
+  // 2. Sincronizar todos los pedidos pendientes con Packlink PRO
+  const btnSyncAll = document.getElementById('btn-sync-all-pending-packlink');
+  btnSyncAll?.addEventListener('click', async () => {
+    const pendings = currentOrders.filter(o => !o.packlink?.synced && o.status !== 'CANCELLED');
+    if (pendings.length === 0) {
+      showToast("No hay pedidos pendientes de sincronizar con Packlink PRO.");
+      return;
+    }
+
+    const originalText = btnSyncAll.innerHTML;
+    btnSyncAll.disabled = true;
+    btnSyncAll.innerHTML = `<span>Sincronizando ${pendings.length} pedidos...</span>`;
+
+    let successCount = 0;
+    for (const ord of pendings) {
+      try {
+        const res = await syncOrderWithPacklink(ord.orderNumber);
+        if (res.ok) successCount++;
+      } catch (e) {}
+    }
+
+    btnSyncAll.disabled = false;
+    btnSyncAll.innerHTML = originalText;
+    showToast(`Sincronización terminada: ${successCount} de ${pendings.length} pedidos registrados.`);
+    renderOrdersList();
+  });
+}
+
+/**
+ * Configuración y Probador en Vivo de Packlink PRO en Pestaña 3 (Ajustes Tienda)
+ */
+function setupPacklinkSettingsAndTester() {
+  const apiKeyInput = document.getElementById('set-packlink-api-key');
+  const btnToggleKey = document.getElementById('btn-toggle-pl-key-visibility');
+  const btnCopyKey = document.getElementById('btn-copy-pl-api-key');
+
+  btnToggleKey?.addEventListener('click', () => {
+    if (apiKeyInput) {
+      apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+    }
+  });
+
+  btnCopyKey?.addEventListener('click', () => {
+    if (apiKeyInput?.value) {
+      navigator.clipboard.writeText(apiKeyInput.value.trim());
+      showToast("API Key de Packlink copiada");
+    }
+  });
+
+  // Botón 1 del Probador: Cotizar tarifas en tiempo real (GET /v1/services)
+  const btnTestRates = document.getElementById('btn-test-packlink-rates');
+  const resultsArea = document.getElementById('test-packlink-results-area');
+
+  btnTestRates?.addEventListener('click', async () => {
+    if (!resultsArea) return;
+    const fromZip = document.getElementById('test-pl-from-zip')?.value.trim() || FIXED_SENDER_ADDRESS.zip_code;
+    const toZip = document.getElementById('test-pl-to-zip')?.value.trim() || '28001';
+    const weightVal = parseFloat(document.getElementById('test-pl-weight')?.value || 0.5);
+    const keyVal = apiKeyInput?.value.trim() || DEFAULT_PACKLINK_API_KEY;
+
+    const originalText = btnTestRates.innerHTML;
+    btnTestRates.disabled = true;
+    btnTestRates.innerHTML = `<span>Conectando con api.packlink.com...</span>`;
+    resultsArea.style.display = 'block';
+    resultsArea.innerHTML = `
+      <div style="font-size: 12px; color: #666; padding: 10px 0;">
+        Realizando petición HTTP real GET /v1/services con header Authorization...
+      </div>
+    `;
+
+    try {
+      const res = await getPacklinkRates({
+        fromZip,
+        toZip,
+        weight: weightVal,
+        apiKey: keyVal
+      });
+
+      if (!res.ok || !res.services || res.services.length === 0) {
+        resultsArea.innerHTML = `
+          <div class="pl-test-error-box">
+            <strong>Error al cotizar con la API:</strong> ${res.error || 'Respuesta vacía de Packlink'}.
+          </div>
+        `;
+        return;
+      }
+
+      resultsArea.innerHTML = `
+        <div class="pl-test-success-box">
+          <div style="font-weight: 700; margin-bottom: 4px;">
+            ¡Conexión Exitosa con Packlink PRO API! (Canal: ${res.channel})
+          </div>
+          <div>Se han obtenido ${res.services.length} opciones de envío reales para la ruta ${fromZip} &rarr; ${toZip}:</div>
+        </div>
+        <table class="pl-rates-table">
+          <thead>
+            <tr>
+              <th>Transportista</th>
+              <th>Nombre del Servicio</th>
+              <th>Plazo de Entrega</th>
+              <th>Precio Total Oficial</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${res.services.map(s => `
+              <tr>
+                <td><strong>${s.carrierName}</strong></td>
+                <td>${s.serviceName}</td>
+                <td>${s.transitHours}</td>
+                <td><strong style="color: #15803d;">€${s.price.toFixed(2).replace('.', ',')}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      resultsArea.innerHTML = `
+        <div class="pl-test-error-box">
+          Error en llamada a la API: ${err?.message || err}
+        </div>
+      `;
+    } finally {
+      btnTestRates.disabled = false;
+      btnTestRates.innerHTML = originalText;
+    }
+  });
+
+  // Botón 2 del Probador: Enviar borrador de prueba a la cuenta (POST /v1/shipments)
+  const btnTestShipment = document.getElementById('btn-test-packlink-shipment');
+  btnTestShipment?.addEventListener('click', async () => {
+    if (!resultsArea) return;
+    const fromZip = document.getElementById('test-pl-from-zip')?.value.trim() || FIXED_SENDER_ADDRESS.zip_code;
+    const toZip = document.getElementById('test-pl-to-zip')?.value.trim() || '28001';
+    const weightVal = parseFloat(document.getElementById('test-pl-weight')?.value || 0.5);
+    const keyVal = apiKeyInput?.value.trim() || DEFAULT_PACKLINK_API_KEY;
+
+    const originalText = btnTestShipment.innerHTML;
+    btnTestShipment.disabled = true;
+    btnTestShipment.innerHTML = `<span>Enviando borrador a api.packlink.com...</span>`;
+    resultsArea.style.display = 'block';
+    resultsArea.innerHTML = `
+      <div style="font-size: 12px; color: #666; padding: 10px 0;">
+        Ejecutando POST /v1/shipments en vivo hacia Packlink PRO...
+      </div>
+    `;
+
+    try {
+      const sampleOrder = {
+        orderNumber: `TEST-${Date.now().toString().slice(-6)}`,
+        subtotal: 35.00,
+        total: 40.99,
+        shippingCost: 5.99,
+        totalWeightKg: weightVal,
+        shipping: {
+          carrier: "Correos Express",
+          serviceName: "Paq 24",
+          serviceId: 20571,
+          costWithVat: 5.99
+        },
+        customer: {
+          firstName: "Cliente",
+          lastName: "Prueba Packlink",
+          email: "1roneoshop@gmail.com",
+          phone: "622063691",
+          street: "Calle Mayor 10, 2ºA",
+          apartment: "2ºA",
+          city: "Madrid",
+          province: "Madrid",
+          zipCode: toZip,
+          country: "ES",
+          zone: "ESPAÑA PENÍNSULA"
+        },
+        items: [
+          {
+            productId: "test-prod-1",
+            title: "Prenda de Prueba Roneo Shop",
+            size: "M",
+            color: "Negro",
+            price: 35.00,
+            quantity: 1
+          }
+        ]
+      };
+
+      const res = await createPacklinkShipment(sampleOrder, {
+        packlinkApiKey: keyVal,
+        senderAddress: FIXED_SENDER_ADDRESS
+      }, {
+        weight: weightVal,
+        toZip
+      });
+
+      if (res.ok && res.reference) {
+        resultsArea.innerHTML = `
+          <div class="pl-test-success-box" style="line-height: 1.6;">
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">
+              ¡Borrador Registrado Oficialmente en Packlink PRO!
+            </div>
+            <div><strong>Referencia Oficial:</strong> <code style="font-size: 14px; font-weight: 700; background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px;">${res.reference}</code></div>
+            <div><strong>Canal de comunicación:</strong> ${res.channel}</div>
+            <div style="margin-top: 10px;">
+              <a href="https://pro.packlink.es/private/shipments/${res.reference}" target="_blank" rel="noopener" class="admin-btn-primary" style="display: inline-flex; height: 34px; padding: 0 14px; font-size: 12px; text-decoration: none; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Ver Envío en mi Panel Privado de Packlink PRO</span>
+              </a>
+            </div>
+          </div>
+        `;
+      } else {
+        resultsArea.innerHTML = `
+          <div class="pl-test-error-box">
+            <strong>Error devuelto por Packlink:</strong> ${res.error || 'Respuesta no autorizada o parámetros inválidos'}.
+          </div>
+        `;
+      }
+    } catch (err) {
+      resultsArea.innerHTML = `
+        <div class="pl-test-error-box">
+          Error en la llamada: ${err?.message || err}
+        </div>
+      `;
+    } finally {
+      btnTestShipment.disabled = false;
+      btnTestShipment.innerHTML = originalText;
+    }
   });
 }
 
@@ -2222,6 +2968,15 @@ function populateSettingsForm(settings) {
   const setSenderPhone = document.getElementById('set-sender-phone');
   const setSenderEmail = document.getElementById('set-sender-email');
 
+  // Ajustes Packlink PRO
+  const setPlKey = document.getElementById('set-packlink-api-key');
+  const setPlAutoSync = document.getElementById('set-packlink-auto-sync');
+  const setParcelL = document.getElementById('set-parcel-length');
+  const setParcelW = document.getElementById('set-parcel-width');
+  const setParcelH = document.getElementById('set-parcel-height');
+  const setParcelWeight = document.getElementById('set-parcel-weight');
+  const testFromZip = document.getElementById('test-pl-from-zip');
+
   if (setStoreName) setStoreName.value = settings.storeName || '';
   if (setAnnounce) setAnnounce.value = settings.announcementText || '';
   if (setShipPrice) setShipPrice.value = String(settings.shippingStandardPrice ?? settings.standardShippingPrice ?? 4.90).replace('.', ',');
@@ -2235,15 +2990,23 @@ function populateSettingsForm(settings) {
   if (setSchedule) setSchedule.value = settings.storeSchedule || '';
   if (setReturn) setReturn.value = settings.returnPolicySummary || '';
 
-  const sender = settings.senderAddress || {};
-  if (setSenderName) setSenderName.value = sender.name || settings.senderName || '';
-  if (setSenderComp) setSenderComp.value = sender.company || settings.senderCompany || '';
-  if (setSenderStreet) setSenderStreet.value = sender.street || settings.senderStreet || '';
-  if (setSenderZip) setSenderZip.value = sender.zipCode || settings.senderZip || '';
-  if (setSenderCity) setSenderCity.value = sender.city || settings.senderCity || '';
-  if (setSenderProv) setSenderProv.value = sender.province || settings.senderProvince || '';
-  if (setSenderPhone) setSenderPhone.value = sender.phone || settings.senderPhone || '';
-  if (setSenderEmail) setSenderEmail.value = sender.email || settings.senderEmail || '';
+  const sender = settings.senderAddress || FIXED_SENDER_ADDRESS;
+  if (setSenderName) setSenderName.value = sender.fullName || sender.name || FIXED_SENDER_ADDRESS.fullName;
+  if (setSenderComp) setSenderComp.value = sender.company || FIXED_SENDER_ADDRESS.company;
+  if (setSenderStreet) setSenderStreet.value = sender.street || FIXED_SENDER_ADDRESS.street;
+  if (setSenderZip) setSenderZip.value = sender.zipCode || sender.zip_code || FIXED_SENDER_ADDRESS.zip_code;
+  if (setSenderCity) setSenderCity.value = sender.city || FIXED_SENDER_ADDRESS.city;
+  if (setSenderProv) setSenderProv.value = sender.province || sender.state || FIXED_SENDER_ADDRESS.province;
+  if (setSenderPhone) setSenderPhone.value = sender.phoneFormatted || sender.phone || FIXED_SENDER_ADDRESS.phoneFormatted;
+  if (setSenderEmail) setSenderEmail.value = sender.email || FIXED_SENDER_ADDRESS.email;
+
+  if (setPlKey) setPlKey.value = settings.packlinkApiKey || DEFAULT_PACKLINK_API_KEY;
+  if (setPlAutoSync) setPlAutoSync.checked = settings.packlinkAutoSync !== false;
+  if (setParcelL) setParcelL.value = settings.packlinkParcel?.length || 30;
+  if (setParcelW) setParcelW.value = settings.packlinkParcel?.width || 25;
+  if (setParcelH) setParcelH.value = settings.packlinkParcel?.height || 10;
+  if (setParcelWeight) setParcelWeight.value = settings.packlinkParcel?.defaultWeight || 0.45;
+  if (testFromZip) testFromZip.value = sender.zipCode || sender.zip_code || FIXED_SENDER_ADDRESS.zip_code;
 }
 
 function setupSettingsForm() {
@@ -2284,6 +3047,13 @@ function setupSettingsForm() {
       const shipStr = document.getElementById('set-shipping-price')?.value || '4.90';
       const threshStr = document.getElementById('set-free-threshold')?.value || '50';
 
+      const plKeyVal = document.getElementById('set-packlink-api-key')?.value.trim() || DEFAULT_PACKLINK_API_KEY;
+      const plAutoSync = document.getElementById('set-packlink-auto-sync')?.checked ?? true;
+      const parcelL = parseInt(document.getElementById('set-parcel-length')?.value || 30, 10);
+      const parcelW = parseInt(document.getElementById('set-parcel-width')?.value || 25, 10);
+      const parcelH = parseInt(document.getElementById('set-parcel-height')?.value || 10, 10);
+      const parcelWeight = parseFloat(document.getElementById('set-parcel-weight')?.value || 0.45);
+
       const newSettings = {
         storeName: document.getElementById('set-store-name')?.value || 'Roneo Shop',
         announcementText: document.getElementById('set-announcement')?.value || '',
@@ -2298,21 +3068,37 @@ function setupSettingsForm() {
         instagramUrl: document.getElementById('set-instagram-url')?.value || '',
         storeSchedule: document.getElementById('set-store-schedule')?.value || '',
         returnPolicySummary: document.getElementById('set-return-policy')?.value || '',
+        packlinkApiKey: plKeyVal,
+        packlinkAutoSync: plAutoSync,
+        packlinkParcel: {
+          length: parcelL,
+          width: parcelW,
+          height: parcelH,
+          defaultWeight: parcelWeight
+        },
         senderAddress: {
-          name: document.getElementById('set-sender-name')?.value || '',
-          company: document.getElementById('set-sender-company')?.value || '',
-          street: document.getElementById('set-sender-street')?.value || '',
-          zipCode: document.getElementById('set-sender-zip')?.value || '',
-          city: document.getElementById('set-sender-city')?.value || '',
-          province: document.getElementById('set-sender-province')?.value || '',
-          country: 'ES',
-          phone: document.getElementById('set-sender-phone')?.value || '',
-          email: document.getElementById('set-sender-email')?.value || ''
+          ...FIXED_SENDER_ADDRESS,
+          name: FIXED_SENDER_ADDRESS.name,
+          surname: FIXED_SENDER_ADDRESS.surname,
+          fullName: FIXED_SENDER_ADDRESS.fullName,
+          company: FIXED_SENDER_ADDRESS.company,
+          street: FIXED_SENDER_ADDRESS.street,
+          street1: FIXED_SENDER_ADDRESS.street1,
+          zipCode: FIXED_SENDER_ADDRESS.zip_code,
+          zip_code: FIXED_SENDER_ADDRESS.zip_code,
+          city: FIXED_SENDER_ADDRESS.city,
+          province: FIXED_SENDER_ADDRESS.province,
+          state: FIXED_SENDER_ADDRESS.state,
+          country: "ES",
+          phone: FIXED_SENDER_ADDRESS.phone,
+          phoneFormatted: FIXED_SENDER_ADDRESS.phoneFormatted,
+          email: FIXED_SENDER_ADDRESS.email
         }
       };
 
       await saveStoreSettings(newSettings);
-      showToast("Ajustes guardados en Firebase y aplicados en la tienda en vivo");
+      localStorage.setItem('roneo_packlink_api_key', plKeyVal);
+      showToast("Ajustes y clave Packlink PRO guardados en Firebase");
     } catch (err) {
       showToast("Error al guardar ajustes: " + (err?.message || err));
     } finally {
@@ -2356,6 +3142,13 @@ function setupNavigation() {
       document.querySelectorAll('.admin-tab-view').forEach(view => {
         view.classList.toggle('is-active', view.id === targetId);
       });
+
+      if (targetId === 'tab-settings' && currentSettings) {
+        populateSettingsForm(currentSettings);
+      }
+      if (targetId === 'tab-orders') {
+        renderOrdersList();
+      }
     });
   });
 
@@ -2404,6 +3197,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSettingsForm();
   setupCategoryCreator();
   setupCollectionsManager();
+  setupOrderFilters();
+  setupOrdersToolbar();
+  setupPacklinkSettingsAndTester();
 
   const loginForm = document.getElementById('admin-login-form');
   const btnFirebase = document.getElementById('btn-firebase-login');

@@ -164,9 +164,9 @@ export function clearCart() {
 /**
  * Calcula todos los totales, gastos de envío y barra de envío gratis
  * @param {number} freeShippingThreshold Umbral para envío gratis (€50.00 por defecto)
- * @param {number} shippingStandardPrice Coste de envío estándar (€4.90 por defecto)
+ * @param {number} shippingStandardPrice Coste de envío estándar (€4.99 por defecto, redondeado a ,99€)
  */
-export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPrice = 4.90) {
+export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPrice = 4.99) {
   const cart = getCart();
 
   let totalItems = 0;
@@ -180,8 +180,21 @@ export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPri
 
   subtotal = Math.round(subtotal * 100) / 100;
 
-  const hasFreeShipping = subtotal >= freeShippingThreshold;
-  const shippingCost = (totalItems === 0 || hasFreeShipping) ? 0 : shippingStandardPrice;
+  const hasFreeShipping = subtotal >= freeShippingThreshold && subtotal > 0;
+  
+  // Regla matemática: si el envío no es gratis, se redondea a ,99€
+  let roundedShipping = 0;
+  if (totalItems > 0 && !hasFreeShipping) {
+    const cleanPrice = Number(parseFloat(shippingStandardPrice).toFixed(2));
+    if (!isNaN(cleanPrice) && cleanPrice > 0) {
+      const integerBracket = Math.max(0, Math.ceil(cleanPrice) - 1);
+      roundedShipping = Number((integerBracket + 0.99).toFixed(2));
+    } else {
+      roundedShipping = 4.99;
+    }
+  }
+
+  const shippingCost = (totalItems === 0 || hasFreeShipping) ? 0 : roundedShipping;
   const total = Math.round((subtotal + shippingCost) * 100) / 100;
 
   const remainingForFreeShipping = hasFreeShipping

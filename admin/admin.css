@@ -1819,3 +1819,308 @@ textarea {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   FASE 6.0: PACKLINK PRO OFICIAL - ESTILOS DEL PANEL Y SIMULADOR
+   ========================================================================== */
+.admin-packlink-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background-color: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.packlink-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.packlink-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.packlink-api-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #fff5f2;
+  border: 1px solid #ffdcd4;
+  color: #4d2525;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.packlink-api-badge code {
+  font-family: monospace;
+  background-color: rgba(77, 37, 37, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+.packlink-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.packlink-status-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.02em;
+}
+
+/* Tarjeta de Pedido en Lista */
+.admin-order-card {
+  background-color: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-card);
+  padding: 18px;
+  margin-bottom: 16px;
+  transition: box-shadow 0.15s ease;
+}
+
+.admin-order-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid #f0f0f4;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.order-card-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.order-customer-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  background-color: #fafafc;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+}
+
+.order-customer-col strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+  letter-spacing: 0.03em;
+  margin-bottom: 3px;
+}
+
+.order-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.order-items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background-color: #ffffff;
+  border: 1px solid #f0f0f4;
+  border-radius: 8px;
+}
+
+.order-item-thumb {
+  width: 44px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  background-color: #f2f2f2;
+  flex-shrink: 0;
+}
+
+.order-item-info {
+  flex: 1;
+}
+
+.order-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #121212;
+}
+
+.order-color-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #27272a;
+}
+
+.order-size-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #121212;
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Caja Interactiva Packlink PRO dentro de la tarjeta de pedido */
+.packlink-interactive-box {
+  background-color: #fffbf9;
+  border: 1px solid #fed7ce;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+.packlink-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.packlink-box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4d2525;
+}
+
+.packlink-box-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.packlink-box-inputs label {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.packlink-box-inputs input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  background: #ffffff;
+}
+
+.packlink-box-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Tabla de transportistas cotizados */
+.pl-rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ffdcd4;
+  font-size: 12px;
+}
+
+.pl-rates-table th {
+  background-color: #fff2ed;
+  color: #4d2525;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #ffdcd4;
+}
+
+.pl-rates-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f8ece8;
+  vertical-align: middle;
+}
+
+.pl-rates-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pl-test-success-box {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  margin-top: 10px;
+}
+
+.pl-test-error-box {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  margin-top: 10px;
+}

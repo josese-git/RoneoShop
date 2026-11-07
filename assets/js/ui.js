@@ -279,7 +279,7 @@ export function ensureGlobalShellElements() {
           <div class="store-info-card">
             <div class="store-info-card__title">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-              <span>Envíos 24/48 Horas con Packlink PRO Plus</span>
+              <span>Envíos 24/48 Horas con Correos y Correos Express</span>
             </div>
             <p class="store-info-card__desc" id="info-shipping-desc">
               Envíos a toda España peninsular en 24/48h laborables (4,90 € o GRATIS en pedidos superiores a 50,00 €).

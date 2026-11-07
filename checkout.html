@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="Finalizar Compra Segura - Roneo Shop. Pasarela Bancaria Oficial Redsys & Bizum con Envíos Exprés Packlink PRO.">
+  <meta name="description" content="Finalizar Compra Segura - Roneo Shop. Pasarela Bancaria Oficial Redsys & Bizum con Envíos Exprés Correos y Correos Express.">
   <title>Finalizar Compra Segura | Roneo Shop</title>
 
   <!-- Favicon Oficial Roneo Shop -->
@@ -74,41 +74,28 @@
     </a>
   </header>
 
-  <!-- Resumen del Pedido Desplegable en Móvil -->
-  <div class="order-summary-toggle" id="summary-toggle" role="button" aria-expanded="false" aria-controls="summary-panel">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <path d="M16 10a4 4 0 0 1-8 0"></path>
-      </svg>
-      <span id="summary-toggle-text">Mostrar resumen del pedido ▾</span>
-    </div>
-    <span id="summary-toggle-total" style="font-weight: 700; font-size: 15px;">€0,00</span>
-  </div>
-
   <main>
     <div class="checkout-layout">
-      <!-- Columna Derecha en Desktop / Desplegable en Móvil: Resumen del Pedido -->
+      <!-- Columna Derecha en Desktop: Resumen del Pedido -->
       <aside class="order-summary-panel" id="summary-panel">
         <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.04em;">
           Resumen de tu pedido
         </h2>
 
-        <!-- Lista de prendas del carrito -->
+        <!-- Lista de prendas del carrito en Desktop -->
         <div class="checkout-items-list" id="checkout-items-list">
           <!-- Inyectado dinámicamente -->
         </div>
 
-        <!-- Totales -->
+        <!-- Totales Desktop -->
         <div class="checkout-totals-box">
           <div class="checkout-total-line">
             <span>Subtotal</span>
             <span id="checkout-subtotal">€0,00</span>
           </div>
           <div class="checkout-total-line">
-            <span>Envío Estándar (Packlink PRO)</span>
-            <span id="checkout-shipping">€4,90</span>
+            <span id="checkout-shipping-label">Envío (Correos · Paq Estándar)</span>
+            <span id="checkout-shipping">€4,99</span>
           </div>
           <div class="checkout-total-line is-grand-total">
             <span>Total a pagar</span>
@@ -120,8 +107,53 @@
         </div>
       </aside>
 
-      <!-- Columna Izquierda: Formulario de Checkout / Pantalla de Confirmación -->
+      <!-- Columna Izquierda: Resumen Superior Desplegable + Formulario de Checkout -->
       <section class="checkout-form-container" id="checkout-main-content">
+        <!-- Resumen del Pedido Superior (Abierto por defecto, desplegable con miniaturas 56x74px y desglose) -->
+        <div class="order-summary-top-container" id="checkout-order-summary-top">
+          <div class="order-summary-top-card">
+            <button type="button" class="order-summary-toggle" id="summary-toggle-top" aria-expanded="true" aria-controls="order-summary-drawer-body">
+              <div class="summary-toggle-left">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span id="summary-toggle-title">Resumen de tu pedido</span>
+                <svg class="summary-chevron-icon" id="summary-top-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div class="summary-toggle-right" id="summary-top-header-total">
+                €0,00
+              </div>
+            </button>
+
+            <div class="order-summary-drawer-body is-open" id="order-summary-drawer-body">
+              <!-- Lista de artículos del resumen superior con miniaturas 56x74px -->
+              <div class="checkout-summary-items" id="summary-top-items-list">
+                <!-- Inyectado dinámicamente -->
+              </div>
+
+              <!-- Desglose de totales en vivo -->
+              <div class="checkout-summary-totals">
+                <div class="summary-total-row">
+                  <span>Subtotal artículos</span>
+                  <span id="summary-top-subtotal">€0,00</span>
+                </div>
+                <div class="summary-total-row">
+                  <span id="summary-top-shipping-label">Envío (Correos · Paq Estándar Domicilio)</span>
+                  <span id="summary-top-shipping-val">€4,99</span>
+                </div>
+                <div class="summary-total-row is-grand-total">
+                  <span>Total (IVA incluido)</span>
+                  <span id="summary-top-grand-total">€0,00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <form id="checkout-form" novalidate>
           <!-- BLOQUE 1: Contacto -->
           <fieldset class="form-section">
@@ -156,21 +188,30 @@
                   autocomplete="tel" 
                   maxlength="9" 
                 />
-                <span class="form-hint">Necesario para Bizum y avisos SMS del repartidor de Packlink PRO.</span>
+                <span class="form-hint">Necesario para Bizum y avisos SMS de seguimiento de Correos / Correos Express.</span>
               </div>
             </div>
           </fieldset>
 
-          <!-- BLOQUE 2: Dirección de entrega (Formato exacto API Packlink PRO) -->
+          <!-- BLOQUE 2: Dirección de entrega completa -->
           <fieldset class="form-section">
             <legend class="form-section__title">2. Dirección de Entrega</legend>
 
             <div class="form-row">
               <div class="form-group">
-                <label for="checkout-country" class="form-label">País / Región</label>
-                <select id="checkout-country" name="country" class="form-select" disabled>
-                  <option value="ES" selected>España (Península e Islas Baleares)</option>
-                </select>
+                <label for="checkout-country-zone" class="form-label">País / Zona de Entrega</label>
+                <div style="position: relative;">
+                  <input 
+                    type="text" 
+                    id="checkout-country-zone" 
+                    class="form-input" 
+                    value="ESPAÑA PENÍNSULA" 
+                    readonly 
+                    style="background-color: #fbf5f2; font-weight: 700; color: #4d2525; cursor: default; letter-spacing: 0.03em;" 
+                  />
+                  <input type="hidden" id="checkout-country" name="country" value="ES" />
+                </div>
+                <span class="form-hint">Envíos directos en 24/48h a toda España peninsular con Correos y Correos Express.</span>
               </div>
             </div>
 
@@ -203,15 +244,29 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label for="checkout-street" class="form-label">Dirección (Calle, número, piso, puerta) *</label>
+                <label for="checkout-street" class="form-label">Dirección (Calle y número) *</label>
                 <input 
                   type="text" 
                   id="checkout-street" 
                   name="street" 
                   required 
-                  placeholder="Calle Gran Vía 12, 3ºB" 
+                  placeholder="Calle Gran Vía 12" 
                   class="form-input" 
-                  autocomplete="street-address" 
+                  autocomplete="address-line1" 
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="checkout-apartment" class="form-label">Piso, puerta, bloque, escalera (opcional)</label>
+                <input 
+                  type="text" 
+                  id="checkout-apartment" 
+                  name="apartment" 
+                  placeholder="Piso 3ºB, Esc. Izquierda" 
+                  class="form-input" 
+                  autocomplete="address-line2" 
                 />
               </div>
             </div>
@@ -232,7 +287,7 @@
                 />
               </div>
               <div class="form-group">
-                <label for="checkout-city" class="form-label">Ciudad *</label>
+                <label for="checkout-city" class="form-label">Ciudad / Localidad *</label>
                 <input 
                   type="text" 
                   id="checkout-city" 
@@ -300,20 +355,53 @@
                 </select>
               </div>
             </div>
+
+            <!-- Sugerencias de Localidades Oficiales para Códigos Postales con múltiples núcleos -->
+            <div id="checkout-city-suggestions" style="display: none; margin-top: -6px; margin-bottom: 12px; font-size: 11.5px; color: #4d2525; background: #fff5f2; border: 1px dashed #ffdcd4; border-radius: 8px; padding: 8px 12px;"></div>
+
+            <!-- Aviso de Código Postal Fuera de Península -->
+            <div id="checkout-zip-peninsula-warning" style="display: none; margin-top: -6px; margin-bottom: 12px; font-size: 12px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px;">
+              <div style="font-weight: 700; margin-bottom: 2px;">Envío no disponible para esta zona</div>
+              <div>Nuestros envíos directos con Correos y Correos Express están configurados exclusivamente para <strong>España Península</strong>. Disculpa las molestias.</div>
+            </div>
           </fieldset>
 
-          <!-- BLOQUE 3: Método de envío (Lógica Packlink PRO Plus) -->
+          <!-- BLOQUE 3: Selector de Línea de Envío (Correos vs Correos Express) -->
           <fieldset class="form-section">
             <legend class="form-section__title">3. Método de Envío</legend>
-            <div class="shipping-option-card">
-              <div class="shipping-option-left">
-                <input type="radio" id="ship-standard" name="shipping" checked style="accent-color: #121212; width: 18px; height: 18px;">
-                <div>
-                  <div class="shipping-option-title">Envío Estándar Domicilio 24/48h (Packlink PRO)</div>
-                  <div class="shipping-option-subtitle">Entrega asegurada en mano con número de seguimiento SMS y email</div>
+            <div class="shipping-carriers-group" role="radiogroup" aria-label="Selección de empresa de transporte">
+              <!-- Opción 1: Correos Paq Estándar Domicilio -->
+              <label class="shipping-carrier-card is-selected" id="shipping-correos-card" for="ship-correos">
+                <div class="shipping-carrier-left">
+                  <input type="radio" id="ship-correos" name="shipping" value="correos" checked class="shipping-carrier-radio" />
+                  <div>
+                    <div class="shipping-carrier-name" id="ship-correos-title">Correos · Paq Estándar Domicilio</div>
+                    <div class="shipping-carrier-transit" id="ship-correos-subtitle">Entrega asegurada en tu domicilio en 48/72 horas con aviso SMS</div>
+                  </div>
                 </div>
-              </div>
-              <div class="shipping-option-price" id="shipping-display-price">€4,90</div>
+                <div class="shipping-carrier-price" id="shipping-correos-price">€4,99</div>
+              </label>
+
+              <!-- Opción 2: Correos Express 24h -->
+              <label class="shipping-carrier-card" id="shipping-express-card" for="ship-express">
+                <div class="shipping-carrier-left">
+                  <input type="radio" id="ship-express" name="shipping" value="correosExpress" class="shipping-carrier-radio" />
+                  <div>
+                    <div class="shipping-carrier-name" id="ship-express-title">Correos Express · Entrega Urgente 24h</div>
+                    <div class="shipping-carrier-transit" id="ship-express-subtitle">Entrega prioritaria 24 horas laborables en mano con seguimiento en vivo</div>
+                  </div>
+                </div>
+                <div class="shipping-carrier-price" id="shipping-express-price">€5,99</div>
+              </label>
+            </div>
+
+            <div id="shipping-live-status" style="margin-top: 10px; font-size: 11.5px; color: #7d5353; display: flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span id="shipping-live-status-text">Tarifas oficiales con 21% IVA incluido calculadas para envíos en España peninsular.</span>
             </div>
           </fieldset>
 

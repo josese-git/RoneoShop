@@ -300,6 +300,33 @@
            PESTAÑA 2: PEDIDOS Y PACKLINK PRO
            ================================================================== -->
       <section id="tab-orders" class="admin-tab-view" aria-label="Gestión de pedidos">
+        <!-- Barra Superior de Herramientas Packlink PRO Oficial -->
+        <div class="admin-packlink-toolbar">
+          <div class="packlink-toolbar-left">
+            <span class="packlink-api-badge">
+              <span class="packlink-live-dot"></span>
+              <span>API Packlink PRO Activa: <code id="lbl-packlink-masked-key">f63435...c25a5</code></span>
+            </span>
+          </div>
+          <div class="packlink-toolbar-right">
+            <button type="button" id="btn-sync-all-pending-packlink" class="admin-btn-secondary" title="Sincronizar todos los pedidos pendientes con Packlink PRO">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Sincronizar Todos los Pendientes</span>
+            </button>
+            <button type="button" id="btn-create-test-order-packlink" class="admin-btn-primary" title="Genera un pedido de prueba realista y envía el borrador a la API oficial de Packlink PRO">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Generar Pedido de Prueba y Enviar a Packlink PRO</span>
+            </button>
+          </div>
+        </div>
+
         <div class="admin-pills-row">
           <button type="button" class="admin-pill-btn is-active" data-order-filter="all">
             Todos (<span id="count-orders-all">0</span>)
@@ -479,36 +506,36 @@
               </p>
               <div class="form-grid">
                 <div class="form-group">
-                  <label for="set-sender-name">Nombre de Contacto</label>
-                  <input type="text" id="set-sender-name" required />
+                  <label for="set-sender-name">Nombre de Contacto (Inmutable)</label>
+                  <input type="text" id="set-sender-name" value="Nerea Cortes Muñoz" required />
                 </div>
                 <div class="form-group">
                   <label for="set-sender-company">Empresa / Razón Social</label>
-                  <input type="text" id="set-sender-company" required />
+                  <input type="text" id="set-sender-company" value="Roneo Shop" required />
                 </div>
                 <div class="form-group">
-                  <label for="set-sender-street">Calle, Número y Piso</label>
-                  <input type="text" id="set-sender-street" required />
+                  <label for="set-sender-street">Calle y Número (Remitente)</label>
+                  <input type="text" id="set-sender-street" value="Calle Norte 70" required />
                 </div>
                 <div class="form-group">
                   <label for="set-sender-zip">Código Postal</label>
-                  <input type="text" id="set-sender-zip" required maxlength="5" />
+                  <input type="text" id="set-sender-zip" value="23650" required maxlength="5" />
                 </div>
                 <div class="form-group">
                   <label for="set-sender-city">Ciudad / Localidad</label>
-                  <input type="text" id="set-sender-city" required />
+                  <input type="text" id="set-sender-city" value="Torredonjimeno" required />
                 </div>
                 <div class="form-group">
-                  <label for="set-sender-province">Provincia</label>
-                  <input type="text" id="set-sender-province" required />
+                  <label for="set-sender-province">Provincia / Zona</label>
+                  <input type="text" id="set-sender-province" value="Jaén (ESPAÑA PENÍNSULA)" required />
                 </div>
                 <div class="form-group">
                   <label for="set-sender-phone">Teléfono de Recogida</label>
-                  <input type="tel" id="set-sender-phone" required />
+                  <input type="tel" id="set-sender-phone" value="+34 622 06 36 91" required />
                 </div>
                 <div class="form-group">
                   <label for="set-sender-email">Email de Avisos</label>
-                  <input type="email" id="set-sender-email" required />
+                  <input type="email" id="set-sender-email" value="1roneoshop@gmail.com" required />
                 </div>
               </div>
 
@@ -516,6 +543,132 @@
                 <button type="submit" id="btn-save-settings" class="admin-btn-primary" style="height: 44px; padding: 0 24px;">
                   Guardar Ajustes
                 </button>
+              </div>
+            </div>
+
+            <!-- TARJETA DEDICADA: Conexión API Packlink PRO y Probador en Vivo -->
+            <div class="admin-card" id="card-packlink-config-tester">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <h2 class="admin-card__title" style="margin: 0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="1" y="3" width="15" height="13" rx="1"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                  </svg>
+                  Conexión API Packlink PRO y Probador en Vivo
+                </h2>
+                <span class="packlink-status-badge">Producción Activa</span>
+              </div>
+              <p class="admin-card__hint">
+                Gestión oficial de envíos con la API v1 de Packlink PRO (Correos Express, SEUR, GLS). Las tarifas se calculan en vivo y los borradores se registran directamente en tu cuenta.
+              </p>
+
+              <!-- 1. Campos de Configuración -->
+              <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="set-packlink-api-key">Clave API de Packlink PRO (Producción) *</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input 
+                      type="password" 
+                      id="set-packlink-api-key" 
+                      value="f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5" 
+                      style="flex: 1; font-family: monospace; font-size: 13px;"
+                      required 
+                    />
+                    <button type="button" id="btn-toggle-pl-key-visibility" class="admin-btn-secondary" style="height: 40px; padding: 0 12px;" title="Mostrar / ocultar clave API">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                    <button type="button" id="btn-copy-pl-api-key" class="admin-btn-secondary" style="height: 40px; padding: 0 12px;" title="Copiar clave API">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label class="ios-toggle-label" style="cursor: pointer;">
+                    <span class="ios-toggle-title" style="font-weight: 600;">
+                      Enviar borrador automáticamente a Packlink PRO cuando un cliente compre en el Checkout
+                    </span>
+                    <div class="ios-switch-wrap">
+                      <input type="checkbox" id="set-packlink-auto-sync" checked />
+                      <span class="ios-slider"></span>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label for="set-parcel-length">Largo por defecto (cm)</label>
+                  <input type="number" id="set-parcel-length" value="30" min="5" max="200" />
+                </div>
+                <div class="form-group">
+                  <label for="set-parcel-width">Ancho por defecto (cm)</label>
+                  <input type="number" id="set-parcel-width" value="25" min="5" max="200" />
+                </div>
+                <div class="form-group">
+                  <label for="set-parcel-height">Alto por defecto (cm)</label>
+                  <input type="number" id="set-parcel-height" value="10" min="2" max="200" />
+                </div>
+                <div class="form-group">
+                  <label for="set-parcel-weight">Peso base por prenda (kg)</label>
+                  <input type="number" id="set-parcel-weight" value="0.45" step="0.05" min="0.1" />
+                </div>
+              </div>
+
+              <!-- 2. Simulador / Probador en Vivo de la API de Packlink PRO -->
+              <div class="packlink-tester-box" style="margin-top: 20px; padding: 18px; background: #fffaf8; border: 1px solid #ffdcd4; border-radius: 10px;">
+                <h3 style="font-size: 13.5px; font-weight: 700; color: #4d2525; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  Simulador de Envíos y Conexión en Vivo con Packlink PRO
+                </h3>
+                <p style="font-size: 12px; color: #666; margin-bottom: 14px;">
+                  Comprueba en tiempo real que tu API Key funciona contra los servidores de Packlink sin necesidad de salir del panel:
+                </p>
+
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                  <div class="form-group" style="margin: 0;">
+                    <label for="test-pl-from-zip" style="font-size: 11px;">C.P. Origen (Torredonjimeno)</label>
+                    <input type="text" id="test-pl-from-zip" value="23650" maxlength="5" style="height: 36px; font-size: 13px;" />
+                  </div>
+                  <div class="form-group" style="margin: 0;">
+                    <label for="test-pl-to-zip" style="font-size: 11px;">C.P. Destino (Cliente)</label>
+                    <input type="text" id="test-pl-to-zip" value="28001" maxlength="5" style="height: 36px; font-size: 13px;" />
+                  </div>
+                  <div class="form-group" style="margin: 0;">
+                    <label for="test-pl-weight" style="font-size: 11px;">Peso Paquete (kg)</label>
+                    <input type="number" id="test-pl-weight" value="0.5" step="0.1" style="height: 36px; font-size: 13px;" />
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button type="button" id="btn-test-packlink-rates" class="admin-btn-secondary" style="height: 38px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    <span>1. Probar Conexión y Cotizar Tarifas Reales (GET /v1/services)</span>
+                  </button>
+
+                  <button type="button" id="btn-test-packlink-shipment" class="admin-btn-primary" style="height: 38px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span>2. Enviar Borrador de Prueba a mi Cuenta Packlink PRO (POST /v1/shipments)</span>
+                  </button>
+                </div>
+
+                <!-- Resultados del test de cotización / envío -->
+                <div id="test-packlink-results-area" style="margin-top: 14px; display: none;"></div>
               </div>
             </div>
 

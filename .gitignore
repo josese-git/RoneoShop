@@ -21,3 +21,6 @@ firebase-debug.log*
 .env.local
 .env.*.local
 
+# Firebase Cache
+.firebase/
+

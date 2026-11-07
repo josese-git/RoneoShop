@@ -29,6 +29,40 @@ import {
   buildCleanStorageUrl as configBuildCleanStorageUrl
 } from './firebase-config.js';
 
+import {
+  DEFAULT_PACKLINK_API_KEY,
+  DEFAULT_PARCEL_DIMENSIONS,
+  FIXED_SENDER_ADDRESS,
+  createPacklinkShipment,
+  getPacklinkRates,
+  getCorreosShippingOptions,
+  resolvePacklinkPostalZone,
+  resolvePacklinkPostalLocation,
+  roundShippingPriceTo99,
+  getPacklinkShipmentStatus,
+  getPacklinkShipmentLabels,
+  buildPacklinkShipmentPayload,
+  buildCleanSingleStreet,
+  getNextBusinessDayFormatted
+} from './packlink-service.js';
+
+export {
+  DEFAULT_PACKLINK_API_KEY,
+  DEFAULT_PARCEL_DIMENSIONS,
+  FIXED_SENDER_ADDRESS,
+  createPacklinkShipment,
+  getPacklinkRates,
+  getCorreosShippingOptions,
+  resolvePacklinkPostalZone,
+  resolvePacklinkPostalLocation,
+  roundShippingPriceTo99,
+  getPacklinkShipmentStatus,
+  getPacklinkShipmentLabels,
+  buildPacklinkShipmentPayload,
+  buildCleanSingleStreet,
+  getNextBusinessDayFormatted
+};
+
 // Claves de persistencia y cache local de respaldo
 const STORAGE_PRODUCTS_KEY = 'store_db_products_v9';
 const STORAGE_SETTINGS_KEY = 'store_db_settings_v9';
@@ -86,36 +120,34 @@ export const MOCK_SETTINGS = {
   heroTitle: "Roneo Shop",
   heroSubtitle: "Prendas de diseño contemporáneo, calzado en piel vacuna y accesorios seleccionados con máxima atención al detalle.",
   heroImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=85",
-  shippingStandardPrice: 4.90,
-  standardShippingPrice: 4.90,
+  shippingStandardPrice: 4.99,
+  standardShippingPrice: 4.99,
   freeShippingThreshold: 50.00,
-  contactPhone: "600000000",
-  contactEmail: "info@roneoshop.com",
+  contactPhone: "+34 622 06 36 91",
+  contactEmail: "1roneoshop@gmail.com",
   instagramUrl: "https://instagram.com/",
   storeSchedule: "Lunes a Viernes de 10:00 a 20:00",
   returnPolicySummary: "Dispones de 14 días naturales desde la recepción del pedido para cambios de talla o devoluciones.",
   categories: DEFAULT_CATEGORIES,
   collections: DEFAULT_COLLECTIONS,
-  senderAddress: {
-    name: "Roneo Shop",
-    company: "Roneo Shop",
-    street: "Calle Principal 12",
-    city: "Málaga",
-    zipCode: "29001",
-    province: "Málaga",
-    country: "ES",
-    phone: "600000000",
-    email: "info@roneoshop.com"
+  senderAddress: FIXED_SENDER_ADDRESS,
+  senderName: FIXED_SENDER_ADDRESS.fullName,
+  senderCompany: FIXED_SENDER_ADDRESS.company,
+  senderStreet: FIXED_SENDER_ADDRESS.street,
+  senderZip: FIXED_SENDER_ADDRESS.zip_code,
+  senderCity: FIXED_SENDER_ADDRESS.city,
+  senderProvince: FIXED_SENDER_ADDRESS.province,
+  senderCountry: FIXED_SENDER_ADDRESS.country,
+  senderPhone: FIXED_SENDER_ADDRESS.phone,
+  senderEmail: FIXED_SENDER_ADDRESS.email,
+  packlinkApiKey: DEFAULT_PACKLINK_API_KEY,
+  packlinkAutoSync: true,
+  packlinkParcel: {
+    length: 30,
+    width: 25,
+    height: 10,
+    defaultWeight: 0.5
   },
-  senderName: "Roneo Shop",
-  senderCompany: "Roneo Shop",
-  senderStreet: "Calle Principal 12",
-  senderZip: "29001",
-  senderCity: "Málaga",
-  senderProvince: "Málaga",
-  senderCountry: "ES",
-  senderPhone: "600000000",
-  senderEmail: "info@roneoshop.com",
   updatedAt: Date.now()
 };
 
@@ -129,12 +161,16 @@ export function normalizeSettingsSchema(raw = {}) {
   if (!base.heroTitle || /yoana|zafiro/i.test(base.heroTitle)) {
     base.heroTitle = "Roneo Shop";
   }
-  if (!base.contactEmail || /yoanazafiro\.com/i.test(base.contactEmail)) {
-    base.contactEmail = "info@roneoshop.com";
+  if (!base.contactEmail || /yoanazafiro\.com|info@roneoshop\.com/i.test(base.contactEmail)) {
+    base.contactEmail = FIXED_SENDER_ADDRESS.email;
+  }
+  if (!base.contactPhone || /600000000/i.test(base.contactPhone)) {
+    base.contactPhone = FIXED_SENDER_ADDRESS.phoneFormatted;
   }
 
-  const ship = parseFloat(String(base.shippingStandardPrice ?? base.standardShippingPrice ?? 4.90).replace(',', '.'));
-  base.shippingStandardPrice = isNaN(ship) ? 4.90 : ship;
+  // Regla matemática de redondeo de envíos a ,99€
+  const rawShip = parseFloat(String(base.shippingStandardPrice ?? base.standardShippingPrice ?? 4.99).replace(',', '.'));
+  base.shippingStandardPrice = isNaN(rawShip) ? 4.99 : roundShippingPriceTo99(rawShip);
   base.standardShippingPrice = base.shippingStandardPrice;
 
   const thresh = parseFloat(String(base.freeShippingThreshold ?? 50.00).replace(',', '.'));
@@ -148,36 +184,60 @@ export function normalizeSettingsSchema(raw = {}) {
   base.collections = rawCols.filter(c => !['cabello', 'cosmetica', 'peikas'].includes(c.id || c.slug));
   if (base.collections.length === 0) base.collections = DEFAULT_COLLECTIONS;
 
-  let sName = base.senderAddress?.name || base.senderName || MOCK_SETTINGS.senderAddress.name;
-  if (/yoana|zafiro/i.test(sName)) sName = "Roneo Shop";
+  // Detección de datos antiguos de relleno del remitente
+  const currentSender = raw?.senderAddress || {};
+  const isObsoleteSender = 
+    !currentSender.street ||
+    /calle principal|29001|m[aá]laga|600000000|info@roneoshop/i.test(currentSender.street || '') ||
+    /29001/i.test(currentSender.zipCode || currentSender.zip || '') ||
+    /m[aá]laga/i.test(currentSender.city || '') ||
+    /600000000/i.test(currentSender.phone || '');
 
-  let sComp = base.senderAddress?.company || base.senderCompany || MOCK_SETTINGS.senderAddress.company;
-  if (/yoana|zafiro/i.test(sComp)) sComp = "Roneo Shop";
+  // Datos fijos e inmutables del remitente (Nerea Cortes Muñoz en Torredonjimeno 23650)
+  base.senderAddress = { ...FIXED_SENDER_ADDRESS };
+  base.senderName = FIXED_SENDER_ADDRESS.fullName;
+  base.senderCompany = FIXED_SENDER_ADDRESS.company;
+  base.senderStreet = FIXED_SENDER_ADDRESS.street;
+  base.senderZip = FIXED_SENDER_ADDRESS.zip_code;
+  base.senderCity = FIXED_SENDER_ADDRESS.city;
+  base.senderProvince = FIXED_SENDER_ADDRESS.province;
+  base.senderPhone = FIXED_SENDER_ADDRESS.phone;
+  base.senderEmail = FIXED_SENDER_ADDRESS.email;
 
-  let sEmail = base.senderAddress?.email || base.senderEmail || MOCK_SETTINGS.senderAddress.email;
-  if (/yoanazafiro\.com/i.test(sEmail)) sEmail = "info@roneoshop.com";
+  // Si en Firestore todavía estaban guardados datos de prueba obsoletos, los corregimos automáticamente
+  if (isObsoleteSender && typeof db !== 'undefined' && db) {
+    try {
+      const configRef = doc(db, 'settings', 'store_config');
+      setDoc(configRef, {
+        senderAddress: FIXED_SENDER_ADDRESS,
+        senderName: FIXED_SENDER_ADDRESS.fullName,
+        senderCompany: FIXED_SENDER_ADDRESS.company,
+        senderStreet: FIXED_SENDER_ADDRESS.street,
+        senderZip: FIXED_SENDER_ADDRESS.zip_code,
+        senderCity: FIXED_SENDER_ADDRESS.city,
+        senderProvince: FIXED_SENDER_ADDRESS.province,
+        senderPhone: FIXED_SENDER_ADDRESS.phone,
+        senderEmail: FIXED_SENDER_ADDRESS.email,
+        contactEmail: FIXED_SENDER_ADDRESS.email,
+        contactPhone: FIXED_SENDER_ADDRESS.phoneFormatted,
+        shippingStandardPrice: base.shippingStandardPrice,
+        standardShippingPrice: base.shippingStandardPrice
+      }, { merge: true }).catch(err => {
+        console.warn("[store-service] Error actualizando remitente fijo en Firestore:", err?.message || err);
+      });
+    } catch (e) {}
+  }
 
-  base.senderAddress = {
-    ...MOCK_SETTINGS.senderAddress,
-    ...(base.senderAddress || {}),
-    name: sName,
-    company: sComp,
-    street: base.senderAddress?.street || base.senderStreet || MOCK_SETTINGS.senderAddress.street,
-    city: base.senderAddress?.city || base.senderCity || MOCK_SETTINGS.senderAddress.city,
-    zipCode: base.senderAddress?.zipCode || base.senderZip || MOCK_SETTINGS.senderAddress.zipCode,
-    province: base.senderAddress?.province || base.senderProvince || MOCK_SETTINGS.senderAddress.province,
-    phone: base.senderAddress?.phone || base.senderPhone || MOCK_SETTINGS.senderAddress.phone,
-    email: sEmail
+  // Normalización oficial Packlink PRO API
+  const plKey = String(raw?.packlinkApiKey || raw?.packlink?.apiKey || base.packlinkApiKey || '').trim();
+  base.packlinkApiKey = (plKey.length > 20) ? plKey : DEFAULT_PACKLINK_API_KEY;
+  base.packlinkAutoSync = raw?.packlinkAutoSync !== undefined ? Boolean(raw.packlinkAutoSync) : true;
+  base.packlinkParcel = {
+    length: parseInt(raw?.packlinkParcel?.length || 30, 10),
+    width: parseInt(raw?.packlinkParcel?.width || 25, 10),
+    height: parseInt(raw?.packlinkParcel?.height || 10, 10),
+    defaultWeight: parseFloat(raw?.packlinkParcel?.defaultWeight || 0.5)
   };
-
-  base.senderName = base.senderAddress.name;
-  base.senderCompany = base.senderAddress.company;
-  base.senderStreet = base.senderAddress.street;
-  base.senderZip = base.senderAddress.zipCode;
-  base.senderCity = base.senderAddress.city;
-  base.senderProvince = base.senderAddress.province;
-  base.senderPhone = base.senderAddress.phone;
-  base.senderEmail = base.senderAddress.email;
 
   return base;
 }
@@ -797,6 +857,34 @@ class Store {
     if (this.initialized) return;
     this.initialized = true;
 
+    // Purga inmediata de claves locales con datos obsoletos del remitente
+    try {
+      const keysToCheck = ['store_db_settings_v10', STORAGE_SETTINGS_KEY, 'roneo_sender_address'];
+      for (const k of keysToCheck) {
+        const val = localStorage.getItem(k);
+        if (val && /calle principal|29001|m[aá]laga|600000000|info@roneoshop/i.test(val)) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) {}
+
+    // Forzar actualización inmediata en Firestore del remitente fijo inmutable (Nerea Cortes Muñoz, Torredonjimeno 23650)
+    try {
+      setDoc(doc(db, 'settings', 'store_config'), sanitizeForFirestore({
+        senderAddress: FIXED_SENDER_ADDRESS,
+        senderName: FIXED_SENDER_ADDRESS.fullName,
+        senderCompany: FIXED_SENDER_ADDRESS.company,
+        senderStreet: FIXED_SENDER_ADDRESS.street1,
+        senderZip: FIXED_SENDER_ADDRESS.zip_code,
+        senderCity: FIXED_SENDER_ADDRESS.city,
+        senderProvince: FIXED_SENDER_ADDRESS.province,
+        senderPhone: FIXED_SENDER_ADDRESS.phone,
+        senderEmail: FIXED_SENDER_ADDRESS.email,
+        contactEmail: FIXED_SENDER_ADDRESS.email,
+        contactPhone: FIXED_SENDER_ADDRESS.phoneFormatted
+      }), { merge: true }).catch(() => {});
+    } catch (e) {}
+
     // Cargar datos inmediatos de caché para UI instantánea
     this.products = getLocalProductsFallback();
     try {
@@ -854,13 +942,16 @@ class Store {
           const rawDoc = docSnap.data();
           const normalized = normalizeSettingsSchema(rawDoc);
           this.settings = normalized;
-          // Sanitización automática y silenciosa de la marca en Firestore
-          if (rawDoc && (
+          // Sanitización automática y persistencia de Packlink API Key oficial en Firestore
+          const needsBrandSanitize = rawDoc && (
             /yoana|zafiro/i.test(rawDoc.storeName || '') ||
             /yoana|zafiro/i.test(rawDoc.heroTitle || '') ||
             /yoanazafiro/i.test(rawDoc.contactEmail || '') ||
             /yoana|zafiro/i.test(rawDoc.senderName || '')
-          )) {
+          );
+          const needsPacklinkKey = !rawDoc?.packlinkApiKey || rawDoc.packlinkApiKey.trim().length < 20;
+
+          if (needsBrandSanitize || needsPacklinkKey) {
             try {
               await updateDoc(doc(db, 'settings', 'store_config'), sanitizeForFirestore({
                 ...rawDoc,
@@ -870,9 +961,12 @@ class Store {
                 senderName: normalized.senderName,
                 senderCompany: normalized.senderCompany,
                 senderEmail: normalized.senderEmail,
-                senderAddress: normalized.senderAddress
+                senderAddress: normalized.senderAddress,
+                packlinkApiKey: normalized.packlinkApiKey,
+                packlinkAutoSync: normalized.packlinkAutoSync,
+                packlinkParcel: normalized.packlinkParcel
               }));
-              console.info("[Store Auto-Sanitizer] Configuración en Firestore migrada limpiamente a Roneo Shop.");
+              console.info("[Store Auto-Sanitizer] Configuración en Firestore sincronizada con Packlink PRO y Roneo Shop.");
             } catch (err) {
               console.warn("[Store Auto-Sanitizer Error]:", err);
             }
@@ -1859,6 +1953,99 @@ export async function updateOrderStatus(orderNumber, updates = {}) {
   localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(list));
   store.ordersSubscribers.forEach(cb => cb(list));
   return true;
+}
+
+/**
+ * SINCRONIZACIÓN REAL DE UN PEDIDO CON PACKLINK PRO (POST /v1/shipments)
+ */
+export async function syncOrderWithPacklink(orderNumber, overrides = {}) {
+  let order = (store.orders || []).find(o => o.orderNumber === orderNumber);
+  if (!order) {
+    try {
+      const snap = await getDoc(doc(db, 'orders', orderNumber));
+      if (snap.exists()) {
+        order = { orderNumber: snap.id, ...snap.data() };
+      }
+    } catch (e) {
+      console.warn("[syncOrderWithPacklink] Error recuperando pedido de Firestore:", e);
+    }
+  }
+
+  if (!order) {
+    return { ok: false, error: `Pedido #${orderNumber} no encontrado en la base de datos.` };
+  }
+
+  // Llamada oficial a Packlink PRO API
+  const res = await createPacklinkShipment(order, store.settings, overrides);
+
+  if (res.ok && res.reference) {
+    const packlinkData = {
+      synced: true,
+      reference: res.reference,
+      syncedAt: Date.now(),
+      serviceId: res.serviceId || overrides.service_id || order.packlink?.serviceId || null,
+      carrierName: res.carrierName || overrides.carrierName || order.packlink?.carrierName || "Correos Express",
+      serviceName: res.serviceName || overrides.serviceName || order.packlink?.serviceName || "Paq 24",
+      dashboardUrl: `https://pro.packlink.es/private/shipments/${res.reference}`,
+      lastPayload: res.payload
+    };
+
+    const orderUpdates = {
+      packlink: packlinkData
+    };
+    if (res.carrierName) {
+      orderUpdates['shipping.carrier'] = res.carrierName;
+      orderUpdates['shipping.serviceName'] = res.serviceName || packlinkData.serviceName;
+      if (res.serviceId) orderUpdates['shipping.serviceId'] = res.serviceId;
+    }
+
+    try {
+      await updateDoc(doc(db, 'orders', orderNumber), sanitizeForFirestore(orderUpdates));
+    } catch (e) {
+      console.warn("[syncOrderWithPacklink] Error actualizando doc de pedido en Firestore:", e);
+    }
+
+    const updatedList = (store.orders || []).map(o => o.orderNumber === orderNumber ? {
+      ...o,
+      packlink: packlinkData,
+      shipping: {
+        ...(o.shipping || {}),
+        carrier: res.carrierName || o.shipping?.carrier,
+        serviceName: res.serviceName || o.shipping?.serviceName,
+        serviceId: res.serviceId || o.shipping?.serviceId
+      }
+    } : o);
+    store.orders = updatedList;
+    localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(updatedList));
+    store.ordersSubscribers.forEach(cb => {
+      try { cb(updatedList); } catch (e) {}
+    });
+
+    return {
+      ok: true,
+      reference: res.reference,
+      orderNumber,
+      channel: res.channel,
+      dashboardUrl: packlinkData.dashboardUrl,
+      data: res.data
+    };
+  }
+
+  // En caso de error
+  const errMsg = res.error || 'Error al conectar con la API oficial de Packlink PRO';
+  try {
+    await updateDoc(doc(db, 'orders', orderNumber), sanitizeForFirestore({
+      'packlink.synced': false,
+      'packlink.lastError': errMsg,
+      'packlink.lastAttemptAt': Date.now()
+    }));
+  } catch (e) {}
+
+  return {
+    ok: false,
+    error: errMsg,
+    details: res.details
+  };
 }
 
 export async function syncAllToFirestore(opts = {}) {

@@ -9,7 +9,16 @@
       "_dawn_ref/**",
       "_yoana_real/**",
       "worker-redsys/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/packlink/**",
+        "function": "packlinkProxy"
+      }
     ]
+  },
+  "functions": {
+    "source": "functions"
   },
   "firestore": {
     "rules": "firestore.rules"
