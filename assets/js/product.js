@@ -11,13 +11,15 @@ import {
   getRelatedProducts,
   getStoreSettings,
   subscribeToProductById,
-  subscribeToSettings
+  subscribeToSettings,
+  computeProductsFingerprint
 } from './store-service.js';
 import {
   addToCart
 } from './cart.js';
 import {
   formatPrice,
+  formatCleanTitle,
   renderProductCardMarkup,
   bindProductCardEvents,
   setupCommonUI,
@@ -25,7 +27,8 @@ import {
   updateCartBadges,
   openCartDrawer,
   setupAnnouncement,
-  applySettingsToDOM
+  applySettingsToDOM,
+  refreshScrollAnimations
 } from './ui.js';
 
 // Estado de la ficha de producto
@@ -156,10 +159,10 @@ function renderBreadcrumbs(product) {
     catEl.href = `collection.html?cat=${encodeURIComponent(product.category || 'ropa')}`;
   }
   if (titleEl) {
-    titleEl.textContent = product.title;
+    titleEl.textContent = formatCleanTitle(product.title);
   }
   if (pageTitle) {
-    pageTitle.textContent = `${product.title} | Roneo Shop`;
+    pageTitle.textContent = `${formatCleanTitle(product.title)} | Roneo Shop`;
   }
 }
 
@@ -247,7 +250,7 @@ function renderDetails(product) {
   const comparePriceEl = document.getElementById('pdp-compare-price');
   const descEl = document.getElementById('accordion-desc');
 
-  if (titleEl) titleEl.textContent = product.title;
+  if (titleEl) titleEl.textContent = formatCleanTitle(product.title);
   if (priceEl) priceEl.textContent = formatPrice(product.price);
 
   if (comparePriceEl) {
@@ -576,19 +579,34 @@ function setupUtilityLinks(product) {
 }
 
 async function loadRelatedProducts(product) {
-  const track = document.getElementById('related-track');
-  if (!track) return;
+  const container = document.getElementById('related-products-grid') || document.getElementById('related-track') || document.querySelector('.related-products-grid');
+  if (!container) return;
 
   try {
     const related = await getRelatedProducts(product.id, product.category, 4);
     if (!related || related.length === 0) {
-      const section = track.closest('.related-products-section');
+      const section = container.closest('.related-products-section');
       if (section) section.style.display = 'none';
       return;
     }
 
-    track.innerHTML = related.map(item => renderProductCardMarkup(item)).join('');
-    bindProductCardEvents(track, related);
+    const hash = computeProductsFingerprint(related);
+    if (container.dataset.renderedHash === hash) return;
+    container.dataset.renderedHash = hash;
+
+    const section = container.closest('.related-products-section');
+    if (section) section.style.display = '';
+
+    container.innerHTML = related.map((item, idx) => renderProductCardMarkup(item, idx)).join('');
+    bindProductCardEvents(container, related);
+
+    // CRÍTICO: Asegurar que las 4 prendas recomendadas sean inmediatamente nítidas y visibles
+    container.querySelectorAll('[data-motion], [data-fx="curtain"]').forEach(el => {
+      el.classList.add('is-inview');
+      el.classList.add('is-revealed');
+    });
+
+    refreshScrollAnimations();
   } catch (err) {
     console.error("[ProductPage] Error al cargar productos relacionados:", err);
   }

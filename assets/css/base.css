@@ -10,32 +10,49 @@ html {
   max-width: 100%;
   overflow-x: clip;
   scroll-behavior: smooth;
-  background-color: var(--color-bg, #feede9);
+  background-color: var(--color-bg, #ffffff);
 }
 
 body {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
-  background-color: var(--color-bg, #feede9);
-  color: var(--color-text, #4d2525);
+  background-color: var(--color-bg, #ffffff);
+  color: var(--color-text, #231515);
   font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
   padding-top: 0 !important;
-  padding-bottom: calc(var(--bottom-nav-height, 60px) + 16px);
+  padding-bottom: calc(var(--bottom-nav-height, 68px) + 16px);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
 }
 
+body.home-page {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+body:not(.home-page) {
+  padding-top: 0 !important;
+}
+
 main {
   flex: 1 0 auto;
   width: 100%;
+  padding-top: 0;
 }
 
-@media (min-width: 990px) {
+.home-main {
+  width: 100%;
+  overflow-x: clip;
+  padding-top: 0 !important;
+  margin: 0 !important;
+}
+
+@media (min-width: 768px) {
   body {
     padding-bottom: 0;
   }
@@ -71,20 +88,27 @@ ul, ol {
 
 .page-container {
   width: 100%;
-  max-width: var(--page-max-width);
+  max-width: var(--page-max-width, 1240px);
   margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px) {
+  .page-container {
+    padding: 0 24px;
+  }
 }
 
 /* Botones Globales Redondeados Roneo Shop */
 .btn-primary {
   width: 100%;
   background-color: var(--color-primary, #4d2525);
-  color: var(--color-text-light, #feede9);
-  border-radius: var(--radius-btn);
+  color: var(--color-text-light, #ffffff);
+  border-radius: var(--radius-btn, 8px);
   padding: 14px 20px;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;
   transition: background-color var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
@@ -95,7 +119,7 @@ ul, ol {
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover, #381a1a);
+  background-color: var(--color-primary-hover, #361919);
 }
 
 .btn-primary:active {

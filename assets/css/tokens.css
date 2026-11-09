@@ -1,55 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Great+Vibes&family=Jost:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Paleta Oficial Roneo Shop */
-  --color-bg: #feede9;                 /* Fondo principal de toda la web */
-  --color-surface: #f8e1dc;            /* Superficie secundaria cálida (tarjetas, cajas, inputs) */
-  --color-surface-elevated: #feede9;   /* Fondo de modales, drawers y cabeceras */
-  --color-surface-hover: #f2d5cf;      /* Hover suave sobre elementos claros */
+  /* Paleta Oficial Blanca & Choco Roneo Shop (Cero Rosa - 100% Blanco Puro #ffffff) */
+  --color-bg: #ffffff;
+  --color-surface: #f8f7f5;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #f1efec;
+  --color-sand: #f3f1ed;
 
-  --color-text: #4d2525;               /* Color de texto principal, títulos, precios e iconos */
-  --color-text-muted: #7d5353;         /* Texto secundario, subtítulos, migas de pan */
-  --color-text-light: #feede9;         /* Texto claro sobre fondos oscuros (#4d2525) */
-  --color-tab-inactive: #a88383;       /* Pestañas inactivas */
+  --color-text: #231515;
+  --color-choco: #4d2525;
+  --color-choco-deep: #1c1010;
+  --color-text-muted: #6e5a5a;
+  --color-text-subtle: #7a6868;
+  --color-text-light: #ffffff;
+  --color-tab-inactive: #8c7878;
 
-  --color-primary: #4d2525;            /* Botones principales, barra de anuncios, badges */
-  --color-primary-hover: #381a1a;      /* Hover de botones principales */
-  --color-primary-soft: rgba(77, 37, 37, 0.08); /* Fondos sutiles de píldoras y etiquetas */
+  --color-primary: #4d2525;
+  --color-primary-hover: #361919;
+  --color-primary-soft: rgba(77, 37, 37, 0.06);
 
-  --color-border: #e6cbc4;             /* Bordes sutiles armónicos con #feede9 */
-  --color-border-dark: #4d2525;        /* Bordes activos o seleccionados */
-  --color-border-strong: #4d2525;      /* Bordes fuertes */
+  --color-gold: #b08d57;
+  --color-gold-soft: #dfc298;
 
-  --color-badge-soldout: rgba(77, 37, 37, 0.72);
+  --color-border: #e8e5e1;
+  --color-line: #e8e5e1;
+  --color-border-dark: #231515;
+  --color-border-strong: #4d2525;
+
+  --color-badge-soldout: #231515;
   --color-badge-sale: #4d2525;
-  --color-overlay: rgba(45, 18, 18, 0.45);
+  --color-badge-new: rgba(255, 255, 255, 0.92);
+  --color-overlay: rgba(20, 10, 10, 0.55);
 
   /* Colores Semánticos */
   --color-success: #157347;
   --color-warning: #b76e00;
   --color-danger: #c92a2a;
 
-  /* Tipografías */
-  --font-serif: 'Fraunces', 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Tipografías exactas de la referencia */
+  --font-serif: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Jost', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-script: 'Great Vibes', cursive;
 
   /* Redondeos */
   --radius-card: 12px;
-  --radius-badge: 6px;
-  --radius-btn: 10px;
+  --radius-badge: 4px;
+  --radius-btn: 8px;
   --radius-sheet: 20px;
   --radius-full: 9999px;
 
   /* Dimensiones y Layout Fijo */
   --announcement-height: 32px;
-  --header-height: 58px;
-  --bottom-nav-height: 60px;
-  --top-fixed-offset: var(--header-height);
+  --header-height: 60px;
+  --bottom-nav-height: 68px;
+  --top-fixed-offset: calc(var(--announcement-height) + var(--header-height));
   --page-max-width: 1240px;
 
   /* Sombras y Transiciones */
-  --shadow-header: 0 2px 10px rgba(77, 37, 37, 0.04);
-  --shadow-floating-btn: 0 3px 10px rgba(77, 37, 37, 0.18);
+  --shadow-header: 0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-floating-btn: 0 4px 14px rgba(77, 37, 37, 0.16);
+  --shadow-drawer: 0 8px 30px rgba(0, 0, 0, 0.18);
   --transition-fast: 0.2s ease;
   --transition-smooth: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }

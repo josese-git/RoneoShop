@@ -119,7 +119,7 @@ export const MOCK_SETTINGS = {
   announcementText: "NUEVA COLECCIÓN 2026 OTOÑO & INVIERNO · ENVÍO GRATIS A PARTIR DE 50€",
   heroTitle: "Roneo Shop",
   heroSubtitle: "Prendas de diseño contemporáneo, calzado en piel vacuna y accesorios seleccionados con máxima atención al detalle.",
-  heroImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=85",
+  heroImage: "",
   shippingStandardPrice: 4.99,
   standardShippingPrice: 4.99,
   freeShippingThreshold: 50.00,
@@ -153,6 +153,16 @@ export const MOCK_SETTINGS = {
 
 export function normalizeSettingsSchema(raw = {}) {
   const base = { ...MOCK_SETTINGS, ...(raw || {}) };
+
+  // Erradicación y sanitización obligatoria de fotos antiguas de Unsplash
+  if (base.heroImage && (base.heroImage.includes('unsplash.com') || base.heroImage.includes('photo-1534528741775'))) {
+    base.heroImage = "";
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('roneo_hero_image_v1');
+      }
+    } catch (e) {}
+  }
 
   // Erradicación y sanitización obligatoria de marcas obsoletas
   if (!base.storeName || /yoana|zafiro/i.test(base.storeName)) {
@@ -838,6 +848,28 @@ function getLocalProductsFallback() {
 }
 
 /**
+ * Generadores de huella rápida para deduplicación estricta (Evita re-renderizados destructivos)
+ */
+export function computeProductsFingerprint(list) {
+  if (!Array.isArray(list)) return "";
+  return list.map(p => `${p.id}:${p.title}:${p.price}:${p.compareAtPrice}:${p.order}:${p.totalStock}:${(p.images && p.images[0]) || ''}`).join('|');
+}
+
+export function computeSettingsFingerprint(s) {
+  if (!s) return "";
+  return JSON.stringify({
+    n: s.storeName,
+    a: s.announcementText,
+    hi: s.heroImage,
+    ht: s.heroTitle,
+    sh: s.shippingStandardPrice,
+    fr: s.freeShippingThreshold,
+    cat: s.categories,
+    col: s.collections
+  });
+}
+
+/**
  * B) CLASE SINGLETON STORE CON ONSNAPSHOT
  */
 class Store {
@@ -847,10 +879,27 @@ class Store {
     this.ordersSubscribers = [];
     this.initialized = false;
     this.products = [];
-    this.settings = normalizeSettingsSchema(MOCK_SETTINGS);
     this.orders = [];
     this._seeding = false;
     this._purged = false;
+    this._hasEmittedProductsOnce = false;
+    this._hasEmittedSettingsOnce = false;
+
+    // Cargar datos inmediatos de configuración desde localStorage para cero parpadeo
+    try {
+      const savedSet = localStorage.getItem('store_db_settings_v10') || localStorage.getItem(STORAGE_SETTINGS_KEY);
+      this.settings = savedSet ? normalizeSettingsSchema(JSON.parse(savedSet)) : normalizeSettingsSchema(MOCK_SETTINGS);
+      if (this.settings.heroImage && !this.settings.heroImage.includes('unsplash.com')) {
+        localStorage.setItem('roneo_hero_image_v1', this.settings.heroImage);
+      } else {
+        localStorage.removeItem('roneo_hero_image_v1');
+      }
+    } catch (e) {
+      this.settings = normalizeSettingsSchema(MOCK_SETTINGS);
+    }
+
+    this._lastProductsHash = "";
+    this._lastSettingsHash = computeSettingsFingerprint(this.settings);
   }
 
   init() {
@@ -887,9 +936,16 @@ class Store {
 
     // Cargar datos inmediatos de caché para UI instantánea
     this.products = getLocalProductsFallback();
+    this._lastProductsHash = computeProductsFingerprint(this.products);
     try {
       const savedSet = localStorage.getItem('store_db_settings_v10') || localStorage.getItem(STORAGE_SETTINGS_KEY);
       this.settings = savedSet ? normalizeSettingsSchema(JSON.parse(savedSet)) : normalizeSettingsSchema(MOCK_SETTINGS);
+      if (this.settings.heroImage && !this.settings.heroImage.includes('unsplash.com')) {
+        localStorage.setItem('roneo_hero_image_v1', this.settings.heroImage);
+      } else {
+        localStorage.removeItem('roneo_hero_image_v1');
+      }
+      this._lastSettingsHash = computeSettingsFingerprint(this.settings);
       const savedOrd = localStorage.getItem(STORAGE_ORDERS_KEY);
       this.orders = savedOrd ? JSON.parse(savedOrd) : [];
     } catch (e) {
@@ -912,6 +968,14 @@ class Store {
 
       // Ordenar con criterio canónico estricto
       const sorted = sortProductsCanonical(list);
+      const newHash = computeProductsFingerprint(sorted);
+
+      // Deduplicación por huella: si los productos no cambiaron y ya se emitió una vez, no tocar el DOM
+      if (newHash === this._lastProductsHash && this._hasEmittedProductsOnce) {
+        return;
+      }
+      this._lastProductsHash = newHash;
+      this._hasEmittedProductsOnce = true;
       this.products = sorted;
       localStorage.setItem(STORAGE_PRODUCTS_KEY, JSON.stringify(sorted));
       this.notifySubscribers(sorted);
@@ -972,8 +1036,22 @@ class Store {
             }
           }
         }
+
+        if (this.settings.heroImage && !this.settings.heroImage.includes('unsplash.com')) {
+          localStorage.setItem('roneo_hero_image_v1', this.settings.heroImage);
+        } else {
+          localStorage.removeItem('roneo_hero_image_v1');
+        }
         localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(this.settings));
         localStorage.setItem('store_db_settings_v10', JSON.stringify(this.settings));
+
+        const newSettingsHash = computeSettingsFingerprint(this.settings);
+        if (newSettingsHash === this._lastSettingsHash && this._hasEmittedSettingsOnce) {
+          return;
+        }
+        this._lastSettingsHash = newSettingsHash;
+        this._hasEmittedSettingsOnce = true;
+
         this.settingsSubscribers.forEach(cb => {
           try { cb(this.settings); } catch (e) { console.error(e); }
         });
@@ -1518,9 +1596,16 @@ export async function getRelatedProducts(currentProductId, categoryOrLimit, limi
     category = categoryOrLimit;
   }
   const all = await getProducts();
-  return all
-    .filter(p => p.id !== currentProductId && p.active && (category ? p.category === category : true))
-    .slice(0, count);
+  const activeProducts = all.filter(p => p.id !== currentProductId && p.active !== false);
+
+  // 1. Priorizar prendas de la misma categoría
+  const sameCat = category ? activeProducts.filter(p => p.category === category) : [];
+
+  // 2. Si hay menos de count, completar con el resto del catálogo para que nunca quede vacío
+  const otherCats = activeProducts.filter(p => !sameCat.some(sc => sc.id === p.id));
+  const combined = [...sameCat, ...otherCats];
+
+  return combined.slice(0, count);
 }
 
 /**
@@ -1724,6 +1809,11 @@ export async function saveStoreSettings(partialOrFullSettings) {
   }
 
   store.settings = merged;
+  if (merged.heroImage && !merged.heroImage.includes('unsplash.com')) {
+    localStorage.setItem('roneo_hero_image_v1', merged.heroImage);
+  } else {
+    localStorage.removeItem('roneo_hero_image_v1');
+  }
   localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(merged));
   localStorage.setItem('store_db_settings_v10', JSON.stringify(merged));
 

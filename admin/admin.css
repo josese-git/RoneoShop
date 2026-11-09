@@ -5,11 +5,11 @@
    ========================================================================== */
 
 :root {
-  --admin-bg: #f9e6e1;
-  --admin-card-bg: #feede9;
-  --admin-text: #4d2525;
-  --admin-text-muted: #7d5353;
-  --admin-border: #e2c4bc;
+  --admin-bg: #f8f7f5;
+  --admin-card-bg: #ffffff;
+  --admin-text: #231515;
+  --admin-text-muted: #6e5a5a;
+  --admin-border: #e8e5e1;
   --admin-primary: #4d2525;
   --admin-primary-hover: #381a1a;
 
@@ -22,7 +22,7 @@
   --badge-red-text: #bf2600;
   --badge-blue-bg: #deebff;
   --badge-blue-text: #0747a6;
-  --badge-gray-bg: #ebd4ce;
+  --badge-gray-bg: #e8e5e1;
   --badge-gray-text: #5f3636;
 
   --radius-card: 14px;
