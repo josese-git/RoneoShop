@@ -6,19 +6,36 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
+      "functions/**",
       "_dawn_ref/**",
       "_yoana_real/**",
-      "worker-redsys/**"
+      "worker-redsys/**",
+      "*.md"
     ],
-    "rewrites": [
+    "headers": [
       {
-        "source": "/api/packlink/**",
-        "function": "packlinkProxy"
+        "source": "**/*.@(webp|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(html|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       }
     ]
-  },
-  "functions": {
-    "source": "functions"
   },
   "firestore": {
     "rules": "firestore.rules"
@@ -27,4 +44,3 @@
     "rules": "storage.rules"
   }
 }
-

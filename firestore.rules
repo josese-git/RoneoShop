@@ -1,15 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /products/{docId} {
-      allow read, write: if true;
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
     }
     match /settings/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if true;
     }
-    match /orders/{docId} {
-      allow read, write: if true;
+    match /orders/{orderId} {
+      allow read: if true;
+      allow write: if true;
     }
   }
 }
-
