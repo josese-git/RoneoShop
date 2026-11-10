@@ -1,6 +1,5 @@
 /**
- * COLLECTION PAGE CONTROLLER - RONEO SHOP (FASE 7.1 DEFINITIVA)
- * Arquitectura idéntica a luisa.ghboutique.workers.dev (Captura 5).
+ * COLLECTION PAGE CONTROLLER - RONEO SHOP (FASE 8.1 DEFINITIVA)
  * Controla el filtrado dinámico de colecciones con píldoras horizontales,
  * contador dinámico "XX PRENDAS", cuadrícula 2 cols móvil / 4 cols PC,
  * modal "Sobre mí", "Cuenta" y Cart Drawer.
@@ -40,47 +39,63 @@ let unsubscribeSettings = null;
 const CATEGORY_METADATA = {
   'todos': {
     title: 'Catálogo',
-    pageTitle: 'Catálogo Completo | Roneo Shop'
+    pageTitle: 'Catálogo · Roneo Shop'
   },
   'ropa': {
     title: 'Ropa',
-    pageTitle: 'Ropa Femenina | Roneo Shop'
+    pageTitle: 'Ropa Femenina · Roneo Shop'
   },
   'calzado': {
     title: 'Calzado',
-    pageTitle: 'Calzado en Piel | Roneo Shop'
+    pageTitle: 'Calzado en Piel · Roneo Shop'
   },
   'otono-invierno': {
     title: 'Otoño & Invierno',
-    pageTitle: 'Colección Otoño Invierno | Roneo Shop'
+    pageTitle: 'Colección Otoño Invierno · Roneo Shop'
   },
   'primavera-verano': {
     title: 'Primavera & Verano',
-    pageTitle: 'Colección Primavera Verano | Roneo Shop'
+    pageTitle: 'Colección Primavera Verano · Roneo Shop'
   },
   'rebajas': {
     title: 'Rebajas %',
-    pageTitle: 'Rebajas Especiales | Roneo Shop'
+    pageTitle: 'Rebajas Especiales · Roneo Shop'
   },
   'vestidos': {
     title: 'Vestidos',
-    pageTitle: 'Vestidos de Fiesta y Diarios | Roneo Shop'
+    pageTitle: 'Vestidos de Fiesta y Diarios · Roneo Shop'
+  },
+  'conjuntos-deportivos': {
+    title: 'Conjuntos Deportivos',
+    pageTitle: 'Conjuntos Deportivos · Roneo Shop'
   },
   'conjuntos': {
-    title: 'Conjuntos',
-    pageTitle: 'Conjuntos de Tendencia | Roneo Shop'
+    title: 'Conjuntos Deportivos',
+    pageTitle: 'Conjuntos Deportivos · Roneo Shop'
   },
   'tops': {
     title: 'Tops y Camisetas',
-    pageTitle: 'Tops y Camisas | Roneo Shop'
+    pageTitle: 'Tops y Camisas · Roneo Shop'
+  },
+  'camisas': {
+    title: 'Camisas',
+    pageTitle: 'Camisas Elegantes · Roneo Shop'
+  },
+  'pantalones': {
+    title: 'Pantalones',
+    pageTitle: 'Pantalones y Vaqueros · Roneo Shop'
   },
   'abrigos': {
-    title: 'Abrigos y Chaquetas',
-    pageTitle: 'Abrigos y Chaquetas | Roneo Shop'
+    title: 'Abrigos',
+    pageTitle: 'Abrigos y Chaquetas · Roneo Shop'
+  },
+  'chaquetas': {
+    title: 'Abrigos',
+    pageTitle: 'Abrigos y Chaquetas · Roneo Shop'
   },
   'vaqueros': {
     title: 'Vaqueros Faja',
-    pageTitle: 'Vaqueros Efecto Faja | Roneo Shop'
+    pageTitle: 'Vaqueros Efecto Faja · Roneo Shop'
   }
 };
 
@@ -205,7 +220,7 @@ function renderGrid(products) {
           Actualmente no hay unidades disponibles en esta categoría.
         </p>
         <button type="button" id="reset-all-filters-btn" class="btn-primary" style="max-width: 200px; margin: 0 auto;">
-          Ver Todo el Catálogo
+          Ver Catálogo
         </button>
       </div>
     `;

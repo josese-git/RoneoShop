@@ -162,11 +162,12 @@ export function clearCart() {
 }
 
 /**
- * Calcula todos los totales, gastos de envío y barra de envío gratis
- * @param {number} freeShippingThreshold Umbral para envío gratis (€50.00 por defecto)
+ * Calcula todos los totales, gastos de envío, barra de envío gratis (+80€) y regalo exclusivo (+150€)
+ * @param {number} freeShippingThreshold Umbral para envío gratis (€80.00 por defecto en Fase 8.2)
  * @param {number} shippingStandardPrice Coste de envío estándar (€4.99 por defecto, redondeado a ,99€)
+ * @param {number} freeGiftThreshold Umbral para regalo exclusivo (€150.00 por defecto)
  */
-export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPrice = 4.99) {
+export function getCartTotals(freeShippingThreshold = 80.00, shippingStandardPrice = 4.99, freeGiftThreshold = 150.00) {
   const cart = getCart();
 
   let totalItems = 0;
@@ -206,13 +207,28 @@ export function getCartTotals(freeShippingThreshold = 50.00, shippingStandardPri
     Math.round((subtotal / freeShippingThreshold) * 100)
   );
 
+  const hasFreeGift = subtotal >= freeGiftThreshold && subtotal > 0;
+  const remainingForFreeGift = hasFreeGift
+    ? 0
+    : Math.max(0, Math.round((freeGiftThreshold - subtotal) * 100) / 100);
+
+  const freeGiftProgressPercent = Math.min(
+    100,
+    Math.round((subtotal / freeGiftThreshold) * 100)
+  );
+
   return {
     totalItems,
+    totalUnits: totalItems,
     subtotal,
     shippingCost,
     total,
     remainingForFreeShipping,
     freeShippingProgressPercent,
-    hasFreeShipping
+    hasFreeShipping,
+    freeGiftThreshold,
+    hasFreeGift,
+    remainingForFreeGift,
+    freeGiftProgressPercent
   };
 }

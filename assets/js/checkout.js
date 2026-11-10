@@ -95,7 +95,7 @@ function getCalculatedTotals() {
   const subtotal = cart.reduce((acc, it) => acc + (it.price * it.quantity), 0);
   const threshold = currentStoreSettings?.freeShippingThreshold !== undefined
     ? Number(currentStoreSettings.freeShippingThreshold)
-    : 50.00;
+    : 80.00;
 
   const isFreeThresholdMet = subtotal >= threshold && subtotal > 0;
   const selectedOption = activeShippingRates[selectedShippingKey] || activeShippingRates.correos;
@@ -168,6 +168,30 @@ function renderCheckoutSummary(totals) {
     return;
   }
 
+  const giftThreshold = Number(currentStoreSettings?.freeGiftThreshold || 150.00);
+  const giftCardHtml = (totals.subtotal >= giftThreshold) ? `
+    <div class="cart-gift-unlocked-card" style="margin: 8px 0 12px; border: 1px solid #dfc298;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: #4d2525; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #dfc298;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 12 20 22 4 22 4 12"></polyline>
+            <rect x="2" y="7" width="20" height="5"></rect>
+            <line x1="12" y1="22" x2="12" y2="7"></line>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #231515;">Regalo Exclusivo Roneo Shop</div>
+          <div style="font-size: 11px; color: #7a6868;">Por compra igual o superior a 150,00 €</div>
+        </div>
+      </div>
+      <div style="font-size: 12.5px; font-weight: 700; color: #157347; white-space: nowrap;">
+        GRATIS (0,00 €)
+      </div>
+    </div>
+  ` : '';
+
   // 1. Renderizado de artículos con miniaturas 56x74px en el resumen superior
   if (topListEl) {
     topListEl.innerHTML = cart.map(item => `
@@ -187,7 +211,7 @@ function renderCheckoutSummary(totals) {
         </div>
         <div class="summary-item-price">${formatPrice(item.price * item.quantity)}</div>
       </div>
-    `).join('');
+    `).join('') + giftCardHtml;
   }
 
   // 2. Renderizado de artículos en la columna lateral Desktop
@@ -209,7 +233,7 @@ function renderCheckoutSummary(totals) {
         </div>
         <div class="checkout-item-price">${formatPrice(item.price * item.quantity)}</div>
       </div>
-    `).join('');
+    `).join('') + giftCardHtml;
   }
 
   // 3. Actualizar importes en el resumen superior
@@ -567,6 +591,9 @@ function setupFormSubmission() {
     const orderNumber = await generateNextOrderNumber();
 
     // 2. Construcción del objeto de pedido según ARCHITECTURE.md
+    const giftThreshold = Number(currentStoreSettings?.freeGiftThreshold || 150.00);
+    const hasFreeGift = totals.subtotal >= giftThreshold;
+
     const newOrder = {
       orderNumber,
       redsysOrderId: orderNumber.replace(/-/g, ''),
@@ -576,6 +603,7 @@ function setupFormSubmission() {
       shippingCost: totals.shippingCost,
       total: totals.total,
       totalWeightKg,
+      hasFreeGift,
       shipping: {
         carrier: chosenShipping.carrierName,
         serviceName: chosenShipping.serviceName,
@@ -706,6 +734,24 @@ function renderOrderConfirmation(order, packlinkResult = null) {
       <div class="order-number-badge">
         Nº DE PEDIDO: #${order.orderNumber}
       </div>
+
+      ${order.hasFreeGift ? `
+        <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #9d174d; font-weight: 600; text-align: left;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <polyline points="20 12 20 22 4 22 4 12"></polyline>
+            <rect x="2" y="7" width="20" height="5"></rect>
+            <line x1="12" y1="22" x2="12" y2="7"></line>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+          </svg>
+          <div>
+            <div>¡Regalo Exclusivo Roneo Shop Incluido!</div>
+            <div style="font-size: 12px; font-weight: 400; color: #be185d; margin-top: 2px;">
+              Tu compra supera los 150,00 € y nuestro almacén incluirá tu regalo exclusivo en el paquete.
+            </div>
+          </div>
+        </div>
+      ` : ''}
 
       <div style="background: #fff5f2; border: 1px solid #ffdcd4; border-radius: 8px; padding: 12px 16px; margin: 14px 0 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #4d2525; font-weight: 600; text-align: left;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">

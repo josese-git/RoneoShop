@@ -176,16 +176,17 @@ Este documento es la ÚNICA fuente de verdad para la estructura de archivos, el 
 ```json
 {
   "storeName": "Roneo Shop",
-  "announcementText": "NUEVA COLECCIÓN OTOÑO & INVIERNO · ENVÍO A ESPAÑA PENÍNSULA 24/48H",
+  "announcementText": "NUEVA COLECCIÓN OTOÑO & INVIERNO · ENVÍO GRATIS EN PEDIDOS +80€ · REGALO EN PEDIDOS +150€ · ENVÍO 24/48H CORREOS",
   "heroTitle": "Roneo Shop",
-  "heroSubtitle": "Moda & Estilo",
+  "heroSubtitle": "",
   "heroImage": "https://firebasestorage.googleapis.com/...",
-  "shippingStandardPrice": 4.99,
-  "freeShippingThreshold": 50.00,
+  "shippingStandardPrice": 3.99,
+  "freeShippingThreshold": 80.00,
+  "freeGiftThreshold": 150.00,
   "contactPhone": "622063691",
   "contactEmail": "1roneoshop@gmail.com",
   "instagramUrl": "https://instagram.com/",
-  "tiktokUrl": "https://tiktok.com/",
+  "tiktokUrl": "https://www.tiktok.com/@roneoshop",
   "packlinkApiKey": "f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5",
   "packlinkAutoSync": true,
   "packlinkParcel": {
@@ -213,9 +214,14 @@ Este documento es la ÚNICA fuente de verdad para la estructura de archivos, el 
     "email": "1roneoshop@gmail.com"
   },
   "categories": [
-    { "id": "ropa", "name": "Ropa", "slug": "ropa", "order": 0, "isPlaceholder": false },
-    { "id": "calzado", "name": "Calzado", "slug": "calzado", "order": 1, "isPlaceholder": false },
-    { "id": "mas-proximamente", "name": "Más próximamente...", "slug": "mas-proximamente", "order": 2, "isPlaceholder": true }
+    { "id": "conjuntos-deportivos", "name": "Conjuntos Deportivos", "slug": "conjuntos-deportivos", "order": 0, "isPlaceholder": false },
+    { "id": "abrigos", "name": "Abrigos", "slug": "abrigos", "order": 1, "isPlaceholder": false },
+    { "id": "tops", "name": "Tops", "slug": "tops", "order": 2, "isPlaceholder": false },
+    { "id": "pantalones", "name": "Pantalones", "slug": "pantalones", "order": 3, "isPlaceholder": false },
+    { "id": "vestidos", "name": "Vestidos", "slug": "vestidos", "order": 4, "isPlaceholder": false },
+    { "id": "camisas", "name": "Camisas", "slug": "camisas", "order": 5, "isPlaceholder": false },
+    { "id": "calzado", "name": "Calzado", "slug": "calzado", "order": 6, "isPlaceholder": false },
+    { "id": "mas-proximamente", "name": "Más próximamente...", "slug": "mas-proximamente", "order": 7, "isPlaceholder": true }
   ],
   "collections": [
     {
@@ -253,3 +259,15 @@ Identificador compuesto por `productId + "_" + color + "_" + size`:
   }
 ]
 ```
+
+---
+
+## 4. SISTEMA DE RECOMPENSAS EN EL CARRITO (DOBLE META EN TIEMPO REAL)
+El carrito (`#cart-drawer`) implementa una doble barra de progreso con cálculo en caliente (`getCartTotals()`):
+1. **Nivel 1 - Envío Gratis Península (80,00 €):**
+   - Subtotal `< 80,00 €`: Muestra `Te faltan {X,XX €} para ENVÍO GRATIS (80,00 €)` con barra porcentual `(subtotal / 80) * 100`.
+   - Subtotal `>= 80,00 €`: Desbloquea envío gratuito con Correos Paq Estándar Domicilio y marca la barra al `100%`.
+2. **Nivel 2 - Regalo Exclusivo Sorpresa (150,00 €):**
+   - Subtotal `< 150,00 €`: Muestra `Te faltan {X,XX €} para tu REGALO EXCLUSIVO (150,00 €)` con barra porcentual `(subtotal / 150) * 100`.
+   - Subtotal `>= 150,00 €`: Desbloquea `cart-gift-unlocked-card` con indicación de regalo añadido gratis al pedido por nuestro almacén.
+

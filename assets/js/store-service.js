@@ -68,39 +68,89 @@ const STORAGE_PRODUCTS_KEY = 'store_db_products_v9';
 const STORAGE_SETTINGS_KEY = 'store_db_settings_v9';
 const STORAGE_ORDERS_KEY = 'store_orders_v9';
 
-// Categorías base oficiales de la marca Roneo Shop
+// Categorías base oficiales de la marca Roneo Shop (Orden oficial prioritario Fase 8.2)
 export const DEFAULT_CATEGORIES = [
-  { id: "ropa", name: "Ropa", slug: "ropa", order: 0, isPlaceholder: false },
-  { id: "calzado", name: "Calzado", slug: "calzado", order: 1, isPlaceholder: false },
-  { id: "mas-proximamente", name: "Más próximamente...", slug: "mas-proximamente", order: 2, isPlaceholder: true }
+  { id: "conjuntos-deportivos", name: "Conjuntos Deportivos", slug: "conjuntos-deportivos", order: 0, isPlaceholder: false },
+  { id: "abrigos", name: "Abrigos", slug: "abrigos", order: 1, isPlaceholder: false },
+  { id: "tops", name: "Tops", slug: "tops", order: 2, isPlaceholder: false },
+  { id: "pantalones", name: "Pantalones", slug: "pantalones", order: 3, isPlaceholder: false },
+  { id: "vestidos", name: "Vestidos", slug: "vestidos", order: 4, isPlaceholder: false },
+  { id: "camisas", name: "Camisas", slug: "camisas", order: 5, isPlaceholder: false },
+  { id: "calzado", name: "Calzado", slug: "calzado", order: 6, isPlaceholder: false },
+  { id: "mas-proximamente", name: "Más próximamente...", slug: "mas-proximamente", order: 7, isPlaceholder: true }
 ];
 
 export const DEFAULT_COLLECTIONS = [
+  {
+    id: "conjuntos-deportivos",
+    title: "CONJUNTOS DEPORTIVOS",
+    subtitle: "Comodidad y estilo activo",
+    slug: "conjuntos-deportivos",
+    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=82",
+    order: 0,
+    active: true
+  },
+  {
+    id: "abrigos",
+    title: "ABRIGOS",
+    subtitle: "Prendas de abrigo estructuradas",
+    slug: "abrigos",
+    image: "https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=82",
+    order: 1,
+    active: true
+  },
+  {
+    id: "tops",
+    title: "TOPS",
+    subtitle: "Básicos y tendencia diaria",
+    slug: "tops",
+    image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=82",
+    order: 2,
+    active: true
+  },
+  {
+    id: "pantalones",
+    title: "PANTALONES",
+    subtitle: "Vaqueros efecto faja y rectos",
+    slug: "pantalones",
+    image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=82",
+    order: 3,
+    active: true
+  },
+  {
+    id: "vestidos",
+    title: "VESTIDOS",
+    subtitle: "Cortes fluidos y sofisticados",
+    slug: "vestidos",
+    image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=82",
+    order: 4,
+    active: true
+  },
+  {
+    id: "camisas",
+    title: "CAMISAS",
+    subtitle: "Blusas y camisas elegantes",
+    slug: "camisas",
+    image: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=800&q=82",
+    order: 5,
+    active: true
+  },
+  {
+    id: "calzado",
+    title: "CALZADO",
+    subtitle: "Colección piel vacuna",
+    slug: "calzado",
+    image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=800&q=82",
+    order: 6,
+    active: true
+  },
   {
     id: "otono-invierno",
     title: "OTOÑO & INVIERNO",
     subtitle: "Colección de temporada",
     slug: "otono-invierno",
     image: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=82",
-    order: 0,
-    active: true
-  },
-  {
-    id: "primavera-verano",
-    title: "PRIMAVERA & VERANO",
-    subtitle: "Prendas fluidas y luminosas",
-    slug: "primavera-verano",
-    image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=82",
-    order: 1,
-    active: true
-  },
-  {
-    id: "calzado",
-    title: "CALZADO",
-    subtitle: "Colección piel",
-    slug: "calzado",
-    image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=800&q=82",
-    order: 2,
+    order: 7,
     active: true
   },
   {
@@ -109,23 +159,25 @@ export const DEFAULT_COLLECTIONS = [
     subtitle: "Descuentos de temporada",
     slug: "rebajas",
     image: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=800&q=82",
-    order: 3,
+    order: 8,
     active: true
   }
 ];
 
 export const MOCK_SETTINGS = {
   storeName: "Roneo Shop",
-  announcementText: "NUEVA COLECCIÓN 2026 OTOÑO & INVIERNO · ENVÍO GRATIS A PARTIR DE 50€",
+  announcementText: "NUEVA COLECCIÓN OTOÑO & INVIERNO · ENVÍO GRATIS EN PEDIDOS +80€",
   heroTitle: "Roneo Shop",
   heroSubtitle: "Prendas de diseño contemporáneo, calzado en piel vacuna y accesorios seleccionados con máxima atención al detalle.",
   heroImage: "",
   shippingStandardPrice: 4.99,
   standardShippingPrice: 4.99,
-  freeShippingThreshold: 50.00,
+  freeShippingThreshold: 80.00,
+  freeGiftThreshold: 150.00,
   contactPhone: "+34 622 06 36 91",
   contactEmail: "1roneoshop@gmail.com",
   instagramUrl: "https://instagram.com/",
+  tiktokUrl: "https://www.tiktok.com/@roneoshop",
   storeSchedule: "Lunes a Viernes de 10:00 a 20:00",
   returnPolicySummary: "Dispones de 14 días naturales desde la recepción del pedido para cambios de talla o devoluciones.",
   categories: DEFAULT_CATEGORIES,
@@ -164,12 +216,15 @@ export function normalizeSettingsSchema(raw = {}) {
     } catch (e) {}
   }
 
-  // Erradicación y sanitización obligatoria de marcas obsoletas
-  if (!base.storeName || /yoana|zafiro/i.test(base.storeName)) {
+  // Erradicación y sanitización obligatoria de marcas obsoletas y erradicación de "Boutique"
+  if (!base.storeName || /yoana|zafiro|boutique/i.test(base.storeName)) {
     base.storeName = "Roneo Shop";
   }
-  if (!base.heroTitle || /yoana|zafiro/i.test(base.heroTitle)) {
+  if (!base.heroTitle || /yoana|zafiro|boutique/i.test(base.heroTitle)) {
     base.heroTitle = "Roneo Shop";
+  }
+  if (base.heroSubtitle && /boutique/i.test(base.heroSubtitle)) {
+    base.heroSubtitle = base.heroSubtitle.replace(/boutique/gi, 'tienda');
   }
   if (!base.contactEmail || /yoanazafiro\.com|info@roneoshop\.com/i.test(base.contactEmail)) {
     base.contactEmail = FIXED_SENDER_ADDRESS.email;
@@ -183,15 +238,99 @@ export function normalizeSettingsSchema(raw = {}) {
   base.shippingStandardPrice = isNaN(rawShip) ? 4.99 : roundShippingPriceTo99(rawShip);
   base.standardShippingPrice = base.shippingStandardPrice;
 
-  const thresh = parseFloat(String(base.freeShippingThreshold ?? 50.00).replace(',', '.'));
-  base.freeShippingThreshold = isNaN(thresh) ? 50.00 : thresh;
+  // Umbral oficial de Envío Gratis (actualizado a 80,00 € en Fase 8.2) y Regalo (150,00 €)
+  let settingsNeedFirestoreSync = false;
+  const thresh = parseFloat(String(base.freeShippingThreshold ?? 80.00).replace(',', '.'));
+  if (isNaN(thresh) || thresh === 50 || thresh === 60 || thresh < 80) {
+    base.freeShippingThreshold = 80.00;
+    settingsNeedFirestoreSync = true;
+  } else {
+    base.freeShippingThreshold = thresh;
+  }
 
+  // Actualización automática del texto de la cinta de anuncios si menciona 50€ o 60€
+  if (!base.announcementText || /50\s*€|60\s*€/i.test(base.announcementText)) {
+    base.announcementText = "NUEVA COLECCIÓN OTOÑO & INVIERNO · ENVÍO GRATIS EN PEDIDOS +80€";
+    settingsNeedFirestoreSync = true;
+  }
+
+  const giftThresh = parseFloat(String(base.freeGiftThreshold ?? 150.00).replace(',', '.'));
+  base.freeGiftThreshold = isNaN(giftThresh) ? 150.00 : giftThresh;
+
+  // Migración en vivo y orden prioritario Fase 8.2:
+  // 1º Conjuntos Deportivos, 2º Abrigos, 3º Tops, 4º Pantalones, 5º Vestidos, 6º Camisas, 7º Calzado
+  const PRIORITY_ORDER = [
+    "conjuntos-deportivos",
+    "abrigos",
+    "tops",
+    "pantalones",
+    "vestidos",
+    "camisas",
+    "calzado",
+    "otono-invierno",
+    "primavera-verano",
+    "rebajas",
+    "ropa",
+    "mas-proximamente"
+  ];
+
+  let categoriesMigrated = false;
   const rawCats = Array.isArray(base.categories) && base.categories.length > 0 ? base.categories : DEFAULT_CATEGORIES;
-  base.categories = rawCats.filter(c => !['cabello', 'cosmetica', 'peikas'].includes(c.id || c.slug));
+  const mappedCats = rawCats
+    .filter(c => !['cabello', 'cosmetica', 'peikas'].includes(c.id || c.slug))
+    .map(c => {
+      const id = String(c.id || c.slug || '').toLowerCase();
+      if (id === 'chaquetas') {
+        categoriesMigrated = true;
+        return { ...c, id: 'abrigos', slug: 'abrigos', name: 'Abrigos', title: 'Abrigos' };
+      }
+      if (id === 'conjuntos') {
+        categoriesMigrated = true;
+        return { ...c, id: 'conjuntos-deportivos', slug: 'conjuntos-deportivos', name: 'Conjuntos Deportivos', title: 'Conjuntos Deportivos' };
+      }
+      return c;
+    });
+
+  // Ordenar categorías según PRIORITY_ORDER estricto
+  mappedCats.sort((a, b) => {
+    const slugA = String(a.slug || a.id || '').toLowerCase();
+    const slugB = String(b.slug || b.id || '').toLowerCase();
+    const idxA = PRIORITY_ORDER.indexOf(slugA);
+    const idxB = PRIORITY_ORDER.indexOf(slugB);
+    const posA = idxA !== -1 ? idxA : 999;
+    const posB = idxB !== -1 ? idxB : 999;
+    return posA - posB;
+  });
+  base.categories = mappedCats.map((c, index) => ({ ...c, order: index }));
   if (base.categories.length === 0) base.categories = DEFAULT_CATEGORIES;
 
   const rawCols = Array.isArray(base.collections) && base.collections.length > 0 ? base.collections : DEFAULT_COLLECTIONS;
-  base.collections = rawCols.filter(c => !['cabello', 'cosmetica', 'peikas'].includes(c.id || c.slug));
+  const mappedCols = rawCols
+    .filter(c => !['cabello', 'cosmetica', 'peikas'].includes(c.id || c.slug))
+    .map(c => {
+      const id = String(c.id || c.slug || '').toLowerCase();
+      if (id === 'chaquetas') {
+        categoriesMigrated = true;
+        return { ...c, id: 'abrigos', slug: 'abrigos', title: 'Abrigos', name: 'Abrigos' };
+      }
+      if (id === 'conjuntos') {
+        categoriesMigrated = true;
+        return { ...c, id: 'conjuntos-deportivos', slug: 'conjuntos-deportivos', title: 'Conjuntos Deportivos', name: 'Conjuntos Deportivos' };
+      }
+      return c;
+    });
+
+  // Ordenar colecciones según PRIORITY_ORDER estricto
+  mappedCols.sort((a, b) => {
+    const slugA = String(a.slug || a.id || '').toLowerCase();
+    const slugB = String(b.slug || b.id || '').toLowerCase();
+    const idxA = PRIORITY_ORDER.indexOf(slugA);
+    const idxB = PRIORITY_ORDER.indexOf(slugB);
+    const posA = idxA !== -1 ? idxA : 999;
+    const posB = idxB !== -1 ? idxB : 999;
+    return posA - posB;
+  });
+  base.collections = mappedCols.map((c, index) => ({ ...c, order: index }));
   if (base.collections.length === 0) base.collections = DEFAULT_COLLECTIONS;
 
   // Detección de datos antiguos de relleno del remitente
@@ -234,6 +373,22 @@ export function normalizeSettingsSchema(raw = {}) {
         standardShippingPrice: base.shippingStandardPrice
       }, { merge: true }).catch(err => {
         console.warn("[store-service] Error actualizando remitente fijo en Firestore:", err?.message || err);
+      });
+    } catch (e) {}
+  }
+
+  // Persistir migración de categorías, umbral 80€ y textos actualizados a Firestore
+  if ((categoriesMigrated || settingsNeedFirestoreSync) && typeof db !== 'undefined' && db) {
+    try {
+      const configRef = doc(db, 'settings', 'store_config');
+      setDoc(configRef, {
+        categories: base.categories,
+        collections: base.collections,
+        freeShippingThreshold: base.freeShippingThreshold,
+        freeGiftThreshold: base.freeGiftThreshold,
+        announcementText: base.announcementText
+      }, { merge: true }).catch(err => {
+        console.warn("[store-service] Error actualizando ajustes en Firestore:", err?.message || err);
       });
     } catch (e) {}
   }
@@ -697,10 +852,22 @@ export function normalizeProductSchema(raw) {
 
   p.id = String(p.id || p.slug || ('prod-' + Math.random().toString(36).substring(2, 9)));
   p.slug = String(p.slug || p.id).toLowerCase().replace(/yoana-?zafiro/g, 'roneo-shop').replace(/zafiro/g, 'roneo').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  p.title = String(p.title || 'Prenda sin título').replace(/yoana\s*zafiro/gi, 'Roneo Shop').replace(/zafiro/gi, 'Roneo');
-  p.description = String(p.description || '').replace(/yoana\s*zafiro/gi, 'Roneo Shop').replace(/zafiro/gi, 'Roneo');
+  p.title = String(p.title || 'Prenda sin título').replace(/yoana\s*zafiro/gi, 'Roneo Shop').replace(/zafiro/gi, 'Roneo').replace(/boutique/gi, '');
+  p.description = String(p.description || '').replace(/yoana\s*zafiro/gi, 'Roneo Shop').replace(/zafiro/gi, 'Roneo').replace(/boutique/gi, 'tienda');
   p.category = String(p.category || 'ropa').toLowerCase();
+  if (p.category === 'chaquetas') p.category = 'abrigos';
+  if (p.category === 'conjuntos') p.category = 'conjuntos-deportivos';
   p.collection = String(p.collection || 'novedades').toLowerCase();
+  if (p.collection === 'chaquetas') p.collection = 'abrigos';
+  if (p.collection === 'conjuntos') p.collection = 'conjuntos-deportivos';
+  if (Array.isArray(p.collectionTags)) {
+    p.collectionTags = p.collectionTags.map(tag => {
+      const lower = String(tag || '').toLowerCase();
+      if (lower === 'chaquetas') return 'abrigos';
+      if (lower === 'conjuntos') return 'conjuntos-deportivos';
+      return tag;
+    });
+  }
   p.price = Number(p.price || 0);
   p.compareAtPrice = p.compareAtPrice ? Number(p.compareAtPrice) : null;
   p.weightKg = Number(p.weightKg || 0.35);
@@ -1554,9 +1721,18 @@ export async function getProductsByFilter(filters = {}) {
   let list = all.filter(p => {
     if (!p.active) return false;
     if (filters.category && filters.category !== 'all' && filters.category !== 'todos') {
-      const cat = filters.category.toLowerCase();
-      const inTags = Array.isArray(p.collectionTags) && p.collectionTags.some(t => String(t).toLowerCase() === cat);
-      if ((p.category || '').toLowerCase() !== cat && (p.collection || '').toLowerCase() !== cat && !inTags) return false;
+      let cat = filters.category.toLowerCase();
+      if (cat === 'chaquetas') cat = 'abrigos';
+      if (cat === 'conjuntos') cat = 'conjuntos-deportivos';
+      const inTags = Array.isArray(p.collectionTags) && p.collectionTags.some(t => {
+        let tagLower = String(t).toLowerCase();
+        if (tagLower === 'chaquetas') tagLower = 'abrigos';
+        if (tagLower === 'conjuntos') tagLower = 'conjuntos-deportivos';
+        return tagLower === cat;
+      });
+      const prodCat = (p.category || '').toLowerCase() === 'chaquetas' ? 'abrigos' : (p.category || '').toLowerCase() === 'conjuntos' ? 'conjuntos-deportivos' : (p.category || '').toLowerCase();
+      const prodCol = (p.collection || '').toLowerCase() === 'chaquetas' ? 'abrigos' : (p.collection || '').toLowerCase() === 'conjuntos' ? 'conjuntos-deportivos' : (p.collection || '').toLowerCase();
+      if (prodCat !== cat && prodCol !== cat && !inTags) return false;
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();

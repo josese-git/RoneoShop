@@ -2229,6 +2229,12 @@ function renderOrdersList() {
             <div class="order-card-id-row">
               <strong style="font-size: 15.5px; color: #121212;">Pedido #${order.orderNumber}</strong>
               <span class="status-pill is-active" style="font-size: 11px;">${order.status || 'PAGADO'}</span>
+              ${order.hasFreeGift ? `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: #fdf2f8; color: #9d174d; border: 1px solid #fbcfe8; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.03em;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line></svg>
+                  INCLUYE REGALO (+150€)
+                </span>
+              ` : ''}
               <span style="font-size: 11.5px; color: var(--admin-text-muted); background: #f4f4f5; padding: 2px 8px; border-radius: 6px;">
                 ${order.paymentMethod === 'BIZUM' ? 'Bizum' : 'Tarjeta Redsys'}
               </span>

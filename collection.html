@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="description"
     content="Catálogo Oficial Roneo Shop. Moda femenina, vestidos, vaqueros efecto faja, abrigos y calzado en piel vacuna con envíos rápidos 24/48h.">
-  <title id="collection-page-title">Catálogo | Roneo Shop</title>
+  <title id="collection-page-title">Catálogo · Roneo Shop</title>
 
   <!-- Favicon Oficial Roneo Shop -->
   <link rel="icon" type="image/png" href="assets/img/favicon-roneo.png">
@@ -36,20 +36,12 @@
     <div class="announcement-bar__viewport">
       <div class="announcement-bar__track">
         <div class="announcement-bar__group">
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS EN PEDIDOS +80€ &middot; REGALO EN PEDIDOS +150€ &middot; ENVÍO 24/48H CORREOS</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS EN PEDIDOS +80€ &middot; REGALO EN PEDIDOS +150€ &middot; ENVÍO 24/48H CORREOS</span>
         </div>
         <div class="announcement-bar__group" aria-hidden="true">
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
-          <span class="announcement-bar__item">NUEVA COLECCIÓN 2026 OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS A PARTIR
-            DE 50€ ✦ ENVÍO 24/48H PENÍNSULA ✦ ATENCIÓN POR WHATSAPP</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS EN PEDIDOS +80€ &middot; REGALO EN PEDIDOS +150€ &middot; ENVÍO 24/48H CORREOS</span>
+          <span class="announcement-bar__item">NUEVA COLECCIÓN OTOÑO &amp; INVIERNO &middot; ENVÍO GRATIS EN PEDIDOS +80€ &middot; REGALO EN PEDIDOS +150€ &middot; ENVÍO 24/48H CORREOS</span>
         </div>
       </div>
     </div>
@@ -58,90 +50,59 @@
   <!-- ======================================================================
        HEADER STICKY BLANCO PURO
        ====================================================================== -->
-  <header class="site-header">
+  <header class="site-header" id="site-header">
     <div class="site-header__inner">
-      <!-- Izquierda: Logotipo Oficial Roneo Shop (34px de alto) -->
-      <a href="index.html" class="header-logo" aria-label="Roneo Shop - Inicio">
-        <img src="assets/img/logo-roneo.png" alt="Roneo Shop" class="header-logo__img"
-          onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}">
-        <span class="header-logo__fallback" style="display:none;">
-          <span class="logo-line-top">RONEO</span>
-          <span class="logo-line-bottom">SHOP</span>
-        </span>
-      </a>
-
-      <!-- Centro / Derecha en PC: Navegación Superior con 5 Enlaces Oficiales -->
-      <nav class="header-nav-desktop" aria-label="Navegación principal de escritorio">
-        <a href="collection.html?cat=todos" class="header-nav-link is-active">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 3h12l2 5-8 13L4 8zM4 8h16M9 8l3 13M15 8l-3 13"></path>
+      <!-- ZONA IZQUIERDA -->
+      <div class="site-header__left">
+        <button type="button" class="header-icon-btn header-menu-btn" id="btn-open-menu" data-action="open-menu" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
-          <span>Catálogo</span>
+        </button>
+        <nav class="header-desktop-nav" aria-label="Navegación principal">
+          <a href="index.html" class="header-nav-link">Inicio</a>
+          <a href="collection.html?cat=todos" class="header-nav-link is-active">Catálogo</a>
+          <button type="button" class="header-nav-link" data-action="open-info-modal">Info</button>
+        </nav>
+      </div>
+
+      <!-- ZONA CENTRAL: LOGOTIPO 100% CENTRADO -->
+      <div class="site-header__center">
+        <a href="index.html" class="header-logo" aria-label="Roneo Shop - Inicio">
+          <img
+            src="assets/img/logo-roneo.png"
+            alt="Roneo Shop"
+            class="header-logo__img"
+            onerror="if(this.src.indexOf('logo%20roneo.png')===-1){this.src='logo roneo.png';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}"
+          >
+          <span class="header-logo__fallback" style="display:none;">
+            <span class="logo-line-top">RONEO</span>
+            <span class="logo-line-bottom">SHOP</span>
+          </span>
         </a>
+      </div>
 
-        <button type="button" class="header-nav-link" data-action="open-about-modal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path>
+      <!-- ZONA DERECHA: BUSCAR Y CARRITO -->
+      <div class="site-header__right">
+        <button type="button" class="header-icon-btn header-search-btn" id="btn-open-search" data-action="open-search" aria-label="Buscar">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="20" y1="20" x2="16.2" y2="16.2"></line>
           </svg>
-          <span>Sobre mí</span>
         </button>
-
-        <button type="button" class="header-nav-link" data-action="open-cart">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"></path>
+        <button type="button" class="header-icon-btn header-cart-btn" id="btn-open-cart" data-action="open-cart" aria-label="Abrir carrito">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 8h14l-1 12H6z"></path>
+            <path d="M9 8V6a3 3 0 0 1 6 0v2"></path>
           </svg>
-          <span>Carrito</span>
-          <span class="cart-count-badge header-nav-badge is-empty">0</span>
+          <span class="cart-badge cart-count-badge is-empty" id="header-cart-count">0</span>
         </button>
-
-        <button type="button" class="header-nav-link" data-action="open-account-modal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button type="button" class="header-icon-btn header-account-btn" data-action="open-account-modal" aria-label="Mi cuenta">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="8" r="4"></circle>
             <path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5"></path>
-          </svg>
-          <span>Mi cuenta</span>
-        </button>
-
-        <button type="button" class="header-nav-link" id="header-search-btn-desktop" data-action="toggle-search"
-          aria-label="Buscar en la tienda">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </button>
-      </nav>
-
-      <!-- Derecha en Móvil: Lupa, Carrito con badge y Menú Hamburguesa -->
-      <div class="header-right-mobile">
-        <button type="button" id="header-search-btn" class="header-icon-btn" data-action="toggle-search"
-          aria-label="Buscar en la tienda">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </button>
-
-        <button type="button" id="header-cart-btn" class="header-icon-btn" data-action="open-cart"
-          aria-label="Abrir carrito">
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"></path>
-          </svg>
-          <span id="header-cart-badge" class="cart-badge cart-count-badge is-empty">0</span>
-        </button>
-
-        <button type="button" id="header-menu-btn" class="header-menu-btn" aria-label="Abrir menú">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
       </div>
@@ -172,13 +133,17 @@
       <span id="catalog-count-label" class="catalog-page-count">0 PRENDAS</span>
     </div>
 
-    <!-- Píldoras Horizontales de Filtro Deslizables -->
+    <!-- Píldoras Horizontales de Filtro Deslizables (Orden Oficial Fase 8.2) -->
     <div class="catalog-filter-pills" id="catalog-filter-pills">
       <button type="button" class="catalog-pill is-active" data-category="todos">Todo</button>
-      <button type="button" class="catalog-pill" data-category="ropa">Ropa</button>
+      <button type="button" class="catalog-pill" data-category="conjuntos-deportivos">Conjuntos Deportivos</button>
+      <button type="button" class="catalog-pill" data-category="abrigos">Abrigos</button>
+      <button type="button" class="catalog-pill" data-category="tops">Tops</button>
+      <button type="button" class="catalog-pill" data-category="pantalones">Pantalones</button>
+      <button type="button" class="catalog-pill" data-category="vestidos">Vestidos</button>
+      <button type="button" class="catalog-pill" data-category="camisas">Camisas</button>
       <button type="button" class="catalog-pill" data-category="calzado">Calzado</button>
       <button type="button" class="catalog-pill" data-category="otono-invierno">Otoño &amp; Invierno</button>
-      <button type="button" class="catalog-pill" data-category="primavera-verano">Primavera &amp; Verano</button>
       <button type="button" class="catalog-pill" data-category="rebajas" style="color: #b91c1c;">Rebajas %</button>
     </div>
 
@@ -204,7 +169,7 @@
         <h5 class="footer-col__heading">TIENDA</h5>
         <div class="footer-col__links">
           <a href="collection.html?cat=todos" class="footer-col__link">Catálogo</a>
-          <button type="button" class="footer-col__link" data-action="open-about-modal">Sobre mí</button>
+          <button type="button" class="footer-col__link" data-action="open-about-modal">Info</button>
           <a href="https://www.correos.es" target="_blank" rel="noopener" class="footer-col__link">Seguir mi pedido</a>
           <button type="button" class="footer-col__link" data-action="open-account-modal">Mi cuenta</button>
         </div>
@@ -217,6 +182,8 @@
           <button type="button" class="footer-col__link" data-action="open-info-modal">Cómo pagar</button>
           <a href="https://wa.me/34600000000?text=Hola%20Roneo%20Shop,%20tengo%20una%20consulta" target="_blank"
             rel="noopener" class="footer-col__link">WhatsApp</a>
+          <a href="https://www.tiktok.com/@roneoshop" target="_blank" rel="noopener noreferrer"
+            class="footer-col__link">TikTok (@roneoshop)</a>
         </div>
       </div>
 
@@ -250,19 +217,22 @@
     </a>
 
     <a href="collection.html?cat=todos" class="bottom-tab-item is-active" aria-label="Catálogo">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65"
         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M6 3h12l2 5-8 13L4 8zM4 8h16M9 8l3 13M15 8l-3 13"></path>
+        <path d="M12 7a2.5 2.5 0 0 0 2.5-2.5C14.5 3.12 13.38 2 12 2s-2.5 1.12-2.5 2.5"></path>
+        <path d="M12 7v2l8.4 5.25a1.5 1.5 0 0 1-.8 2.75H4.4a1.5 1.5 0 0 1-.8-2.75L12 9"></path>
+        <line x1="8" y1="17" x2="16" y2="17"></line>
       </svg>
       <span>Catálogo</span>
     </a>
 
-    <button type="button" class="bottom-tab-item" data-action="open-about-modal" aria-label="Sobre mí">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"
+    <button type="button" class="bottom-tab-item" data-action="open-about-modal" aria-label="Info">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65"
         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path>
+        <path d="M20 10c0 5.5-8 12-8 12s-8-6.5-8-12a8 8 0 1 1 16 0Z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
       </svg>
-      <span>Sobre mí</span>
+      <span>Info</span>
     </button>
 
     <button type="button" class="bottom-tab-item" data-action="open-cart" aria-label="Carrito">
@@ -285,7 +255,7 @@
   </nav>
 
   <!-- ======================================================================
-       MODAL: SOBRE MÍ (#about-modal)
+       MODAL: INFORMACIÓN Y ENVÍOS (#about-modal)
        ====================================================================== -->
   <div id="about-modal" class="editorial-modal" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
     <div class="editorial-modal__backdrop" data-action="close-about-modal"></div>
@@ -300,30 +270,37 @@
 
       <div class="modal-editorial-body">
         <div class="modal-editorial-icon">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.65"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 5.5-8 12-8 12s-8-6.5-8-12a8 8 0 1 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
           </svg>
         </div>
-        <h3 id="about-modal-title" class="modal-editorial-title">Roneo Shop Boutique</h3>
+        <h3 id="about-modal-title" class="modal-editorial-title">Información &middot; Roneo Shop</h3>
         <p class="modal-editorial-subtitle">Moda &middot; Tendencia &middot; Confianza</p>
         <p class="modal-editorial-desc">
-          En Roneo Shop seleccionamos con pasión cada prenda de nuestra colección: vaqueros efecto faja favorecedores,
-          abrigos estructurados de paño, conjuntos de fiesta y calzado en piel vacuna diseñados para elevar tu estilo
-          diario.
+          Envíos directos desde Andalucía (Torredonjimeno, Jaén) a toda España Península en 24/48 horas laborables con Correos y Correos Express.
         </p>
 
         <div class="modal-editorial-box">
-          <p><strong>Envíos garantizados:</strong> Entrega rápida en 24/48 horas laborables en toda España Península con
-            Correos y Correos Express.</p>
-          <p><strong>Atención directa:</strong> ¿Tienes alguna pregunta sobre tallas, tejidos o el estado de tu pedido?
-            Te atendemos encantadas.</p>
+          <p><strong>Envíos:</strong> Gratis en pedidos superiores a 80,00 €. Regalo sorpresa exclusivo en pedidos desde 150,00 €.</p>
+          <p><strong>Pagos:</strong> 100% seguros con Tarjeta bancaria y Bizum.</p>
+          <p><strong>Atención directa:</strong> ¿Tienes alguna duda sobre tallas o tejidos? Te atendemos encantadas.</p>
         </div>
 
-        <a href="https://wa.me/34600000000?text=Hola%20Roneo%20Shop,%20tengo%20una%20consulta" target="_blank"
-          rel="noopener" class="btn-primary" style="text-decoration: none;">
-          Hablar por WhatsApp
-        </a>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <a href="https://wa.me/34600000000?text=Hola%20Roneo%20Shop,%20tengo%20una%20consulta" target="_blank"
+            rel="noopener" class="btn-primary" style="text-decoration: none;">
+            Hablar por WhatsApp
+          </a>
+          <a href="https://www.tiktok.com/@roneoshop" target="_blank" rel="noopener noreferrer"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; height: 46px; border-radius: 8px; font-weight: 600; font-size: 13px; color: #4d2525; border: 1.5px solid #dfc298; background: #faf8f5;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+            </svg>
+            <span>Ver Ropa en TikTok (@roneoshop)</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -390,12 +367,45 @@
       </button>
     </div>
 
-    <div class="cart-free-shipping-bar">
-      <div id="cart-free-shipping-text" class="cart-free-shipping-text">
-        ENVÍO GRATIS EN PEDIDOS SUPERIORES A €50,00
+    <div id="cart-rewards-container" class="cart-rewards-box">
+      <!-- Doble barra de recompensas: Envío gratis 80€ + Regalo exclusivo 150€ -->
+      <div class="cart-reward-tier">
+        <div class="cart-reward-tier__header">
+          <span class="cart-reward-tier__icon">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7h11v10H3z"></path>
+              <path d="M14 10h4l3 3v4h-7z"></path>
+              <circle cx="7" cy="18" r="1.5"></circle>
+              <circle cx="17" cy="18" r="1.5"></circle>
+            </svg>
+          </span>
+          <span class="cart-reward-tier__text">
+            Te faltan <strong>€80,00</strong> para <strong>ENVÍO GRATIS</strong> (80,00 €)
+          </span>
+        </div>
+        <div class="cart-reward-tier__bar">
+          <div class="cart-reward-tier__fill" style="width: 0%;"></div>
+        </div>
       </div>
-      <div class="cart-progress-track">
-        <div id="cart-progress-fill" class="cart-progress-fill" style="width: 0%;"></div>
+
+      <div class="cart-reward-tier cart-reward-tier--gift">
+        <div class="cart-reward-tier__header">
+          <span class="cart-reward-tier__icon">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 12 20 22 4 22 4 12"></polyline>
+              <rect x="2" y="7" width="20" height="5"></rect>
+              <line x1="12" y1="22" x2="12" y2="7"></line>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+            </svg>
+          </span>
+          <span class="cart-reward-tier__text">
+            Te faltan <strong>€150,00</strong> para tu <strong>REGALO EXCLUSIVO</strong> (150,00 €)
+          </span>
+        </div>
+        <div class="cart-reward-tier__bar">
+          <div class="cart-reward-tier__fill cart-reward-tier__fill--gift" style="width: 0%;"></div>
+        </div>
       </div>
     </div>
 
@@ -442,13 +452,18 @@
       <span id="hamburger-title"
         style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 6px;">Navegación</span>
       <a href="index.html" class="hamburger-drawer__link">INICIO</a>
-      <a href="collection.html?cat=todos" class="hamburger-drawer__link">CATÁLOGO COMPLETO</a>
-      <a href="collection.html?cat=ropa" class="hamburger-drawer__link">ROPA</a>
+      <a href="collection.html?cat=todos" class="hamburger-drawer__link">CATÁLOGO</a>
+      <a href="collection.html?cat=conjuntos-deportivos" class="hamburger-drawer__link">CONJUNTOS DEPORTIVOS</a>
+      <a href="collection.html?cat=abrigos" class="hamburger-drawer__link">ABRIGOS</a>
+      <a href="collection.html?cat=tops" class="hamburger-drawer__link">TOPS</a>
+      <a href="collection.html?cat=pantalones" class="hamburger-drawer__link">PANTALONES</a>
+      <a href="collection.html?cat=vestidos" class="hamburger-drawer__link">VESTIDOS</a>
+      <a href="collection.html?cat=camisas" class="hamburger-drawer__link">CAMISAS</a>
       <a href="collection.html?cat=calzado" class="hamburger-drawer__link">CALZADO</a>
       <a href="collection.html?cat=otono-invierno" class="hamburger-drawer__link">OTOÑO &amp; INVIERNO</a>
       <a href="collection.html?cat=rebajas" class="hamburger-drawer__link" style="color: #b91c1c;">REBAJAS %</a>
       <button type="button" class="hamburger-drawer__link" data-action="open-about-modal"
-        style="text-align: left; background: none; border: none; cursor: pointer;">SOBRE MÍ</button>
+        style="text-align: left; background: none; border: none; cursor: pointer;">INFO</button>
       <button type="button" class="hamburger-drawer__link" data-action="open-account-modal"
         style="text-align: left; background: none; border: none; cursor: pointer;">MI CUENTA</button>
     </nav>
