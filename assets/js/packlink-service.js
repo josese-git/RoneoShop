@@ -197,7 +197,6 @@ export async function resolvePacklinkPostalLocation(rawZip, fallbackCity = "", f
 
   if (postalCache.has(cleanZip)) {
     const cached = postalCache.get(cleanZip);
-    // Si el usuario escribió una ciudad que coincide con una de las localidades válidas del CP, la respetamos con el formato exacto de Packlink
     if (fallbackCity && cached.cities && cached.cities.length > 0) {
       const normUser = fallbackCity.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const matched = cached.cities.find(c => c.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normUser);
@@ -225,7 +224,6 @@ export async function resolvePacklinkPostalLocation(rawZip, fallbackCity = "", f
       }
 
       if (res.ok && list.length > 0) {
-        // Filtrar los registros que correspondan exactamente a este código postal
         const exactMatches = list.filter(item => {
           const itemZip = String(item.zip || item.zip_code || item.zipcode || item.postal_code || item.postalCode || "").trim();
           return !itemZip || itemZip === cleanZip;
@@ -267,7 +265,6 @@ export async function resolvePacklinkPostalLocation(rawZip, fallbackCity = "", f
             resolvedState = defaultProvince;
           }
 
-          // Si el usuario había escrito una localidad válida, usar la grafía oficial exacta
           if (fallbackCity) {
             const normUser = fallbackCity.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const exactCityMatch = allCitiesForZip.find(
@@ -471,7 +468,6 @@ export async function packlinkRequest(endpoint, { method = 'GET', body = null } 
   };
 }
 
-
 /**
  * Obtiene exclusivamente las opciones oficiales de Correos y Correos Express con 21% de IVA incluido
  * y redondeo estricto al tramo ",99€" (roundShippingPriceTo99).
@@ -489,7 +485,6 @@ export async function getCorreosShippingOptions({
   const cleanToZip = String(toZip || '').trim().padStart(5, '0');
   const safeWeight = Math.max(0.1, parseFloat(weightKg) || 0.5);
 
-  // Valores de respaldo estrictamente redondeados al tramo ,99€ validados con la API oficial
   const fallbackCorreos = {
     id: 20679,
     serviceId: 20679,
@@ -552,8 +547,7 @@ export async function getCorreosShippingOptions({
   });
 
   const res = await packlinkRequest(`/services?${queryParams.toString()}`, {
-    method: 'GET',
-    apiKey
+    method: 'GET'
   });
 
   if (!res.ok) {
@@ -568,24 +562,20 @@ export async function getCorreosShippingOptions({
 
   const rawServices = Array.isArray(res.data) ? res.data : (res.data?.services || []);
   
-  // Filtrar servicios de Correos y Correos Express
   const correosServices = rawServices.filter(s => {
     const cName = (s.carrier_name || s.carrier || '').toLowerCase();
     const sName = (s.name || '').toLowerCase();
     return cName.includes('correos') || sName.includes('correos');
   });
 
-  // Filtrar exclusivamente servicios con entrega en domicilio del cliente (delivery_to_parcelshop === false)
   const homeDeliveryServices = correosServices.filter(s => s.delivery_to_parcelshop === false);
   const candidateList = homeDeliveryServices.length > 0 ? homeDeliveryServices : correosServices;
 
-  // 1. Mejor opción de Correos (Paq Estándar Domicilio-Domicilio, id 20679 preferente)
   let bestCorreos = candidateList.find(s => {
     const cName = (s.carrier_name || s.carrier || '').toLowerCase();
     return cName === 'correos' && s.delivery_to_parcelshop === false && (s.dropoff === false || s.id === 20679);
   }) || candidateList.find(s => (s.carrier_name || s.carrier || '').toLowerCase() === 'correos' && s.delivery_to_parcelshop === false);
 
-  // 2. Mejor opción de Correos Express (Paq 24, id 20571 preferente)
   let bestExpress = candidateList.find(s => {
     const cName = (s.carrier_name || s.carrier || '').toLowerCase();
     return cName.includes('express') && s.delivery_to_parcelshop === false;
@@ -597,12 +587,10 @@ export async function getCorreosShippingOptions({
     const tax = parseFloat(s.price?.tax_price || 0);
     const total = parseFloat(s.price?.total_price || 0);
 
-    // Si total_price ya incluye IVA (tax_price > 0 y total_price > base_price), lo usamos; si no, base * 1.21
     const rawWithVat = (tax > 0 && total > base)
       ? total
       : (base * 1.21);
 
-    // Aplicación matemática estricta del tramo ,99€
     const finalPriceWithVat = roundShippingPriceTo99(rawWithVat);
 
     return {
@@ -681,8 +669,7 @@ export async function getPacklinkRates({
   });
 
   const res = await packlinkRequest(`/services?${queryParams.toString()}`, {
-    method: 'GET',
-    apiKey
+    method: 'GET'
   });
 
   if (!res.ok) {
@@ -746,21 +733,17 @@ export async function buildPacklinkShipmentPayload(order, settings = {}, overrid
   const width = parseInt(overrides.width || settings?.packlinkParcel?.width || DEFAULT_PARCEL_DIMENSIONS.width, 10);
   const height = parseInt(overrides.height || settings?.packlinkParcel?.height || DEFAULT_PARCEL_DIMENSIONS.height, 10);
 
-  // 1. Remitente: 100% fijo e inmutable en Torredonjimeno (Jaén), España Península
   const senderLoc = await resolvePacklinkPostalLocation("23650", "Torredonjimeno", "Jaén");
 
-  // 2. Destinatario: resolución estricta del par (zip_code, city) en el catálogo de Packlink
   const rawToZip = overrides.toZip || cust.zipCode || cust.zip_code || cust.postalCode || "28001";
   const recipientLoc = await resolvePacklinkPostalLocation(rawToZip, overrides.officialCity || cust.city, overrides.officialProvince || cust.province);
 
   const cleanCustPhone = String(cust.phone || "").replace(/^\+?34\s*/, "").replace(/\D/g, "").slice(0, 9) || FIXED_SENDER_ADDRESS.phone;
 
-  // Construcción de la calle de destino limpia sin duplicación de piso ni street2
   const rawRecipientStreet = cust.street || cust.street1 || "";
   const rawRecipientApartment = cust.apartment || "";
   const cleanRecipientStreet = buildCleanSingleStreet(rawRecipientStreet, rawRecipientApartment);
 
-  // Servicio y transportista asignados
   let targetServiceId = overrides.service_id || overrides.serviceId || order?.shipping?.serviceId || order?.packlink?.serviceId || null;
   let targetCarrier = overrides.carrierName || order?.shipping?.carrier || order?.packlink?.carrierName || "Correos Express";
   let targetService = overrides.serviceName || order?.shipping?.serviceName || order?.packlink?.serviceName || "Paq 24";
@@ -928,8 +911,7 @@ export async function getPacklinkShipmentStatus(reference, apiKey = null) {
   }
   const cleanRef = String(reference).trim();
   const res = await packlinkRequest(`/shipments/${encodeURIComponent(cleanRef)}`, {
-    method: 'GET',
-    apiKey
+    method: 'GET'
   });
 
   if (res.ok && res.data) {
@@ -963,8 +945,7 @@ export async function getPacklinkShipmentLabels(reference, apiKey = null) {
   const cleanRef = String(reference).trim();
 
   const res = await packlinkRequest(`/shipments/${encodeURIComponent(cleanRef)}/labels`, {
-    method: 'GET',
-    apiKey
+    method: 'GET'
   });
 
   if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
