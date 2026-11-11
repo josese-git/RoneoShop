@@ -187,7 +187,7 @@ Este documento es la ÚNICA fuente de verdad para la estructura de archivos, el 
   "contactEmail": "1roneoshop@gmail.com",
   "instagramUrl": "https://instagram.com/",
   "tiktokUrl": "https://www.tiktok.com/@roneoshop",
-  "packlinkApiKey": "f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5",
+  "packlinkCredential": "Firebase Secret Manager: PACKLINK_API_KEY",
   "packlinkAutoSync": true,
   "packlinkParcel": {
     "length": 30,
