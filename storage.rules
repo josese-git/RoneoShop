@@ -1,10 +1,23 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == '1roneoshop@gmail.com';
+    }
+
     match /{allPaths=**} {
+      // Lectura pública de imágenes de productos, colecciones y tienda
       allow read: if true;
-      allow write: if request.resource == null
-                   || (request.resource.size < 15 * 1024 * 1024);
+
+      // Mutaciones (subida y borrado) exclusivas para el administrador
+      // Para subidas se exige tipo MIME image/* y tamaño inferior a 10 MB
+      allow write: if isAdmin()
+                   && (request.resource == null || (
+                     request.resource.size < 10 * 1024 * 1024
+                     && request.resource.contentType.matches('image/.*')
+                   ));
     }
   }
 }
