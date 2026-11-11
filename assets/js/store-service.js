@@ -192,7 +192,6 @@ export const MOCK_SETTINGS = {
   senderCountry: FIXED_SENDER_ADDRESS.country,
   senderPhone: FIXED_SENDER_ADDRESS.phone,
   senderEmail: FIXED_SENDER_ADDRESS.email,
-  packlinkApiKey: DEFAULT_PACKLINK_API_KEY,
   packlinkAutoSync: true,
   packlinkParcel: {
     length: 30,
@@ -393,9 +392,8 @@ export function normalizeSettingsSchema(raw = {}) {
     } catch (e) {}
   }
 
-  // Normalización oficial Packlink PRO API
-  const plKey = String(raw?.packlinkApiKey || raw?.packlink?.apiKey || base.packlinkApiKey || '').trim();
-  base.packlinkApiKey = (plKey.length > 20) ? plKey : DEFAULT_PACKLINK_API_KEY;
+  // Normalización oficial logística Packlink PRO (clave gestionada en Firebase Secret Manager)
+  delete base.packlinkApiKey;
   base.packlinkAutoSync = raw?.packlinkAutoSync !== undefined ? Boolean(raw.packlinkAutoSync) : true;
   base.packlinkParcel = {
     length: parseInt(raw?.packlinkParcel?.length || 30, 10),
@@ -1173,18 +1171,18 @@ class Store {
           const rawDoc = docSnap.data();
           const normalized = normalizeSettingsSchema(rawDoc);
           this.settings = normalized;
-          // Sanitización automática y persistencia de Packlink API Key oficial en Firestore
+          // Sanitización y purga de clave Packlink de Firestore (solo ejecutable por administrador autenticado)
           const needsBrandSanitize = rawDoc && (
             /yoana|zafiro/i.test(rawDoc.storeName || '') ||
             /yoana|zafiro/i.test(rawDoc.heroTitle || '') ||
             /yoanazafiro/i.test(rawDoc.contactEmail || '') ||
             /yoana|zafiro/i.test(rawDoc.senderName || '')
           );
-          const needsPacklinkKey = !rawDoc?.packlinkApiKey || rawDoc.packlinkApiKey.trim().length < 20;
+          const hasExposedPacklinkKey = Boolean(rawDoc?.packlinkApiKey);
 
-          if (needsBrandSanitize || needsPacklinkKey) {
+          if ((needsBrandSanitize || hasExposedPacklinkKey) && auth?.currentUser?.email === '1roneoshop@gmail.com') {
             try {
-              await updateDoc(doc(db, 'settings', 'store_config'), sanitizeForFirestore({
+              const cleanData = {
                 ...rawDoc,
                 storeName: normalized.storeName,
                 heroTitle: normalized.heroTitle,
@@ -1193,11 +1191,12 @@ class Store {
                 senderCompany: normalized.senderCompany,
                 senderEmail: normalized.senderEmail,
                 senderAddress: normalized.senderAddress,
-                packlinkApiKey: normalized.packlinkApiKey,
                 packlinkAutoSync: normalized.packlinkAutoSync,
                 packlinkParcel: normalized.packlinkParcel
-              }));
-              console.info("[Store Auto-Sanitizer] Configuración en Firestore sincronizada con Packlink PRO y Roneo Shop.");
+              };
+              delete cleanData.packlinkApiKey;
+              await updateDoc(doc(db, 'settings', 'store_config'), sanitizeForFirestore(cleanData));
+              console.info("[Store Auto-Sanitizer] Configuración en Firestore saneada y clave Packlink purgada.");
             } catch (err) {
               console.warn("[Store Auto-Sanitizer Error]:", err);
             }
@@ -1898,6 +1897,11 @@ export async function reorderProducts(orderedProducts) {
 export async function updateProductStockAfterOrder(orderItems) {
   if (!Array.isArray(orderItems) || orderItems.length === 0) return;
 
+  // El stock solo puede mutarse por el administrador o un backend verificado
+  if (!auth?.currentUser || auth.currentUser.email !== '1roneoshop@gmail.com') {
+    return;
+  }
+
   for (const item of orderItems) {
     const product = await getProductByIdOrSlug(item.productId || item.id);
     if (!product) continue;
@@ -2195,7 +2199,7 @@ export async function createOrder(orderData) {
     console.warn("[createOrder] Error guardando pedido en Firestore:", e);
   }
 
-  if (Array.isArray(orderRecord.items)) {
+  if (Array.isArray(orderRecord.items) && auth?.currentUser?.email === '1roneoshop@gmail.com') {
     await updateProductStockAfterOrder(orderRecord.items);
   }
 

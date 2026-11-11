@@ -58,15 +58,13 @@ import {
 } from '../assets/js/store-service.js';
 
 import {
-  DEFAULT_PACKLINK_API_KEY,
   FIXED_SENDER_ADDRESS,
   resolvePacklinkPostalLocation,
   getPacklinkRates,
   createPacklinkShipment,
   getPacklinkShipmentStatus,
   getPacklinkShipmentLabels,
-  buildPacklinkShipmentPayload,
-  getActivePacklinkApiKey
+  buildPacklinkShipmentPayload
 } from '../assets/js/packlink-service.js';
 
 // Estado global de la sesión y datos del panel
@@ -2153,11 +2151,10 @@ function renderOrdersList() {
 
   updateOrderCountPills();
 
-  // Actualizar máscara de API Key en la barra de pedidos
+  // Indicador de seguridad de Packlink en la barra de pedidos
   const keyEl = document.getElementById('lbl-packlink-masked-key');
   if (keyEl) {
-    const key = getActivePacklinkApiKey(currentSettings);
-    keyEl.textContent = key.length > 12 ? `${key.substring(0, 6)}...${key.slice(-5)}` : key;
+    keyEl.textContent = 'Secret Manager (PACKLINK_API_KEY)';
   }
 
   // Filtrar pedidos según píldora activa
@@ -2458,8 +2455,7 @@ function attachOrderActionListeners() {
           weight: weightVal,
           length: lengthVal,
           width: widthVal,
-          height: heightVal,
-          apiKey: currentSettings?.packlinkApiKey
+          height: heightVal
         });
 
         if (!rates.ok || !rates.services || rates.services.length === 0) {
@@ -2585,7 +2581,7 @@ function attachOrderActionListeners() {
       btn.innerHTML = `<span>Consultando...</span>`;
 
       try {
-        const statusRes = await getPacklinkShipmentStatus(ref, currentSettings?.packlinkApiKey);
+        const statusRes = await getPacklinkShipmentStatus(ref);
         if (statusRes.ok) {
           alert(`Estado Oficial Packlink PRO:\n\n- Referencia: ${statusRes.reference}\n- Estado: ${statusRes.state}\n- Transportista: ${statusRes.carrier}\n- Servicio: ${statusRes.serviceName}\n- Códigos de tracking: ${statusRes.trackingCodes.join(', ') || 'Pendiente de emisión'}\n\nPuedes consultar o imprimir la etiqueta directamente en: ${statusRes.trackUrl}`);
         } else {
@@ -2620,8 +2616,8 @@ function openPacklinkModal(order) {
 
   const payload = buildPacklinkShipmentPayload(order, currentSettings);
   const dataToDisplay = {
-    _info: "Payload oficial preparado para POST https://api.packlink.com/v1/shipments",
-    authorization_header: `${getActivePacklinkApiKey(currentSettings).substring(0, 8)}...[OK]`,
+    _info: "Payload oficial preparado para POST /api/packlink/shipments",
+    authorization: "[Inyectada de forma segura por Cloud Functions desde Firebase Secret Manager]",
     shipment_payload: payload,
     last_known_packlink_status: order.packlink || null
   };
@@ -2747,27 +2743,10 @@ function setupOrdersToolbar() {
 }
 
 /**
- * Configuración y Probador en Vivo de Packlink PRO en Pestaña 3 (Ajustes Tienda)
+ * Configuración y Probador Seguro de Envíos en Pestaña 3 (Ajustes Tienda)
+ * Intermediado exclusivamente por Cloud Functions Proxy sin claves en cliente.
  */
 function setupPacklinkSettingsAndTester() {
-  const apiKeyInput = document.getElementById('set-packlink-api-key');
-  const btnToggleKey = document.getElementById('btn-toggle-pl-key-visibility');
-  const btnCopyKey = document.getElementById('btn-copy-pl-api-key');
-
-  btnToggleKey?.addEventListener('click', () => {
-    if (apiKeyInput) {
-      apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-    }
-  });
-
-  btnCopyKey?.addEventListener('click', () => {
-    if (apiKeyInput?.value) {
-      navigator.clipboard.writeText(apiKeyInput.value.trim());
-      showToast("API Key de Packlink copiada");
-    }
-  });
-
-  // Botón 1 del Probador: Cotizar tarifas en tiempo real (GET /v1/services)
   const btnTestRates = document.getElementById('btn-test-packlink-rates');
   const resultsArea = document.getElementById('test-packlink-results-area');
 
@@ -2776,15 +2755,14 @@ function setupPacklinkSettingsAndTester() {
     const fromZip = document.getElementById('test-pl-from-zip')?.value.trim() || FIXED_SENDER_ADDRESS.zip_code;
     const toZip = document.getElementById('test-pl-to-zip')?.value.trim() || '28001';
     const weightVal = parseFloat(document.getElementById('test-pl-weight')?.value || 0.5);
-    const keyVal = apiKeyInput?.value.trim() || DEFAULT_PACKLINK_API_KEY;
 
     const originalText = btnTestRates.innerHTML;
     btnTestRates.disabled = true;
-    btnTestRates.innerHTML = `<span>Conectando con api.packlink.com...</span>`;
+    btnTestRates.innerHTML = `<span>Consultando tarifas seguras...</span>`;
     resultsArea.style.display = 'block';
     resultsArea.innerHTML = `
       <div style="font-size: 12px; color: #666; padding: 10px 0;">
-        Realizando petición HTTP real GET /v1/services con header Authorization...
+        Consultando GET /api/packlink/services intermediado por Cloud Functions Proxy (PACKLINK_API_KEY en Secret Manager)...
       </div>
     `;
 
@@ -2792,14 +2770,13 @@ function setupPacklinkSettingsAndTester() {
       const res = await getPacklinkRates({
         fromZip,
         toZip,
-        weight: weightVal,
-        apiKey: keyVal
+        weight: weightVal
       });
 
       if (!res.ok || !res.services || res.services.length === 0) {
         resultsArea.innerHTML = `
           <div class="pl-test-error-box">
-            <strong>Error al cotizar con la API:</strong> ${res.error || 'Respuesta vacía de Packlink'}.
+            <strong>Error al cotizar tarifas:</strong> ${res.error || 'Respuesta vacía del servicio'}.
           </div>
         `;
         return;
@@ -2808,9 +2785,9 @@ function setupPacklinkSettingsAndTester() {
       resultsArea.innerHTML = `
         <div class="pl-test-success-box">
           <div style="font-weight: 700; margin-bottom: 4px;">
-            ¡Conexión Exitosa con Packlink PRO API! (Canal: ${res.channel})
+            ¡Conexión Segura Exitosa con Packlink PRO! (Canal: ${res.channel})
           </div>
-          <div>Se han obtenido ${res.services.length} opciones de envío reales para la ruta ${fromZip} &rarr; ${toZip}:</div>
+          <div>Se han obtenido ${res.services.length} opciones de envío oficiales para la ruta ${fromZip} &rarr; ${toZip} (Clave protegida en Secret Manager):</div>
         </div>
         <table class="pl-rates-table">
           <thead>
@@ -2836,116 +2813,12 @@ function setupPacklinkSettingsAndTester() {
     } catch (err) {
       resultsArea.innerHTML = `
         <div class="pl-test-error-box">
-          Error en llamada a la API: ${err?.message || err}
+          Error en la consulta: ${err?.message || err}
         </div>
       `;
     } finally {
       btnTestRates.disabled = false;
       btnTestRates.innerHTML = originalText;
-    }
-  });
-
-  // Botón 2 del Probador: Enviar borrador de prueba a la cuenta (POST /v1/shipments)
-  const btnTestShipment = document.getElementById('btn-test-packlink-shipment');
-  btnTestShipment?.addEventListener('click', async () => {
-    if (!resultsArea) return;
-    const fromZip = document.getElementById('test-pl-from-zip')?.value.trim() || FIXED_SENDER_ADDRESS.zip_code;
-    const toZip = document.getElementById('test-pl-to-zip')?.value.trim() || '28001';
-    const weightVal = parseFloat(document.getElementById('test-pl-weight')?.value || 0.5);
-    const keyVal = apiKeyInput?.value.trim() || DEFAULT_PACKLINK_API_KEY;
-
-    const originalText = btnTestShipment.innerHTML;
-    btnTestShipment.disabled = true;
-    btnTestShipment.innerHTML = `<span>Enviando borrador a api.packlink.com...</span>`;
-    resultsArea.style.display = 'block';
-    resultsArea.innerHTML = `
-      <div style="font-size: 12px; color: #666; padding: 10px 0;">
-        Ejecutando POST /v1/shipments en vivo hacia Packlink PRO...
-      </div>
-    `;
-
-    try {
-      const sampleOrder = {
-        orderNumber: `TEST-${Date.now().toString().slice(-6)}`,
-        subtotal: 35.00,
-        total: 40.99,
-        shippingCost: 5.99,
-        totalWeightKg: weightVal,
-        shipping: {
-          carrier: "Correos Express",
-          serviceName: "Paq 24",
-          serviceId: 20571,
-          costWithVat: 5.99
-        },
-        customer: {
-          firstName: "Cliente",
-          lastName: "Prueba Packlink",
-          email: "1roneoshop@gmail.com",
-          phone: "622063691",
-          street: "Calle Mayor 10, 2ºA",
-          apartment: "2ºA",
-          city: "Madrid",
-          province: "Madrid",
-          zipCode: toZip,
-          country: "ES",
-          zone: "ESPAÑA PENÍNSULA"
-        },
-        items: [
-          {
-            productId: "test-prod-1",
-            title: "Prenda de Prueba Roneo Shop",
-            size: "M",
-            color: "Negro",
-            price: 35.00,
-            quantity: 1
-          }
-        ]
-      };
-
-      const res = await createPacklinkShipment(sampleOrder, {
-        packlinkApiKey: keyVal,
-        senderAddress: FIXED_SENDER_ADDRESS
-      }, {
-        weight: weightVal,
-        toZip
-      });
-
-      if (res.ok && res.reference) {
-        resultsArea.innerHTML = `
-          <div class="pl-test-success-box" style="line-height: 1.6;">
-            <div style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">
-              ¡Borrador Registrado Oficialmente en Packlink PRO!
-            </div>
-            <div><strong>Referencia Oficial:</strong> <code style="font-size: 14px; font-weight: 700; background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px;">${res.reference}</code></div>
-            <div><strong>Canal de comunicación:</strong> ${res.channel}</div>
-            <div style="margin-top: 10px;">
-              <a href="https://pro.packlink.es/private/shipments/${res.reference}" target="_blank" rel="noopener" class="admin-btn-primary" style="display: inline-flex; height: 34px; padding: 0 14px; font-size: 12px; text-decoration: none; align-items: center; gap: 6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-                <span>Ver Envío en mi Panel Privado de Packlink PRO</span>
-              </a>
-            </div>
-          </div>
-        `;
-      } else {
-        resultsArea.innerHTML = `
-          <div class="pl-test-error-box">
-            <strong>Error devuelto por Packlink:</strong> ${res.error || 'Respuesta no autorizada o parámetros inválidos'}.
-          </div>
-        `;
-      }
-    } catch (err) {
-      resultsArea.innerHTML = `
-        <div class="pl-test-error-box">
-          Error en la llamada: ${err?.message || err}
-        </div>
-      `;
-    } finally {
-      btnTestShipment.disabled = false;
-      btnTestShipment.innerHTML = originalText;
     }
   });
 }
@@ -2975,7 +2848,6 @@ function populateSettingsForm(settings) {
   const setSenderEmail = document.getElementById('set-sender-email');
 
   // Ajustes Packlink PRO
-  const setPlKey = document.getElementById('set-packlink-api-key');
   const setPlAutoSync = document.getElementById('set-packlink-auto-sync');
   const setParcelL = document.getElementById('set-parcel-length');
   const setParcelW = document.getElementById('set-parcel-width');
@@ -3006,7 +2878,6 @@ function populateSettingsForm(settings) {
   if (setSenderPhone) setSenderPhone.value = sender.phoneFormatted || sender.phone || FIXED_SENDER_ADDRESS.phoneFormatted;
   if (setSenderEmail) setSenderEmail.value = sender.email || FIXED_SENDER_ADDRESS.email;
 
-  if (setPlKey) setPlKey.value = settings.packlinkApiKey || DEFAULT_PACKLINK_API_KEY;
   if (setPlAutoSync) setPlAutoSync.checked = settings.packlinkAutoSync !== false;
   if (setParcelL) setParcelL.value = settings.packlinkParcel?.length || 30;
   if (setParcelW) setParcelW.value = settings.packlinkParcel?.width || 25;
@@ -3053,7 +2924,6 @@ function setupSettingsForm() {
       const shipStr = document.getElementById('set-shipping-price')?.value || '4.90';
       const threshStr = document.getElementById('set-free-threshold')?.value || '50';
 
-      const plKeyVal = document.getElementById('set-packlink-api-key')?.value.trim() || DEFAULT_PACKLINK_API_KEY;
       const plAutoSync = document.getElementById('set-packlink-auto-sync')?.checked ?? true;
       const parcelL = parseInt(document.getElementById('set-parcel-length')?.value || 30, 10);
       const parcelW = parseInt(document.getElementById('set-parcel-width')?.value || 25, 10);
@@ -3074,7 +2944,6 @@ function setupSettingsForm() {
         instagramUrl: document.getElementById('set-instagram-url')?.value || '',
         storeSchedule: document.getElementById('set-store-schedule')?.value || '',
         returnPolicySummary: document.getElementById('set-return-policy')?.value || '',
-        packlinkApiKey: plKeyVal,
         packlinkAutoSync: plAutoSync,
         packlinkParcel: {
           length: parcelL,
@@ -3103,8 +2972,7 @@ function setupSettingsForm() {
       };
 
       await saveStoreSettings(newSettings);
-      localStorage.setItem('roneo_packlink_api_key', plKeyVal);
-      showToast("Ajustes y clave Packlink PRO guardados en Firebase");
+      showToast("Ajustes de la tienda guardados correctamente en Firebase");
     } catch (err) {
       showToast("Error al guardar ajustes: " + (err?.message || err));
     } finally {

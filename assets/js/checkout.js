@@ -456,8 +456,7 @@ function setupPostalCodeLookup() {
           const options = await getCorreosShippingOptions({
             fromZip: '23650',
             toZip: loc.zip_code,
-            weightKg,
-            apiKey: currentStoreSettings?.packlinkApiKey
+            weightKg
           });
 
           if (options.correos) activeShippingRates.correos = options.correos;
@@ -597,7 +596,8 @@ function setupFormSubmission() {
     const newOrder = {
       orderNumber,
       redsysOrderId: orderNumber.replace(/-/g, ''),
-      status: "PAID",
+      status: "PENDING_PAYMENT",
+      paymentStatus: "PENDING_VERIFICATION",
       paymentMethod,
       subtotal: totals.subtotal,
       shippingCost: totals.shippingCost,
@@ -636,13 +636,12 @@ function setupFormSubmission() {
       })),
       packlink: {
         synced: false,
-        reference: "PENDIENTE-API",
+        reference: "PENDIENTE-ENVIO",
         serviceId: chosenShipping.serviceId,
         carrierName: chosenShipping.carrierName,
         trackingUrl: ""
       },
-      createdAt: Date.now(),
-      paidAt: Date.now()
+      createdAt: Date.now()
     };
 
     // 3. Estado de carga
@@ -654,29 +653,20 @@ function setupFormSubmission() {
     }
 
     try {
+      // NOTA DE SEGURIDAD (FASE 7):
+      // initiateRedsysPayment simula el flujo bancario en este entorno.
+      // El pedido se registra con estado PENDING_PAYMENT.
+      // El inventario y la creación de envíos en Packlink PRO se gestionan tras la verificación administrativa.
       await initiateRedsysPayment(newOrder);
 
-      // Guardar pedido en Firestore
+      // Guardar pedido en Firestore (permitido por regla pública de orders)
       await createOrder(newOrder);
-
-      // Descontar stock de prendas en Firestore
-      await updateProductStockAfterOrder(newOrder.items);
-
-      // Sincronización oficial con Packlink PRO
-      let packlinkRes = null;
-      if (currentStoreSettings?.packlinkAutoSync !== false) {
-        try {
-          packlinkRes = await syncOrderWithPacklink(newOrder.orderNumber);
-        } catch (plErr) {
-          console.warn("[Checkout] Error sincronizando con logística oficial:", plErr);
-        }
-      }
 
       // Vaciar carrito
       clearCart();
 
       // Renderizar pantalla de confirmación para el cliente
-      renderOrderConfirmation(newOrder, packlinkRes);
+      renderOrderConfirmation(newOrder, null);
     } catch (err) {
       console.error("[Checkout] Error procesando el pago:", err);
       showError('Ocurrió un error al procesar el pago con la pasarela bancaria. Por favor, inténtalo de nuevo.');

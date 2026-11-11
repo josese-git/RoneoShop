@@ -1,13 +1,16 @@
 /**
- * PACKLINK PRO SERVICE - RONEO SHOP (FASE 6.1 OFICIAL)
- * Conexión directa y completa con la API oficial v1 de Packlink PRO (https://api.packlink.com/v1).
- * Implementa transporte cuádruple anti-CORS (Firebase Proxy, Conexión Directa, Puentes de Respaldo).
+ * PACKLINK PRO SERVICE - RONEO SHOP (FASE 6.1 OFICIAL SEGURO)
+ * Intermediación 100% segura mediante Cloud Functions Proxy (/api/packlink).
+ * Cero secretos en cliente. La API Key reside exclusivamente en Firebase Secret Manager.
+ * Operaciones sensibles (POST / envíos) protegidas mediante Firebase ID Token de Administrador.
  * Exclusividad de líneas de transporte para cliente: Correos y Correos Express (con 21% IVA).
  * Zero Emojis · 100% Iconos Vectoriales SVG.
  */
 
-export const DEFAULT_PACKLINK_API_KEY = "f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5";
-export const PACKLINK_API_BASE = "https://api.packlink.com/v1";
+import { auth } from './firebase-config.js';
+
+export const DEFAULT_PACKLINK_API_KEY = "";
+export const PACKLINK_API_BASE = "/api/packlink";
 
 /**
  * DATOS FIJOS E INMUTABLES DEL REMITENTE ("NOSOTROS") - RONEO SHOP
@@ -349,38 +352,50 @@ export async function resolvePacklinkPostalZone(zipCode, fallbackCity = "") {
 }
 
 /**
- * Obtiene la API Key activa desde los ajustes de la tienda, localStorage o usa la clave oficial por defecto.
+ * Función de compatibilidad: las claves ya no residen en el cliente ni en los ajustes.
+ * Siempre retorna una cadena vacía; la autenticación con Packlink se realiza exclusivamente en Cloud Functions.
  */
-export function getActivePacklinkApiKey(settings = null) {
-  const fromSettings = settings?.packlinkApiKey || settings?.packlink?.apiKey;
-  if (fromSettings && typeof fromSettings === 'string' && fromSettings.trim().length > 20) {
-    return fromSettings.trim();
-  }
-  let fromLocal = null;
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      fromLocal = window.localStorage.getItem('roneo_packlink_api_key');
-    }
-  } catch (e) {}
-  if (fromLocal && fromLocal.trim().length > 20) {
-    return fromLocal.trim();
-  }
-  return DEFAULT_PACKLINK_API_KEY;
+export function getActivePacklinkApiKey() {
+  return "";
 }
 
 /**
- * Ejecuta una petición real contra la API v1 de Packlink PRO superando bloqueos CORS en local y producción.
+ * Ejecuta una petición segura contra la API de envíos a través del backend Cloud Functions Proxy (/api/packlink).
+ * No contiene ni envía ninguna clave Packlink; utiliza Firebase ID Token para rutas protegidas (envíos/POST).
  */
-export async function packlinkRequest(endpoint, { method = 'GET', body = null, apiKey = null } = {}) {
-  const key = (apiKey || getActivePacklinkApiKey()).trim();
+export async function packlinkRequest(endpoint, { method = 'GET', body = null } = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const targetUrl = `${PACKLINK_API_BASE}${cleanEndpoint}`;
+  const isPost = (method || 'GET').toUpperCase() === 'POST';
+  const isShipments = cleanEndpoint.startsWith('/shipments');
+  const requiresAdminAuth = isPost || isShipments;
+
+  let idToken = null;
+  if (requiresAdminAuth) {
+    if (typeof window !== 'undefined' && auth?.currentUser) {
+      try {
+        idToken = await auth.currentUser.getIdToken();
+      } catch (e) {
+        console.warn("[packlinkRequest] Error obteniendo Firebase ID Token:", e);
+      }
+    }
+    if (!idToken) {
+      return {
+        ok: false,
+        status: 401,
+        error: "Acceso no autorizado: Se requiere sesión de administrador para gestionar envíos.",
+        channel: 'client-auth-guard'
+      };
+    }
+  }
 
   const headers = {
-    'Authorization': key,
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   };
+
+  if (idToken) {
+    headers['Authorization'] = `Bearer ${idToken}`;
+  }
 
   const fetchOptions = {
     method,
@@ -390,43 +405,31 @@ export async function packlinkRequest(endpoint, { method = 'GET', body = null, a
 
   const hostname = (typeof window !== 'undefined' && window.location) ? window.location.hostname : '';
   const isLocal = hostname === '127.0.0.1' || hostname === 'localhost';
-  const isHosted = hostname.includes('web.app') || hostname.includes('firebaseapp.com');
 
   const attempts = [
-    // 1. Intento vía proxy propio de Firebase Hosting si está desplegado (/api/packlink/...)
+    // 1. Canal principal oficial: Cloud Functions Proxy vía Firebase Hosting
     {
       name: 'firebase-proxy',
-      url: `/api/packlink${cleanEndpoint}`,
-      onlyWhenHosted: isHosted
-    },
-    // 2. Intento vía micro-proxy local para desarrollo en 127.0.0.1 / localhost (node local-proxy.js)
-    {
-      name: 'local-micro-proxy',
-      url: `http://127.0.0.1:3001/api/packlink${cleanEndpoint}`,
-      onlyWhenLocal: true
-    },
-    // 3. Intento directo a https://api.packlink.com/v1 (Node.js o extensiones sin restricción CORS)
-    {
-      name: 'direct',
-      url: targetUrl,
-      onlyWhenHosted: false
+      url: `/api/packlink${cleanEndpoint}`
     }
   ];
+
+  if (isLocal) {
+    // 2. Canal de desarrollo local opcional (node local-proxy.js)
+    attempts.push({
+      name: 'local-micro-proxy',
+      url: `http://127.0.0.1:3001/api/packlink${cleanEndpoint}`
+    });
+  }
 
   let lastError = null;
 
   for (const attempt of attempts) {
-    if (attempt.onlyWhenHosted && isLocal) {
-      continue;
-    }
-    if (attempt.onlyWhenLocal && !isLocal) {
-      continue;
-    }
     try {
       const response = await fetch(attempt.url, fetchOptions);
       const rawText = await response.text();
 
-      // Si un rewrite devuelve HTML en lugar de JSON, saltar al siguiente canal
+      // Si un rewrite devolviera HTML (ej. 404 de hosting fallback a index.html), saltar al siguiente intento
       if (rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html')) {
         continue;
       }
@@ -454,8 +457,7 @@ export async function packlinkRequest(endpoint, { method = 'GET', body = null, a
       };
     } catch (err) {
       lastError = err;
-      // Errores de autenticación o validación de Packlink terminan la cascada
-      if (err.status && [400, 401, 403, 404, 422].includes(err.status)) {
+      if (err.status && [400, 401, 403, 404, 405, 422].includes(err.status)) {
         break;
       }
     }
@@ -464,7 +466,7 @@ export async function packlinkRequest(endpoint, { method = 'GET', body = null, a
   return {
     ok: false,
     status: lastError?.status || 0,
-    error: lastError?.message || 'No se pudo conectar con Packlink PRO API tras múltiples canales',
+    error: lastError?.message || 'No se pudo conectar con el servicio de envíos',
     details: lastError?.details || null
   };
 }
@@ -837,7 +839,6 @@ export async function buildPacklinkShipmentPayload(order, settings = {}, overrid
  * Auto-resuelve service_id numérico de Correos o Correos Express y par (zip_code, city) oficial.
  */
 export async function createPacklinkShipment(order, settings = {}, overrides = {}) {
-  const activeKey = getActivePacklinkApiKey(settings);
   const cust = order?.customer || {};
   const toZip = String(cust.zipCode || cust.zip || '28001').trim().padStart(5, '0');
   const fromZip = '23650'; // Siempre fijo Torredonjimeno
@@ -853,8 +854,7 @@ export async function createPacklinkShipment(order, settings = {}, overrides = {
       const optionsRes = await getCorreosShippingOptions({
         fromZip,
         toZip,
-        weightKg: weightVal,
-        apiKey: activeKey
+        weightKg: weightVal
       });
 
       if (optionsRes.ok) {
@@ -894,8 +894,7 @@ export async function createPacklinkShipment(order, settings = {}, overrides = {
 
   const res = await packlinkRequest('/shipments', {
     method: 'POST',
-    body: payload,
-    apiKey: activeKey
+    body: payload
   });
 
   if (res.ok && res.data?.reference) {
