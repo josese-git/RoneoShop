@@ -40,14 +40,16 @@ exports.packlinkProxy = onRequest(
   },
   async (req, res) => {
     const origin = req.get("Origin") || "";
-    if (!ALLOWED_ORIGINS.has(origin)) {
+    if (origin && !ALLOWED_ORIGINS.has(origin)) {
       return res.status(403).json({
         ok: false,
         error: "Origen no autorizado"
       });
     }
 
-    res.set("Access-Control-Allow-Origin", origin);
+    // Las peticiones same-origin pueden no incluir Origin; en ese caso
+    // devolvemos explícitamente el dominio de Hosting, nunca un comodín.
+    res.set("Access-Control-Allow-Origin", origin || "https://roneoshop-es.web.app");
     res.set("Vary", "Origin");
     res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
