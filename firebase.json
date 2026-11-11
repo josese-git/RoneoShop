@@ -12,6 +12,16 @@
       "worker-redsys/**",
       "*.md"
     ],
+    "rewrites": [
+      {
+        "source": "/api/packlink",
+        "function": "packlinkProxy"
+      },
+      {
+        "source": "/api/packlink/**",
+        "function": "packlinkProxy"
+      }
+    ],
     "headers": [
       {
         "source": "**/*.@(webp|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
@@ -36,6 +46,9 @@
         ]
       }
     ]
+  },
+  "functions": {
+    "source": "functions"
   },
   "firestore": {
     "rules": "firestore.rules"

@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Firebase Cloud Functions Proxy para Packlink PRO API - Roneo Shop",
+  "description": "Firebase Cloud Functions Proxy seguro v2 para Packlink PRO API - Roneo Shop",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
@@ -8,7 +8,7 @@
     "deploy": "firebase deploy --only functions"
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "index.js",
   "dependencies": {
@@ -17,4 +17,3 @@
   },
   "private": true
 }
-

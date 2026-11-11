@@ -1,24 +1,58 @@
 /**
- * MICRO-PROXY LOCAL TRANSPARENTE PARA PACKLINK PRO API v1
- * Permite ejecutar pruebas directas desde 127.0.0.1:5500 sin restricciones de CORS en el navegador.
- * Uso: node local-proxy.js
+ * MICRO-PROXY LOCAL SEGURO PARA PACKLINK PRO API v1
+ * Permite ejecutar pruebas en entorno local (127.0.0.1:5500 / localhost:5500).
+ * La clave de API se lee EXCLUSIVAMENTE desde la variable de entorno process.env.PACKLINK_API_KEY.
+ * Falla de forma inmediata y explícita si la variable no está definida.
+ * Cero secretos hardcodeados.
+ *
+ * Uso: PACKLINK_API_KEY="tu_clave_secreta" node local-proxy.js
  */
 
 const http = require('http');
 const https = require('https');
 
 const PORT = 3001;
-const DEFAULT_KEY = 'f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5';
+const PACKLINK_API_KEY = process.env.PACKLINK_API_KEY;
+
+if (!PACKLINK_API_KEY || PACKLINK_API_KEY.trim().length === 0) {
+  console.error('[Roneo Shop Local Proxy Error]: La variable de entorno PACKLINK_API_KEY no está definida.');
+  console.error('Para iniciar el proxy local de desarrollo ejecute:');
+  console.error('  $env:PACKLINK_API_KEY="su_clave_packlink"; node local-proxy.js (PowerShell)');
+  console.error('  PACKLINK_API_KEY="su_clave_packlink" node local-proxy.js (Bash/Zsh)');
+  process.exit(1);
+}
+
+const ALLOWED_LOCAL_ORIGINS = new Set([
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+]);
 
 const server = http.createServer((req, res) => {
-  // Cabeceras CORS abiertas para desarrollo local
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  const origin = req.headers.origin;
+
+  if (origin && ALLOWED_LOCAL_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
+    return;
+  }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      ok: false,
+      error: `Método ${req.method} no permitido en el proxy local.`
+    }));
     return;
   }
 
@@ -31,7 +65,6 @@ const server = http.createServer((req, res) => {
   }
 
   const targetPath = `/v1${subPath}`;
-  const authHeader = req.headers['authorization'] || DEFAULT_KEY;
 
   const options = {
     hostname: 'api.packlink.com',
@@ -39,7 +72,7 @@ const server = http.createServer((req, res) => {
     path: targetPath,
     method: req.method,
     headers: {
-      'Authorization': authHeader.trim(),
+      'Authorization': PACKLINK_API_KEY.trim(),
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     }
@@ -63,6 +96,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[Roneo Shop] Micro-Proxy Packlink PRO activo en http://127.0.0.1:${PORT}`);
+  console.log(`[Roneo Shop] Micro-Proxy Seguro Packlink PRO activo en http://127.0.0.1:${PORT}`);
+  console.log(`[Roneo Shop] Clave cargada correctamente desde process.env.PACKLINK_API_KEY`);
 });
-
