@@ -1,17 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == '1roneoshop@gmail.com';
+    }
+
     match /products/{productId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAdmin();
     }
+
     match /settings/{docId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAdmin();
     }
+
     match /orders/{orderId} {
-      allow read: if true;
-      allow write: if true;
+      allow create: if request.resource.data.orderNumber == orderId
+        && request.resource.data.keys().hasAll([
+          'orderNumber', 'customer', 'items', 'total', 'createdAt', 'status'
+        ]);
+      allow read, update, delete: if isAdmin();
     }
   }
 }
