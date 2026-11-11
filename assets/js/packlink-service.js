@@ -6,8 +6,12 @@
  * Zero Emojis · 100% Iconos Vectoriales SVG.
  */
 
-export const DEFAULT_PACKLINK_API_KEY = "f6343535d64a6f27e3dfa60297abc964a5d9f1d0f546d091c8485722ddbc25a5";
-export const PACKLINK_API_BASE = "https://api.packlink.com/v1";
+import { auth } from "./firebase-config.js";
+
+export const PACKLINK_API_BASE = "/api/packlink";
+
+// Compatibilidad temporal: la credencial nunca se entrega al navegador.
+export const DEFAULT_PACKLINK_API_KEY = "";
 
 /**
  * DATOS FIJOS E INMUTABLES DEL REMITENTE ("NOSOTROS") - RONEO SHOP
@@ -351,124 +355,88 @@ export async function resolvePacklinkPostalZone(zipCode, fallbackCity = "") {
 /**
  * Obtiene la API Key activa desde los ajustes de la tienda, localStorage o usa la clave oficial por defecto.
  */
-export function getActivePacklinkApiKey(settings = null) {
-  const fromSettings = settings?.packlinkApiKey || settings?.packlink?.apiKey;
-  if (fromSettings && typeof fromSettings === 'string' && fromSettings.trim().length > 20) {
-    return fromSettings.trim();
-  }
-  let fromLocal = null;
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      fromLocal = window.localStorage.getItem('roneo_packlink_api_key');
-    }
-  } catch (e) {}
-  if (fromLocal && fromLocal.trim().length > 20) {
-    return fromLocal.trim();
-  }
-  return DEFAULT_PACKLINK_API_KEY;
+export function getActivePacklinkApiKey() {
+  // La clave vive exclusivamente en Firebase Secret Manager.
+  return "";
 }
 
 /**
- * Ejecuta una petición real contra la API v1 de Packlink PRO superando bloqueos CORS en local y producción.
+ * Todas las peticiones pasan por Cloud Functions.
+ * Nunca se envía una credencial desde el navegador.
  */
-export async function packlinkRequest(endpoint, { method = 'GET', body = null, apiKey = null } = {}) {
-  const key = (apiKey || getActivePacklinkApiKey()).trim();
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const targetUrl = `${PACKLINK_API_BASE}${cleanEndpoint}`;
+export async function packlinkRequest(endpoint, { method = "GET", body = null } = {}) {
+  const cleanEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
 
-  const headers = {
-    'Authorization': key,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  };
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    };
 
-  const fetchOptions = {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined
-  };
-
-  const hostname = (typeof window !== 'undefined' && window.location) ? window.location.hostname : '';
-  const isLocal = hostname === '127.0.0.1' || hostname === 'localhost';
-  const isHosted = hostname.includes('web.app') || hostname.includes('firebaseapp.com');
-
-  const attempts = [
-    // 1. Intento vía proxy propio de Firebase Hosting si está desplegado (/api/packlink/...)
-    {
-      name: 'firebase-proxy',
-      url: `/api/packlink${cleanEndpoint}`,
-      onlyWhenHosted: isHosted
-    },
-    // 2. Intento vía micro-proxy local para desarrollo en 127.0.0.1 / localhost (node local-proxy.js)
-    {
-      name: 'local-micro-proxy',
-      url: `http://127.0.0.1:3001/api/packlink${cleanEndpoint}`,
-      onlyWhenLocal: true
-    },
-    // 3. Intento directo a https://api.packlink.com/v1 (Node.js o extensiones sin restricción CORS)
-    {
-      name: 'direct',
-      url: targetUrl,
-      onlyWhenHosted: false
+    // Las operaciones de envío requieren la sesión del administrador.
+    const needsAdminAuth = method === "POST" || cleanEndpoint.startsWith("/shipments");
+    if (needsAdminAuth) {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("Debes iniciar sesión como administrador para crear un envío");
+      }
+      headers.Authorization = `Bearer ${await user.getIdToken()}`;
     }
-  ];
 
-  let lastError = null;
+    const hostname = typeof window !== "undefined"
+      ? window.location.hostname
+      : "";
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    const requestBase = isLocal
+      ? "http://127.0.0.1:3001/api/packlink"
+      : PACKLINK_API_BASE;
 
-  for (const attempt of attempts) {
-    if (attempt.onlyWhenHosted && isLocal) {
-      continue;
-    }
-    if (attempt.onlyWhenLocal && !isLocal) {
-      continue;
-    }
+    const response = await fetch(`${requestBase}${cleanEndpoint}`, {
+      method,
+      headers,
+      body: body == null ? undefined : JSON.stringify(body)
+    });
+
+    const rawText = await response.text();
+    let data = {};
+
     try {
-      const response = await fetch(attempt.url, fetchOptions);
-      const rawText = await response.text();
-
-      // Si un rewrite devuelve HTML en lugar de JSON, saltar al siguiente canal
-      if (rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html')) {
-        continue;
-      }
-
-      let parsedData = null;
-      try {
-        parsedData = rawText ? JSON.parse(rawText) : {};
-      } catch (e) {
-        parsedData = { raw: rawText };
-      }
-
-      if (!response.ok) {
-        const errorMsg = parsedData?.message || parsedData?.error || (Array.isArray(parsedData?.messages) ? parsedData.messages.join(', ') : null) || `HTTP ${response.status}`;
-        const err = new Error(errorMsg);
-        err.status = response.status;
-        err.details = parsedData;
-        throw err;
-      }
-
-      return {
-        ok: true,
-        status: response.status,
-        channel: attempt.name,
-        data: parsedData
-      };
-    } catch (err) {
-      lastError = err;
-      // Errores de autenticación o validación de Packlink terminan la cascada
-      if (err.status && [400, 401, 403, 404, 422].includes(err.status)) {
-        break;
-      }
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = { raw: rawText };
     }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        channel: "firebase-secret-proxy",
+        error:
+          data?.message ||
+          data?.error ||
+          `Packlink respondió HTTP ${response.status}`,
+        details: data
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status,
+      channel: "firebase-secret-proxy",
+      data
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      channel: "firebase-secret-proxy",
+      error: error?.message || "No se pudo conectar con Packlink PRO",
+      details: null
+    };
   }
-
-  return {
-    ok: false,
-    status: lastError?.status || 0,
-    error: lastError?.message || 'No se pudo conectar con Packlink PRO API tras múltiples canales',
-    details: lastError?.details || null
-  };
 }
-
 
 /**
  * Obtiene exclusivamente las opciones oficiales de Correos y Correos Express con 21% de IVA incluido
