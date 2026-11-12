@@ -2639,82 +2639,126 @@ function openPacklinkModal(order) {
  * Inicialización de la barra superior de pedidos (Generar Pedido Prueba + Sincronizar Pendientes)
  */
 function setupOrdersToolbar() {
-  // 1. Generar pedido de prueba realista y enviarlo a Packlink PRO en vivo
+  const modalConfirm = document.getElementById('packlink-confirm-modal');
+  const chkConfirm = document.getElementById('chk-confirm-pl-test');
+  const btnExecute = document.getElementById('btn-execute-pl-test');
+  const btnCloseModal = document.getElementById('btn-close-pl-confirm-modal');
+  const btnCancelModal = document.getElementById('btn-cancel-pl-test');
+
+  const openConfirmModal = () => {
+    if (modalConfirm) {
+      if (chkConfirm) chkConfirm.checked = false;
+      if (btnExecute) {
+        btnExecute.disabled = true;
+        btnExecute.style.opacity = '0.5';
+      }
+      modalConfirm.classList.add('is-open');
+    }
+  };
+
+  const closeConfirmModal = () => {
+    if (modalConfirm) modalConfirm.classList.remove('is-open');
+  };
+
+  // 1. Botones que abren la doble confirmación
   const btnCreateTest = document.getElementById('btn-create-test-order-packlink');
-  btnCreateTest?.addEventListener('click', async () => {
-    const originalText = btnCreateTest.innerHTML;
-    btnCreateTest.disabled = true;
-    btnCreateTest.innerHTML = `
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
-        <line x1="12" y1="2" x2="12" y2="6"></line>
-        <line x1="12" y1="18" x2="12" y2="22"></line>
-        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-      </svg>
-      <span>Creando y conectando con Packlink PRO...</span>
-    `;
+  const btnOpenConfirmShipment = document.getElementById('btn-open-confirm-test-shipment');
+
+  btnCreateTest?.addEventListener('click', openConfirmModal);
+  btnOpenConfirmShipment?.addEventListener('click', openConfirmModal);
+  btnCloseModal?.addEventListener('click', closeConfirmModal);
+  btnCancelModal?.addEventListener('click', closeConfirmModal);
+
+  // Checkbox de confirmación obligatoria
+  chkConfirm?.addEventListener('change', () => {
+    if (btnExecute) {
+      btnExecute.disabled = !chkConfirm.checked;
+      btnExecute.style.opacity = chkConfirm.checked ? '1' : '0.5';
+    }
+  });
+
+  // Ejecución del envío de prueba tras doble confirmación
+  btnExecute?.addEventListener('click', async () => {
+    if (!chkConfirm?.checked) return;
+
+    btnExecute.disabled = true;
+    btnExecute.textContent = 'Enviando borrador a Packlink PRO...';
 
     try {
       const orderNumber = generateDailyOrderNumber();
       const testOrder = {
         orderNumber,
         redsysOrderId: orderNumber.replace(/-/g, ''),
-        status: "PAID",
+        status: "PENDING_PAYMENT",
+        paymentStatus: "SIMULATED",
+        isTest: true,
         paymentMethod: "CARD",
         subtotal: 49.95,
-        shippingCost: 0.00,
-        total: 49.95,
-        totalWeightKg: 0.95,
+        shippingCost: 4.99,
+        total: 54.94,
+        totalWeightKg: 0.5,
+        shipping: {
+          carrier: "Correos",
+          serviceName: "Paq Estándar Domicilio",
+          serviceId: 20679,
+          costWithVat: 4.99
+        },
         customer: {
-          firstName: "Laura",
-          lastName: "Gómez",
-          email: "laura.test@roneoshop.com",
+          firstName: "Cliente",
+          lastName: "Prueba Roneo",
+          email: "test.cliente@roneoshop.com",
           phone: "600112233",
-          street: "Calle Larios 12, 3ºB",
-          city: "Málaga",
-          province: "Málaga",
-          zipCode: "29005",
-          country: "ES"
+          street: "Calle Alcalá 1, 1ºA",
+          apartment: "1ºA",
+          fullStreet: "Calle Alcalá 1, 1ºA",
+          city: "Madrid",
+          province: "Madrid",
+          zipCode: "28014",
+          country: "ES",
+          zone: "ESPAÑA PENÍNSULA"
         },
         items: [
           {
-            productId: "abrigo-pandora",
-            title: "Abrigo Pandora Camel",
+            productId: "prenda-prueba-packlink",
+            title: "Prenda de Prueba Determinista Roneo",
             size: "M",
-            color: "Camel",
-            colorHex: "#c19a6b",
+            color: "Negro",
+            colorHex: "#121212",
             price: 49.95,
             quantity: 1,
-            image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1080&q=82"
+            image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=82"
           }
         ],
         packlink: {
           synced: false,
-          reference: "PENDIENTE-API",
+          reference: "PENDIENTE-ENVIO",
+          serviceId: 20679,
+          carrierName: "Correos",
           trackingUrl: ""
         },
-        createdAt: Date.now(),
-        paidAt: Date.now()
+        createdAt: Date.now()
       };
 
       await createOrder(testOrder);
       const res = await syncOrderWithPacklink(orderNumber);
 
+      closeConfirmModal();
+
       if (res.ok && res.reference) {
-        showToast(`¡Pedido de prueba #${orderNumber} registrado con éxito en Packlink PRO! Ref: ${res.reference}`);
+        showToast(`Envío de prueba registrado en Packlink PRO. Ref: ${res.reference}`);
       } else {
-        showToast(`Pedido #${orderNumber} creado en la tienda, pero Packlink respondió: ${res.error}`);
+        showToast(`Pedido #${orderNumber} creado. Respuesta Packlink: ${res.error || 'Sin confirmación'}`);
       }
     } catch (err) {
-      showToast(`Error al generar pedido de prueba: ${err?.message || err}`);
+      showToast(`Error al crear envío de prueba: ${err?.message || err}`);
     } finally {
-      btnCreateTest.disabled = false;
-      btnCreateTest.innerHTML = originalText;
+      btnExecute.disabled = false;
+      btnExecute.textContent = 'Sí, Crear Envío de Prueba';
       renderOrdersList();
     }
   });
 
-  // 2. Sincronizar todos los pedidos pendientes con Packlink PRO
+  // 2. Sincronizar pedidos pendientes con confirmación
   const btnSyncAll = document.getElementById('btn-sync-all-pending-packlink');
   btnSyncAll?.addEventListener('click', async () => {
     const pendings = currentOrders.filter(o => !o.packlink?.synced && o.status !== 'CANCELLED');
@@ -2722,6 +2766,9 @@ function setupOrdersToolbar() {
       showToast("No hay pedidos pendientes de sincronizar con Packlink PRO.");
       return;
     }
+
+    const ok = window.confirm(`Se van a sincronizar ${pendings.length} pedido(s) con Packlink PRO mediante peticiones POST. ¿Deseas continuar?`);
+    if (!ok) return;
 
     const originalText = btnSyncAll.innerHTML;
     btnSyncAll.disabled = true;
@@ -2819,6 +2866,48 @@ function setupPacklinkSettingsAndTester() {
     } finally {
       btnTestRates.disabled = false;
       btnTestRates.innerHTML = originalText;
+    }
+  });
+
+  // Nivel A2: Resolver localidad oficial por Código Postal
+  const btnTestLoc = document.getElementById('btn-test-packlink-loc');
+  btnTestLoc?.addEventListener('click', async () => {
+    if (!resultsArea) return;
+    const toZip = document.getElementById('test-pl-to-zip')?.value.trim() || '28001';
+
+    const originalText = btnTestLoc.innerHTML;
+    btnTestLoc.disabled = true;
+    btnTestLoc.innerHTML = `<span>Resolviendo C.P. ${toZip}...</span>`;
+    resultsArea.style.display = 'block';
+
+    try {
+      const loc = await resolvePacklinkPostalLocation(toZip);
+      resultsArea.innerHTML = `
+        <div class="pl-test-success-box">
+          <div style="font-weight: 700; margin-bottom: 4px;">
+            Localidad oficial resuelta para C.P. ${toZip}:
+          </div>
+          <div style="font-size: 13px; color: #231515;">
+            <strong>Ciudad:</strong> ${loc.city || 'No especificada'} &middot;
+            <strong>Provincia/Zona:</strong> ${loc.state || 'España Peninsular'} &middot;
+            <strong>Zona ID:</strong> ${loc.postal_zone_id || 65}
+          </div>
+          ${loc.cities && loc.cities.length > 1 ? `
+            <div style="font-size: 11.5px; color: #666; margin-top: 6px;">
+              Núcleos asignados a este C.P.: ${loc.cities.join(', ')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    } catch (err) {
+      resultsArea.innerHTML = `
+        <div class="pl-test-error-box">
+          Error resolviendo localidad: ${err?.message || err}
+        </div>
+      `;
+    } finally {
+      btnTestLoc.disabled = false;
+      btnTestLoc.innerHTML = originalText;
     }
   });
 }

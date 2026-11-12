@@ -101,15 +101,16 @@ exports.packlinkProxy = onRequest({ secrets: [packlinkApiKey] }, async (req, res
   const isServicesRoute = (req.method === "GET" && (subPath === "/services" || subPath.startsWith("/services/")));
   const isLocationsRoute = (req.method === "GET" && (subPath === "/locations/postalcodes" || subPath.startsWith("/locations/postalcodes/")));
   const isShipmentsRoute = (subPath === "/shipments" || subPath.startsWith("/shipments/"));
+  const isTrackRoute = (req.method === "GET" && (subPath === "/track" || subPath.startsWith("/track/")));
 
-  if (!isServicesRoute && !isLocationsRoute && !isShipmentsRoute) {
+  if (!isServicesRoute && !isLocationsRoute && !isShipmentsRoute && !isTrackRoute) {
     return res.status(404).json({
       ok: false,
       error: `Ruta Packlink no permitida: ${subPath}`
     });
   }
 
-  // 5. Exigir autenticación de administrador para POST, /shipments y consultas sensibles
+  // 5. Exigir autenticación de administrador para POST y /shipments
   if (req.method === "POST" || isShipmentsRoute) {
     const isAdmin = await verifyAdminAuth(req);
     if (!isAdmin) {
@@ -117,6 +118,58 @@ exports.packlinkProxy = onRequest({ secrets: [packlinkApiKey] }, async (req, res
         ok: false,
         error: `Acceso no autorizado. Se requiere sesión de administrador activa (${AUTHORIZED_ADMIN_EMAIL}).`
       });
+    }
+  }
+
+  // 5.b. Exigir autenticación y validación de propiedad para /track/:reference
+  let trackRef = "";
+  let trackCarrier = "Correos";
+  if (isTrackRoute) {
+    trackRef = subPath.replace(/^\/track\/?/, "").split("/")[0].trim();
+    if (!trackRef) {
+      return res.status(400).json({ ok: false, error: "Referencia de seguimiento no especificada." });
+    }
+
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ ok: false, error: "Se requiere iniciar sesión para consultar el seguimiento." });
+    }
+    const idToken = authHeader.slice(7).trim();
+
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const isAdm = Boolean(decoded.email && decoded.email.toLowerCase() === AUTHORIZED_ADMIN_EMAIL);
+
+      if (!isAdm) {
+        // Verificar en Firestore que el pedido pertenezca a decoded.uid
+        const snap = await admin.firestore().collection("orders")
+          .where("customerUid", "==", decoded.uid)
+          .limit(50)
+          .get();
+
+        let authorized = false;
+        snap.forEach(d => {
+          const ord = d.data();
+          if (
+            ord.orderNumber === trackRef ||
+            ord.packlinkReference === trackRef ||
+            ord.packlink?.reference === trackRef ||
+            ord.packlinkShipmentId === trackRef
+          ) {
+            authorized = true;
+            if (ord.shipping?.carrier) trackCarrier = ord.shipping.carrier;
+          }
+        });
+
+        if (!authorized) {
+          return res.status(403).json({
+            ok: false,
+            error: "No tienes autorización para consultar el seguimiento de este pedido."
+          });
+        }
+      }
+    } catch (err) {
+      return res.status(401).json({ ok: false, error: "Token de sesión expirado o no válido." });
     }
   }
 
@@ -139,7 +192,10 @@ exports.packlinkProxy = onRequest({ secrets: [packlinkApiKey] }, async (req, res
   const queryString = req.url && req.url.includes("?")
     ? req.url.slice(req.url.indexOf("?"))
     : "";
-  const targetPath = `/v1${subPath}${queryString}`;
+  let targetPath = `/v1${subPath}${queryString}`;
+  if (isTrackRoute) {
+    targetPath = `/v1/shipments/${encodeURIComponent(trackRef)}/track${queryString}`;
+  }
 
   const requestOptions = {
     hostname: "api.packlink.com",
@@ -154,6 +210,33 @@ exports.packlinkProxy = onRequest({ secrets: [packlinkApiKey] }, async (req, res
   };
 
   const proxyReq = https.request(requestOptions, (proxyRes) => {
+    // Si es consulta de tracking, sanear la respuesta antes de devolverla
+    if (isTrackRoute) {
+      res.status(proxyRes.statusCode >= 200 && proxyRes.statusCode < 300 ? 200 : proxyRes.statusCode);
+      let trackBody = "";
+      proxyRes.on("data", (chunk) => { trackBody += chunk; });
+      proxyRes.on("end", () => {
+        try {
+          const parsed = JSON.parse(trackBody);
+          res.json({
+            ok: proxyRes.statusCode >= 200 && proxyRes.statusCode < 300,
+            reference: trackRef,
+            carrier: trackCarrier,
+            status: parsed.status || "EN_TRANSITO",
+            trackingCode: parsed.tracking_code || parsed.carrier_tracking_code || "",
+            history: Array.isArray(parsed.history) ? parsed.history : []
+          });
+        } catch (e) {
+          res.json({
+            ok: false,
+            reference: trackRef,
+            error: "Detalles de seguimiento en proceso de sincronización con el transportista."
+          });
+        }
+      });
+      return;
+    }
+
     res.status(proxyRes.statusCode);
 
     for (const [key, value] of Object.entries(proxyRes.headers)) {

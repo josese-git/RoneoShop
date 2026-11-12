@@ -305,7 +305,7 @@
           <div class="packlink-toolbar-left">
             <span class="packlink-api-badge">
               <span class="packlink-live-dot"></span>
-              <span>API Packlink PRO Activa: <code id="lbl-packlink-masked-key">f63435...c25a5</code></span>
+              <span>API Packlink PRO: <strong style="color: #166534; font-weight: 700;">Protegida en Firebase Secret Manager</strong></span>
             </span>
           </div>
           <div class="packlink-toolbar-right">
@@ -315,14 +315,14 @@
                 <polyline points="1 20 1 14 7 14"></polyline>
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
               </svg>
-              <span>Sincronizar Todos los Pendientes</span>
+              <span>Sincronizar Pendientes (Confirmación Manual)</span>
             </button>
-            <button type="button" id="btn-create-test-order-packlink" class="admin-btn-primary" title="Genera un pedido de prueba realista y envía el borrador a la API oficial de Packlink PRO">
+            <button type="button" id="btn-create-test-order-packlink" class="admin-btn-primary" title="Genera un envío de prueba con doble confirmación explícita">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span>+ Generar Pedido de Prueba y Enviar a Packlink PRO</span>
+              <span>+ Crear Envío de Prueba (Doble Confirmación)</span>
             </button>
           </div>
         </div>
@@ -609,17 +609,19 @@
                 </div>
               </div>
 
-              <!-- 2. Simulador / Probador en Vivo de la API de Packlink PRO -->
-              <div class="packlink-tester-box" style="margin-top: 20px; padding: 18px; background: #fffaf8; border: 1px solid #ffdcd4; border-radius: 10px;">
-                <h3 style="font-size: 13.5px; font-weight: 700; color: #4d2525; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                  </svg>
-                  Simulador de Envíos y Conexión en Vivo con Packlink PRO
-                </h3>
-                <p style="font-size: 12px; color: #666; margin-bottom: 14px;">
-                  Comprueba en tiempo real que tu API Key funciona contra los servidores de Packlink sin necesidad de salir del panel:
-                </p>
+              <!-- 2. Probador de la API de Packlink PRO (Dos Niveles Oficiales) -->
+              <div class="packlink-tester-box" style="margin-top: 20px; padding: 20px; background: #fffaf8; border: 1px solid #ffdcd4; border-radius: 12px;">
+                <div style="border-bottom: 1px solid #f6ded8; padding-bottom: 14px; margin-bottom: 16px;">
+                  <h3 style="font-size: 14px; font-weight: 700; color: #4d2525; margin: 0 0 4px; display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Nivel A: Consulta Segura de Tarifas y Códigos Postales (Solo Lectura)
+                  </h3>
+                  <p style="font-size: 12px; color: #666; margin: 0;">
+                    Comprueba en vivo las tarifas y localidades oficiales devueltas por Packlink PRO sin modificar ningún dato ni crear envíos:
+                  </p>
+                </div>
 
                 <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px;">
                   <div class="form-group" style="margin: 0;">
@@ -643,12 +645,40 @@
                       <line x1="2" y1="12" x2="22" y2="12"></line>
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
                     </svg>
-                    <span>Probar Conexión Segura y Cotizar Tarifas (GET /api/packlink/services)</span>
+                    <span>Cotizar Tarifas (GET /services)</span>
+                  </button>
+                  <button type="button" id="btn-test-packlink-loc" class="admin-btn-secondary" style="height: 38px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>Resolver Localidad (GET /locations)</span>
                   </button>
                 </div>
 
                 <!-- Resultados del test de cotización / envío -->
                 <div id="test-packlink-results-area" style="margin-top: 14px; display: none;"></div>
+
+                <!-- NIVEL B: Creación Manual con Doble Confirmación -->
+                <div style="margin-top: 24px; padding-top: 18px; border-top: 1px dashed #ffdcd4;">
+                  <h3 style="font-size: 13.5px; font-weight: 700; color: #991b1b; margin: 0 0 6px; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                    </svg>
+                    Nivel B: Creación Manual de Envío de Prueba (POST /shipments)
+                  </h3>
+                  <p style="font-size: 12px; color: #666; margin: 0 0 12px; line-height: 1.45;">
+                    Permite enviar un borrador de prueba determinista a Packlink PRO bajo sesión autenticada. Requiere confirmación doble explícita y nunca se ejecuta de forma automática.
+                  </p>
+                  <button type="button" id="btn-open-confirm-test-shipment" class="admin-btn-primary" style="background: #991b1b; border-color: #7f1d1d; height: 38px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Crear Envío de Prueba Manual en Packlink PRO</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1102,6 +1132,59 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
           Guardar Colección
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: DOBLE CONFIRMACIÓN DE ENVÍO DE PRUEBA PACKLINK PRO
+       ====================================================================== -->
+  <div id="packlink-confirm-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="pl-confirm-modal-title">
+    <div class="admin-modal__overlay"></div>
+    <div class="admin-modal__container" style="max-width: 540px;">
+      <div class="admin-modal__header">
+        <h2 id="pl-confirm-modal-title" class="admin-modal__title" style="color: #991b1b; display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+          </svg>
+          Confirmación Requerida: Envío de Prueba
+        </h2>
+        <button type="button" id="btn-close-pl-confirm-modal" class="admin-modal__close" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal__body">
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin-bottom: 14px; font-size: 13px; color: #991b1b; line-height: 1.5;">
+          <strong>ADVERTENCIA DE SEGURIDAD:</strong> Esta acción realizará una petición <code>POST /api/packlink/shipments</code> real hacia la API oficial de Packlink PRO utilizando tu clave en Firebase Secret Manager. Esto registrará un borrador o envío en tu cuenta de Packlink PRO con consecuencias externas.
+        </div>
+
+        <div style="font-size: 12.5px; color: #555; margin-bottom: 14px; line-height: 1.5;">
+          <p style="margin: 0 0 6px;"><strong>Datos deterministas del envío de prueba:</strong></p>
+          <ul style="margin: 0; padding-left: 20px;">
+            <li><strong>Origen fijo:</strong> Nerea Cortes Muñoz &middot; Calle Norte 70, 23650 Torredonjimeno (Jaén)</li>
+            <li><strong>Destinatario prueba:</strong> Cliente Prueba &middot; Calle Alcalá 1, 28014 Madrid</li>
+            <li><strong>Bulto:</strong> 30x25x10 cm &middot; 0.5 kg &middot; Valor 30,00 €</li>
+            <li><strong>Marcado interno:</strong> <code>isTest: true</code></li>
+          </ul>
+        </div>
+
+        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: #faf8f6; padding: 10px 12px; border-radius: 6px; border: 1px solid #ebdcd5; margin-bottom: 16px;">
+          <input type="checkbox" id="chk-confirm-pl-test" style="margin-top: 3px;" />
+          <span style="font-size: 12px; font-weight: 600; color: #231515;">
+            He leído la advertencia y confirmo explícitamente que deseo crear este envío de prueba en Packlink PRO.
+          </span>
+        </label>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" id="btn-cancel-pl-test" class="admin-btn-secondary" style="height: 38px; padding: 0 16px;">Cancelar</button>
+          <button type="button" id="btn-execute-pl-test" class="admin-btn-primary" disabled style="background: #991b1b; border-color: #7f1d1d; height: 38px; padding: 0 18px; opacity: 0.5;">
+            Sí, Crear Envío de Prueba
+          </button>
+        </div>
       </div>
     </div>
   </div>
