@@ -11,6 +11,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
   signOut, 
   onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -27,6 +30,7 @@ import {
   writeBatch,
   onSnapshot,
   query, 
+  where,
   orderBy 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { 
@@ -84,6 +88,9 @@ export function buildCleanStorageUrl(filePath, version = '') {
 
 export {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
   signOut,
   onAuthStateChanged,
   collection,
@@ -97,6 +104,7 @@ export {
   writeBatch,
   onSnapshot,
   query,
+  where,
   orderBy,
   ref,
   uploadBytes,

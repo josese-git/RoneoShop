@@ -6045,3 +6045,570 @@ body.checkout-page .btn-submit-order {
   line-height: 1.45;
   margin-bottom: 12px;
 }
+
+/* ==========================================================================
+   12. APARTADO "CUENTA" OFICIAL - RONEO SHOP
+   ========================================================================== */
+.editorial-modal.account-modal-active .editorial-modal__dialog {
+  max-width: 580px;
+  padding: 28px 24px;
+}
+
+.account-auth-container {
+  text-align: left;
+}
+
+.account-header-branding {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.account-brand-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fbf5f2;
+  color: #4d2525;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.account-title {
+  font-family: var(--font-serif, serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: #231515;
+  margin: 0 0 4px;
+}
+
+.account-subtitle {
+  font-size: 13px;
+  color: #7d6868;
+  margin: 0;
+}
+
+.account-auth-switcher {
+  display: flex;
+  background: #f8f6f4;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 18px;
+  gap: 4px;
+}
+
+.account-switch-btn {
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e5a5a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-switch-btn.is-active {
+  background: #ffffff;
+  color: #231515;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.account-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+  line-height: 1.45;
+}
+
+.account-alert.is-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.account-alert.is-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.account-form .form-group {
+  margin-bottom: 14px;
+}
+
+.account-admin-link-box {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid #f2ede9;
+  text-align: center;
+}
+
+.account-admin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #8c7878;
+  text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.account-admin-link:hover {
+  color: #4d2525;
+}
+
+/* Dashboard Usuario Autenticado */
+.account-dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f2ede9;
+  margin-bottom: 16px;
+}
+
+.account-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #4d2525;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.account-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-user-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #231515;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-user-email {
+  font-size: 12px;
+  color: #7d6868;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-account-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f8f6f4;
+  border: 1px solid #ebdcd5;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7d5353;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-account-logout:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.account-tabs-bar {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #f0eae6;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.account-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #faf8f6;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6e5a5a;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.account-tab-btn:hover {
+  background: #f0eae6;
+  color: #231515;
+}
+
+.account-tab-btn.is-active {
+  background: #4d2525;
+  color: #ffffff;
+}
+
+.account-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.account-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #faf8f6;
+  color: #8c7878;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.account-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #231515;
+  margin: 0 0 6px;
+}
+
+.account-empty-desc {
+  font-size: 13px;
+  color: #7d6868;
+  line-height: 1.5;
+  max-width: 380px;
+  margin: 0 auto 18px;
+}
+
+/* Tarjetas de Pedidos */
+.account-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.account-order-card {
+  border: 1px solid #ebdcd5;
+  border-radius: 12px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f6f0ed;
+  margin-bottom: 10px;
+}
+
+.order-card-num {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #231515;
+}
+
+.order-card-date {
+  font-size: 11.5px;
+  color: #8c7878;
+  margin-top: 2px;
+}
+
+.order-card-status-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.order-card-status-badge.is-test {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.order-card-status-badge.is-confirmed {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.order-card-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.order-card-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.order-item-thumb {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #f4f0ec;
+  flex-shrink: 0;
+}
+
+.order-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-item-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #231515;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-item-spec {
+  font-size: 11.5px;
+  color: #7d6868;
+}
+
+.order-item-price {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #4d2525;
+}
+
+.order-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #f6f0ed;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.order-footer-total {
+  font-size: 12.5px;
+  color: #555;
+}
+
+.order-footer-total strong {
+  color: #231515;
+  font-size: 13.5px;
+}
+
+.btn-track-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #4d2525;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-track-order:hover {
+  opacity: 0.9;
+}
+
+.order-tracking-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #7d6868;
+}
+
+.order-tracking-details-box {
+  margin-top: 10px;
+  padding: 12px;
+  background: #faf8f6;
+  border: 1px solid #ebdcd5;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.track-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.track-header {
+  font-size: 12px;
+  color: #231515;
+}
+
+.track-status-pill {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 4px 0;
+  width: fit-content;
+}
+
+.track-events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.track-event-row {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: #555;
+}
+
+.track-event-time {
+  font-weight: 600;
+  color: #4d2525;
+  white-space: nowrap;
+}
+
+.track-msg-info {
+  color: #6e5a5a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.track-msg-error {
+  color: #991b1b;
+  font-size: 12px;
+}
+
+/* Grid de Favoritos */
+.account-favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.account-fav-card {
+  border: 1px solid #ebdcd5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.fav-card-media {
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #f4f0ec;
+}
+
+.fav-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.account-fav-card:hover .fav-card-media img {
+  transform: scale(1.04);
+}
+
+.fav-card-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fav-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #231515;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.fav-card-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4d2525;
+  margin-bottom: 6px;
+}
+
+.fav-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.btn-fav-view {
+  flex: 1;
+  padding: 4px 6px;
+  background: #4d2525;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-fav-remove {
+  width: 26px;
+  height: 26px;
+  background: #f8f6f4;
+  border: 1px solid #e0d7d2;
+  border-radius: 4px;
+  color: #7d5353;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-fav-remove:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.account-dashboard-footer {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #f2ede9;
+  text-align: center;
+}

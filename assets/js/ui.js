@@ -22,6 +22,7 @@ import {
   removeFromCart,
   getCartTotals
 } from './cart.js';
+import { initAccountUI, renderAccountModalContent } from './account-ui.js';
 
 /**
  * Formateador oficial de precios: "35,00 €"
@@ -173,7 +174,9 @@ export function openAccountModal() {
   const modal = document.getElementById('account-preview-modal');
   if (modal) {
     modal.classList.add('is-open');
+    modal.classList.add('account-modal-active');
     document.body.classList.add('overflow-hidden');
+    renderAccountModalContent();
   }
 }
 
@@ -383,24 +386,11 @@ export function ensureGlobalShellElements() {
           <button type="button" class="editorial-modal__close" data-action="close-account-modal" aria-label="Cerrar modal">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
-          <div class="modal-editorial-body">
-            <div class="modal-editorial-icon">
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5"></path></svg>
+          <div class="account-auth-container">
+            <div class="account-loading-state">
+              <div class="account-spinner"></div>
+              <p>Cargando área de cuenta...</p>
             </div>
-            <h3 id="account-modal-title" class="modal-editorial-title">Mi Cuenta &middot; Roneo Shop</h3>
-            <p class="modal-editorial-subtitle">Próximamente disponible</p>
-            <p class="modal-editorial-desc">
-              Estamos preparando tu área privada de clienta para que puedas guardar tus prendas favoritas, consultar tu historial de pedidos y gestionar tus envíos con un solo clic.
-            </p>
-            <div class="modal-editorial-box">
-              <p>¿Has hecho un pedido y quieres consultar su seguimiento? Escríbenos indicando tu código de pedido:</p>
-              <a href="https://wa.me/34600000000?text=Hola%20Roneo%20Shop,%20quiero%20consultar%20el%20seguimiento%20de%20mi%20pedido" target="_blank" rel="noopener" class="btn-primary" style="margin-top: 8px; text-decoration: none;">
-                Consultar por WhatsApp
-              </a>
-            </div>
-            <a href="admin/index.html" style="font-size: 12px; color: #8c7878; text-decoration: underline; margin-top: 12px; display: inline-block;">
-              Acceso Administración (/admin)
-            </a>
           </div>
         </div>
       </div>
@@ -423,6 +413,7 @@ export function ensureGlobalShellElements() {
 let delegatedListenersInitialized = false;
 export function initGlobalNavigationShell() {
   ensureGlobalShellElements();
+  initAccountUI();
 
   if (delegatedListenersInitialized) return;
   delegatedListenersInitialized = true;
