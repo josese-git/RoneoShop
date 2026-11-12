@@ -24,6 +24,7 @@ import {
   buildCleanSingleStreet
 } from './packlink-service.js';
 import { formatPrice, renderAnnouncementMarquee } from './ui.js';
+import { auth, onAuthStateChanged } from './firebase-config.js';
 
 // Clave de pedidos locales para el panel de administración
 export const ORDERS_STORAGE_KEY = 'store_orders_v1';
@@ -31,6 +32,7 @@ export const ORDERS_STORAGE_KEY = 'store_orders_v1';
 let currentProductsCatalog = [];
 let currentStoreSettings = null;
 let selectedShippingKey = 'correos'; // 'correos' o 'correosExpress'
+let isSubmittingOrder = false; // Bloqueo de idempotencia para prevenir duplicados
 
 let activeShippingRates = {
   correos: {
@@ -68,6 +70,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupPaymentMethodAccordion();
     setupPostalCodeLookup();
     setupFormSubmission();
+
+    // Rellenado automático si el usuario está autenticado
+    if (auth) {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          const emailInput = document.getElementById('checkout-email');
+          if (emailInput && !emailInput.value) {
+            emailInput.value = user.email || '';
+          }
+          if (user.displayName) {
+            const parts = user.displayName.split(' ');
+            const fnInput = document.getElementById('checkout-firstname');
+            const lnInput = document.getElementById('checkout-lastname');
+            if (fnInput && !fnInput.value) fnInput.value = parts[0] || '';
+            if (lnInput && !lnInput.value) lnInput.value = parts.slice(1).join(' ') || '';
+          }
+        }
+      });
+    }
   } catch (err) {
     console.error("[Checkout] Error durante la inicialización:", err);
   }
@@ -482,15 +503,17 @@ function setupPostalCodeLookup() {
 
 /**
  * Simulación o delegación del cobro seguro con Redsys TPV Virtual / Bizum
+ * NOTA: Modo prueba/demostración activo. No se realiza ningún cargo bancario real.
  */
 export async function initiateRedsysPayment(order) {
-  console.info("[Redsys] Conectando con Cloudflare Worker / Redsys TPV Virtual:", {
+  console.info("[Redsys Simulado] Procesando pago en modo demostración (TEST):", {
     orderNumber: order.orderNumber,
     amount: order.total,
     currency: "978", // EUR
-    paymentMethod: order.paymentMethod
+    paymentMethod: order.paymentMethod,
+    isTest: true
   });
-  return new Promise((resolve) => setTimeout(resolve, 1200));
+  return new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 /**
@@ -520,6 +543,9 @@ function setupFormSubmission() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (errorBox) errorBox.style.display = 'none';
+
+    // Protección de idempotencia contra doble pulsación
+    if (isSubmittingOrder) return;
 
     const cart = getCart();
     if (cart.length === 0) {
@@ -580,100 +606,106 @@ function setupFormSubmission() {
       return;
     }
 
-    // Resolución oficial del Código Postal y Ciudad para garantizar correspondencia en Packlink PRO
-    const recipientLoc = await resolvePacklinkPostalLocation(zipCode, city, province);
-
-    const fullStreet = buildCleanSingleStreet(rawStreetOnly, rawApartmentOnly);
-    const totals = getCalculatedTotals();
-    const chosenShipping = totals.selectedOption;
-    const totalWeightKg = calculateCartWeightKg();
-    const orderNumber = await generateNextOrderNumber();
-
-    // 2. Construcción del objeto de pedido según ARCHITECTURE.md
-    const giftThreshold = Number(currentStoreSettings?.freeGiftThreshold || 150.00);
-    const hasFreeGift = totals.subtotal >= giftThreshold;
-
-    const newOrder = {
-      orderNumber,
-      redsysOrderId: orderNumber.replace(/-/g, ''),
-      status: "PENDING_PAYMENT",
-      paymentStatus: "PENDING_VERIFICATION",
-      paymentMethod,
-      subtotal: totals.subtotal,
-      shippingCost: totals.shippingCost,
-      total: totals.total,
-      totalWeightKg,
-      hasFreeGift,
-      shipping: {
-        carrier: chosenShipping.carrierName,
-        serviceName: chosenShipping.serviceName,
-        serviceId: chosenShipping.serviceId,
-        costWithVat: totals.shippingCost
-      },
-      customer: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        street: rawStreetOnly,
-        apartment: rawApartmentOnly,
-        fullStreet: fullStreet,
-        city: recipientLoc.city,
-        province: recipientLoc.state || province,
-        zipCode: recipientLoc.zip_code,
-        country: "ES",
-        zone: "ESPAÑA PENÍNSULA"
-      },
-      items: cart.map(item => ({
-        productId: item.productId,
-        title: item.title,
-        size: item.size,
-        color: item.color || 'Único',
-        colorHex: item.colorHex || '#121212',
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image
-      })),
-      packlink: {
-        synced: false,
-        reference: "PENDIENTE-ENVIO",
-        serviceId: chosenShipping.serviceId,
-        carrierName: chosenShipping.carrierName,
-        trackingUrl: ""
-      },
-      createdAt: Date.now()
-    };
-
-    // 3. Estado de carga
+    // Bloqueo de concurrencia e inicio de procesamiento
+    isSubmittingOrder = true;
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = paymentMethod === 'BIZUM'
-        ? 'Conectando con Bizum / Redsys...'
-        : 'Conectando con TPV Virtual Redsys...';
+        ? 'Conectando con Bizum (Simulación)...'
+        : 'Conectando con TPV Virtual Redsys (Simulación)...';
     }
 
     try {
-      // NOTA DE SEGURIDAD (FASE 7):
-      // initiateRedsysPayment simula el flujo bancario en este entorno.
-      // El pedido se registra con estado PENDING_PAYMENT.
-      // El inventario y la creación de envíos en Packlink PRO se gestionan tras la verificación administrativa.
+      // Resolución oficial del Código Postal y Ciudad para garantizar correspondencia en Packlink PRO
+      const recipientLoc = await resolvePacklinkPostalLocation(zipCode, city, province);
+
+      const fullStreet = buildCleanSingleStreet(rawStreetOnly, rawApartmentOnly);
+      const totals = getCalculatedTotals();
+      const chosenShipping = totals.selectedOption;
+      const totalWeightKg = calculateCartWeightKg();
+      const orderNumber = await generateNextOrderNumber();
+
+      // 2. Construcción del objeto de pedido según ARCHITECTURE.md
+      const giftThreshold = Number(currentStoreSettings?.freeGiftThreshold || 150.00);
+      const hasFreeGift = totals.subtotal >= giftThreshold;
+
+      const newOrder = {
+        orderNumber,
+        redsysOrderId: orderNumber.replace(/-/g, ''),
+        status: "PENDING_PAYMENT",
+        paymentStatus: "SIMULATED",
+        isTest: true,
+        customerUid: auth?.currentUser?.uid || null,
+        paymentMethod,
+        subtotal: totals.subtotal,
+        shippingCost: totals.shippingCost,
+        total: totals.total,
+        totalWeightKg,
+        hasFreeGift,
+        shipping: {
+          carrier: chosenShipping.carrierName,
+          serviceName: chosenShipping.serviceName,
+          serviceId: chosenShipping.serviceId,
+          costWithVat: totals.shippingCost
+        },
+        customer: {
+          firstName,
+          lastName,
+          email,
+          phone,
+          street: rawStreetOnly,
+          apartment: rawApartmentOnly,
+          fullStreet: fullStreet,
+          city: recipientLoc.city,
+          province: recipientLoc.state || province,
+          zipCode: recipientLoc.zip_code,
+          country: "ES",
+          zone: "ESPAÑA PENÍNSULA"
+        },
+        items: cart.map(item => ({
+          productId: item.productId,
+          title: item.title,
+          size: item.size,
+          color: item.color || 'Único',
+          colorHex: item.colorHex || '#121212',
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image
+        })),
+        packlink: {
+          synced: false,
+          reference: "PENDIENTE-ENVIO",
+          serviceId: chosenShipping.serviceId,
+          carrierName: chosenShipping.carrierName,
+          trackingUrl: ""
+        },
+        createdAt: Date.now()
+      };
+
+      // Simulación de pasarela de pago (sin cobro real)
       await initiateRedsysPayment(newOrder);
 
-      // Guardar pedido en Firestore (permitido por regla pública de orders)
+      // Guardar pedido en Firestore
       await createOrder(newOrder);
+
+      // Guardar en almacenamiento local para acceso inmediato
+      saveOrderLocally(newOrder);
 
       // Vaciar carrito
       clearCart();
 
-      // Renderizar pantalla de confirmación para el cliente
+      // Renderizar pantalla de confirmación clara para el cliente
       renderOrderConfirmation(newOrder, null);
     } catch (err) {
-      console.error("[Checkout] Error procesando el pago:", err);
-      showError('Ocurrió un error al procesar el pago con la pasarela bancaria. Por favor, inténtalo de nuevo.');
+      console.error("[Checkout] Error al procesar el pedido:", err.message || err);
+      showError(err.message || 'Ocurrió un error al registrar el pedido de prueba. Por favor, inténtalo de nuevo.');
       if (submitBtn) {
         submitBtn.disabled = false;
+        const totals = getCalculatedTotals();
         submitBtn.textContent = `PAGAR AHORA · ${formatPrice(totals.total)}`;
       }
+    } finally {
+      isSubmittingOrder = false;
     }
   });
 
@@ -687,7 +719,7 @@ function setupFormSubmission() {
 }
 
 /**
- * Renderiza la pantalla final de Pedido Confirmado sin mencionar Packlink de cara al cliente
+ * Renderiza la pantalla final de Pedido Confirmado indicando con total transparencia el modo de prueba
  */
 function renderOrderConfirmation(order, packlinkResult = null) {
   const container = document.getElementById('checkout-main-content');
@@ -702,12 +734,12 @@ function renderOrderConfirmation(order, packlinkResult = null) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const methodLabel = order.paymentMethod === 'BIZUM'
-    ? 'Bizum (Autorizado)'
-    : 'Tarjeta Bancaria (Autorizada)';
+    ? 'Bizum (Simulado - Modo Prueba)'
+    : 'Tarjeta Bancaria (Simulada - Modo Prueba)';
 
   const carrierDisplay = order.shipping?.serviceName
     ? `${order.shipping.carrier} · ${order.shipping.serviceName}`
-    : (order.shipping?.carrier || 'Correos Express · Entrega Urgente 24h');
+    : (order.shipping?.carrier || 'Correos · Paq Estándar Domicilio 48/72h');
 
   container.innerHTML = `
     <div class="order-confirmation-box">
@@ -716,14 +748,31 @@ function renderOrderConfirmation(order, packlinkResult = null) {
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </div>
-      <h2 class="order-success-title">¡Gracias por tu pedido, ${order.customer.firstName}!</h2>
+
+      <div style="display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; border: 1px solid #fde68a; color: #92400e; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-bottom: 12px; letter-spacing: 0.04em;">
+        MODO DEMOSTRACIÓN / PRUEBAS
+      </div>
+
+      <h2 class="order-success-title">¡Pedido de prueba registrado, ${order.customer.firstName}!</h2>
       <p style="font-size: 13.5px; color: var(--color-text-muted); margin-bottom: 14px;">
-        Hemos recibido tu pago correctamente y estamos preparando tu paquete con ${order.shipping?.carrier || 'Correos'}.
+        Tu pedido ha sido guardado correctamente en modo de prueba. Al encontrarse la tienda en fase de pruebas, no se ha producido ningún cobro bancario real ni emisión de envío.
       </p>
 
       <div class="order-number-badge">
         Nº DE PEDIDO: #${order.orderNumber}
       </div>
+
+      ${order.customerUid ? `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 12.5px; color: #166534; display: flex; align-items: center; gap: 8px; text-align: left;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <div>
+            Pedido vinculado a tu cuenta. Puedes consultar los detalles y su estado en cualquier momento desde tu sección <strong>Cuenta</strong>.
+          </div>
+        </div>
+      ` : ''}
 
       ${order.hasFreeGift ? `
         <div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #9d174d; font-weight: 600; text-align: left;">
@@ -735,7 +784,7 @@ function renderOrderConfirmation(order, packlinkResult = null) {
             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
           </svg>
           <div>
-            <div>¡Regalo Exclusivo Roneo Shop Incluido!</div>
+            <div>Regalo Exclusivo Roneo Shop Incluido</div>
             <div style="font-size: 12px; font-weight: 400; color: #be185d; margin-top: 2px;">
               Tu compra supera los 150,00 € y nuestro almacén incluirá tu regalo exclusivo en el paquete.
             </div>
@@ -751,22 +800,22 @@ function renderOrderConfirmation(order, packlinkResult = null) {
           <circle cx="18.5" cy="18.5" r="2.5"></circle>
         </svg>
         <div>
-          <div>Transportista asignado: <strong>${carrierDisplay}</strong></div>
+          <div>Transportista seleccionado: <strong>${carrierDisplay}</strong></div>
           <div style="font-size: 12px; font-weight: 400; color: #7d5353; margin-top: 2px;">
-            Recibirás el código de seguimiento por SMS y email en cuanto el transportista recoja tu paquete.
+            Envíos en 24/48h gestionados oficialmente desde Torredonjimeno (Jaén), España Península.
           </div>
         </div>
       </div>
 
       <div class="order-summary-card">
         <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; text-transform: uppercase;">
-          Detalles de la Entrega
+          Detalles de la Entrega (Prueba)
         </h3>
         <p style="font-size: 13px; line-height: 1.6; color: #333;">
           <strong>Destinatario:</strong> ${order.customer.firstName} ${order.customer.lastName}<br>
           <strong>Dirección:</strong> ${order.customer.street}, ${order.customer.zipCode} ${order.customer.city} (${order.customer.province}), España Península<br>
           <strong>Transportista:</strong> ${carrierDisplay}<br>
-          <strong>Teléfono de aviso SMS:</strong> ${order.customer.phone}<br>
+          <strong>Teléfono:</strong> ${order.customer.phone}<br>
           <strong>Email:</strong> ${order.customer.email}<br>
           <strong>Método de pago:</strong> ${methodLabel}
         </p>
@@ -784,15 +833,17 @@ function renderOrderConfirmation(order, packlinkResult = null) {
             <span>${order.shippingCost === 0 ? 'GRATIS' : formatPrice(order.shippingCost)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 8px;">
-            <span>Total Pagado:</span>
+            <span>Total:</span>
             <span>${formatPrice(order.total)}</span>
           </div>
         </div>
       </div>
 
-      <a href="index.html" class="btn-primary" style="display: inline-flex; max-width: 260px; margin: 0 auto;">
-        Volver a la tienda
-      </a>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+        <a href="index.html" class="btn-primary" style="display: inline-flex; max-width: 240px; margin: 0;">
+          Volver a la tienda
+        </a>
+      </div>
     </div>
   `;
 }

@@ -2189,21 +2189,22 @@ export async function createOrder(orderData) {
   const orderRecord = {
     ...orderData,
     orderNumber,
-    createdAt: Date.now(),
-    status: orderData.status || 'PAID'
+    createdAt: orderData.createdAt || Date.now(),
+    status: orderData.status || 'PENDING_PAYMENT'
   };
 
   try {
     await setDoc(doc(db, 'orders', orderNumber), sanitizeForFirestore(orderRecord));
   } catch (e) {
-    console.warn("[createOrder] Error guardando pedido en Firestore:", e);
+    console.error("[createOrder] Error guardando pedido en Firestore:", e.message || e);
+    throw new Error("No se pudo registrar el pedido en el servidor. Por favor, revisa tu conexión e inténtalo de nuevo.");
   }
 
   if (Array.isArray(orderRecord.items) && auth?.currentUser?.email === '1roneoshop@gmail.com') {
     await updateProductStockAfterOrder(orderRecord.items);
   }
 
-  const list = [orderRecord, ...store.orders];
+  const list = [orderRecord, ...(store.orders || [])];
   store.orders = list;
   localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(list));
   store.ordersSubscribers.forEach(cb => cb(list));
