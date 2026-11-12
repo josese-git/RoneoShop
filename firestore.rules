@@ -20,14 +20,27 @@ service cloud.firestore {
     }
 
     // Pedidos de compra:
-    // Creación pública permitida exclusivamente para registrar pedidos legítimos desde el checkout
-    // Lectura, actualización y borrado restringidos exclusivamente al administrador
+    // Creación permitida para pedidos legítimos desde el checkout (invitados o usuarios autenticados)
+    // Lectura permitida para el administrador o el cliente propietario del pedido (customerUid)
+    // Actualización y borrado restringidos exclusivamente al administrador
     match /orders/{orderId} {
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin() || (request.auth != null && resource.data.customerUid == request.auth.uid);
+      allow update, delete: if isAdmin();
       allow create: if request.resource.data.orderNumber == orderId
         && request.resource.data.keys().hasAll(['orderNumber', 'customer', 'items', 'total', 'createdAt'])
         && request.resource.data.total is number
-        && request.resource.data.total > 0;
+        && request.resource.data.total > 0
+        && (!('customerUid' in request.resource.data) || request.resource.data.customerUid == null || (request.auth != null && request.resource.data.customerUid == request.auth.uid));
+    }
+
+    // Perfil y datos de clientes autenticados:
+    match /users/{userId} {
+      allow read, write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+
+      // Favoritos de prendas por usuario:
+      match /favorites/{productId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }
